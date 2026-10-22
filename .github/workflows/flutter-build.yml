@@ -36,10 +36,16 @@ jobs:
       - name: Build Web
         run: flutter build web --release
 
-      - name: Upload APK and Web artifacts
+      - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: voting-pro-builds
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/web/**
+          name: voting-pro-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: voting-pro-web
+          path: build/web/**
+          if-no-files-found: error
