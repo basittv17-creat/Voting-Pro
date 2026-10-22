@@ -440,7 +440,10 @@ class _EditorState extends State<Editor> {
               child: IgnorePointer(
                 child: Image.asset(
                   selectedStylishFrame!,
-                  fit: BoxFit.fill,
+                  fit: BoxFit.contain,
+                  width: double.infinity,
+                  height: double.infinity,
+                  alignment: Alignment.center,
                 ),
               ),
             ),
