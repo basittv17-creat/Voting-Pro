@@ -425,8 +425,8 @@ class _EditorState extends State<Editor> {
 
   Widget tool(String icon, String title, VoidCallback tap) {
     return Container(
-      width: 128,
-      height: 96,
+      width: 112,
+      height: 80,
       margin: const EdgeInsets.symmetric(horizontal: 5),
       child: Material(
         color: const Color(0xFF1B2638),
@@ -437,9 +437,9 @@ class _EditorState extends State<Editor> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(icon, style: const TextStyle(color: mint, fontSize: 29, fontWeight: FontWeight.bold)),
+              Text(icon, style: const TextStyle(color: mint, fontSize: 23, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
