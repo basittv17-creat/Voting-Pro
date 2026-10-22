@@ -603,7 +603,7 @@ class _EditorState extends State<Editor> {
             ),
         ]),
       ))),
-      const SizedBox(height: 10), const Text('A یا B منتخب کریں، پھر گیلری سے تصویر لگائیں', style: TextStyle(color: Colors.white70, fontSize: 12)),
+
     ]))),
     Container(padding: const EdgeInsets.fromLTRB(8, 10, 8, 14), color: const Color(0xFF101827), child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
       tool('A', 'Add A Photo', () => pick(true)), tool('B', 'Add B Photo', () => pick(false)),
