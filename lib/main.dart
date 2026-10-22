@@ -15,8 +15,126 @@ class PosterApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false, title: 'Voting Pro',
     theme: ThemeData.dark().copyWith(scaffoldBackgroundColor: dark),
-    home: const Editor(),
+    home: const SplashScreen(),
   );
+}
+
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..forward();
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const Editor(),
+            transitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF080E19),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 36),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) => Transform.rotate(
+                    angle: _controller.value * 2 * 3.141592653589793,
+                    child: child,
+                  ),
+                  child: const Icon(
+                    Icons.workspace_premium,
+                    size: 100,
+                    color: Color(0xFFFFD84D),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Voting Pro',
+                  style: TextStyle(
+                    color: Color(0xFFFFD84D),
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'P O S T E R   M A K E R',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) => Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: LinearProgressIndicator(
+                          value: _controller.value,
+                          minHeight: 8,
+                          backgroundColor: Color(0xFF263142),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFFFFD84D),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Loading... ${(_controller.value * 100).round()}%',
+                        style: const TextStyle(
+                          color: Color(0xFFFFD84D),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class Editor extends StatefulWidget {
