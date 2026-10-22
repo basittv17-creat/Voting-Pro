@@ -296,11 +296,44 @@ class _EditorState extends State<Editor> {
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(color: background, border: Border.all(color: frameColor, width: frameWidth)),
         child: Stack(children: [
-          Column(children: [
-            Expanded(flex: 7, child: Row(children: [Expanded(child: photoSlot(true)), const SizedBox(width: 6), Expanded(child: photoSlot(false))])),
-            const SizedBox(height: 6),
-            Expanded(flex: 3, child: Container(width: double.infinity, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF6B0B08), Color(0xFF120B08), Color(0xFF6B0B08)]), border: Border.all(color: gold, width: 2), borderRadius: BorderRadius.circular(10)), child: const Center(child: Text('TAGDA\\nMUQABLA', textAlign: TextAlign.center, style: TextStyle(fontSize: 27, fontWeight: FontWeight.w900, color: Color(0xFFFFE35C)))))),
-          ]),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Icon(Icons.workspace_premium, color: gold, size: 38),
+                    Icon(Icons.workspace_premium, color: gold, size: 38),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(child: photoSlot(true)),
+                    const SizedBox(width: 6),
+                    Expanded(child: photoSlot(false)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Center(
+            child: IgnorePointer(
+              child: Text(
+                'VS',
+                style: TextStyle(
+                  color: gold,
+                  fontSize: 42,
+                  fontWeight: FontWeight.w900,
+                  shadows: [
+                    Shadow(color: Colors.black, blurRadius: 8),
+                  ],
+                ),
+              ),
+            ),
+          ),
           ...overlays.asMap().entries.map((entry) => Positioned(left: 10 + (entry.key % 4) * 35, top: 12 + (entry.key % 3) * 38, child: GestureDetector(onLongPress: () => setState(() => overlays.removeAt(entry.key)), child: Text(entry.value, style: const TextStyle(fontSize: 28, color: Colors.white))))),
         ]),
       ))),
