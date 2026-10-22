@@ -153,6 +153,13 @@ class _EditorState extends State<Editor> {
   final List<String> overlays = [];
   String? selectedStylishFrame;
 
+  bool showVs = true;
+  bool isVsSelected = false;
+  Offset vsOffset = Offset.zero;
+  double vsScale = 1.0;
+  double vsStartScale = 1.0;
+  String vsStyle = 'Classic';
+
   static const stylishFrames = <(String, String)>[
     ('Royal Gold', 'assets/stylish_frames/01_royal_gold_frame.png'),
     ('Elegant Gold', 'assets/stylish_frames/02_elegant_gold_frame.png'),
@@ -167,6 +174,78 @@ class _EditorState extends State<Editor> {
     ('Shine', 'assets/stylish_frames/11_shine_frame.png'),
     ('Golden Border', 'assets/stylish_frames/12_golden_border_frame.png'),
   ];
+
+  void vsStylesTool() {
+    const styles = <(String, Color, List<Color>)>[
+      ('Royal Gold', Color(0xFFFFD700), [Color(0xFFFFF1A8), Color(0xFFB8860B)]),
+      ('Fire', Color(0xFFFF5722), [Color(0xFFFFC107), Color(0xFFD50000)]),
+      ('Blue Neon', Color(0xFF00E5FF), [Color(0xFF2979FF), Color(0xFF00FFFF)]),
+      ('Green Neon', Color(0xFF76FF03), [Color(0xFF00C853), Color(0xFFB2FF59)]),
+      ('Electric', Color(0xFFE040FB), [Color(0xFF7C4DFF), Color(0xFF00E5FF)]),
+      ('Diamond', Color(0xFFE1F5FE), [Color(0xFF80DEEA), Color(0xFFFFFFFF)]),
+      ('Rainbow', Color(0xFFFF4081), [Color(0xFFFF1744), Color(0xFF651FFF)]),
+      ('Luxury', Color(0xFFFFE082), [Color(0xFF8D6E63), Color(0xFFFFD54F)]),
+      ('Golden Glow', Color(0xFFFFC107), [Color(0xFFFFF59D), Color(0xFFFF6F00)]),
+      ('Black & Gold', Color(0xFFFFD700), [Color(0xFF212121), Color(0xFFFFD700)]),
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(c).size.height * 0.55,
+          child: GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 2.2,
+            ),
+            itemCount: styles.length,
+            itemBuilder: (c, index) {
+              final style = styles[index];
+              return InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  setState(() {
+                    vsStyle = style.$1;
+                    showVs = true;
+                    isVsSelected = false;
+                    vsOffset = Offset.zero;
+                    vsScale = 1.0;
+                    vsStartScale = 1.0;
+                  });
+                  Navigator.pop(c);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: style.$3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: style.$2, width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'VS  •  ${style.$1}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: style.$2,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      shadows: const [
+                        Shadow(color: Colors.black, blurRadius: 5),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   void stylishFramesTool() {
     showModalBottomSheet<void>(
@@ -419,21 +498,96 @@ class _EditorState extends State<Editor> {
               ),
             ],
           ),
-          Center(
-            child: IgnorePointer(
-              child: Text(
-                'VS',
-                style: TextStyle(
-                  color: gold,
-                  fontSize: 42,
-                  fontWeight: FontWeight.w900,
-                  shadows: [
-                    Shadow(color: Colors.black, blurRadius: 8),
-                  ],
+          if (showVs)
+            Align(
+              alignment: Alignment.center,
+              child: Transform.translate(
+                offset: vsOffset,
+                child: Transform.scale(
+                  scale: vsScale,
+                  child: GestureDetector(
+                    onTap: () => setState(() => isVsSelected = true),
+                    onScaleStart: (_) {
+                      setState(() {
+                        isVsSelected = true;
+                        vsStartScale = vsScale;
+                      });
+                    },
+                    onScaleUpdate: (details) {
+                      setState(() {
+                        vsOffset += details.focalPointDelta;
+                        vsScale =
+                            (vsStartScale * details.scale).clamp(0.5, 3.0).toDouble();
+                      });
+                    },
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            border: isVsSelected
+                                ? Border.all(color: Colors.cyanAccent, width: 1)
+                                : null,
+                          ),
+                          child: Text(
+                            'VS',
+                            style: TextStyle(
+                              color: const <String, Color>{
+                                'Royal Gold': Color(0xFFFFD700),
+                                'Fire': Color(0xFFFF5722),
+                                'Blue Neon': Color(0xFF00E5FF),
+                                'Green Neon': Color(0xFF76FF03),
+                                'Electric': Color(0xFFE040FB),
+                                'Diamond': Color(0xFFE1F5FE),
+                                'Rainbow': Color(0xFFFF4081),
+                                'Luxury': Color(0xFFFFE082),
+                                'Golden Glow': Color(0xFFFFC107),
+                                'Black & Gold': Color(0xFFFFD700),
+                              }[vsStyle] ?? gold,
+                              fontSize: 42,
+                              fontWeight: FontWeight.w900,
+                              shadows: [
+                                Shadow(color: Colors.black, blurRadius: 8),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (isVsSelected)
+                          Positioned(
+                            right: -12,
+                            top: -12,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => setState(() {
+                                showVs = false;
+                                isVsSelected = false;
+                                vsOffset = Offset.zero;
+                                vsScale = 1.0;
+                                vsStartScale = 1.0;
+                              }),
+                              child: Container(
+                                width: 24,
+                                height: 24,
+                                alignment: Alignment.center,
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
           ...overlays.asMap().entries.map((entry) => Positioned(left: 10 + (entry.key % 4) * 35, top: 12 + (entry.key % 3) * 38, child: GestureDetector(onLongPress: () => setState(() => overlays.removeAt(entry.key)), child: Text(entry.value, style: const TextStyle(fontSize: 28, color: Colors.white))))),
           if (selectedStylishFrame != null)
             Positioned.fill(
@@ -458,6 +612,7 @@ class _EditorState extends State<Editor> {
       tool('😊', 'Emoji', emojiTool), tool('▱', 'Canvas', canvasTool),
       tool('▦', 'Background', backgrounds), tool('↗', 'Share Poster', share),
       tool('✨', 'Stylish Frames', stylishFramesTool),
+      tool('⚔️', 'VS Styles', vsStylesTool),
     ]))),
   ])));
 }
