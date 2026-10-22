@@ -279,10 +279,48 @@ class _EditorState extends State<Editor> {
   }
 
   void canvasTool() {
-    showModalBottomSheet<void>(context: context, builder: (c) => Column(mainAxisSize: MainAxisSize.min, children: [
-      for (final opt in <(String, double)>[('Poster 4:5', .8), ('Square 1:1', 1), ('Story 9:16', .5625), ('Landscape 16:9', 1.7778)])
-        ListTile(title: Text(opt.$1), onTap: () { setState(() => canvasRatio = opt.$2); Navigator.pop(c); }),
-    ]));
+    const sizes = <(String, double)>[
+      ('Poster 4:5', 4 / 5),
+      ('Portrait 3:4', 3 / 4),
+      ('Portrait 2:3', 2 / 3),
+      ('Story 9:16', 9 / 16),
+      ('Square 1:1', 1),
+      ('Landscape 4:3', 4 / 3),
+      ('Landscape 3:2', 3 / 2),
+      ('Landscape 16:9', 16 / 9),
+      ('Landscape 5:4', 5 / 4),
+      ('Banner 2:1', 2),
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(c).size.height * 0.7,
+          child: ListView(
+            children: [
+              const ListTile(
+                title: Text('Canvas Size'),
+                subtitle: Text('اپنے پوسٹر کا سائز منتخب کریں'),
+              ),
+              for (final opt in sizes)
+                ListTile(
+                  leading: const Icon(Icons.aspect_ratio),
+                  title: Text(opt.$1),
+                  trailing: canvasRatio == opt.$2
+                      ? const Icon(Icons.check, color: gold)
+                      : null,
+                  onTap: () {
+                    setState(() => canvasRatio = opt.$2);
+                    Navigator.pop(c);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void emojiTool() {
