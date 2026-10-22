@@ -151,6 +151,68 @@ class _EditorState extends State<Editor> {
   double frameWidth = 3, canvasRatio = .8;
   bool busy = false;
   final List<String> overlays = [];
+  String? selectedStylishFrame;
+
+  static const stylishFrames = <(String, String)>[
+    ('Royal Gold', 'assets/stylish_frames/01_royal_gold_frame.png'),
+    ('Elegant Gold', 'assets/stylish_frames/02_elegant_gold_frame.png'),
+    ('Luxury Gold', 'assets/stylish_frames/03_luxury_gold_frame.png'),
+    ('Modern Gold', 'assets/stylish_frames/04_modern_gold_frame.png'),
+    ('Red Glow', 'assets/stylish_frames/05_red_glow_frame.png'),
+    ('Green Glow', 'assets/stylish_frames/06_green_glow_frame.png'),
+    ('Golden Light', 'assets/stylish_frames/07_golden_light_frame.png'),
+    ('Blue Light', 'assets/stylish_frames/08_blue_light_frame.png'),
+    ('Multi Color', 'assets/stylish_frames/09_multi_color_frame.png'),
+    ('Diamond', 'assets/stylish_frames/10_diamond_frame.png'),
+    ('Shine', 'assets/stylish_frames/11_shine_frame.png'),
+    ('Golden Border', 'assets/stylish_frames/12_golden_border_frame.png'),
+  ];
+
+  void stylishFramesTool() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(c).size.height * 0.65,
+          child: GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.8,
+            ),
+            itemCount: stylishFrames.length,
+            itemBuilder: (c, index) {
+              final frame = stylishFrames[index];
+              return InkWell(
+                onTap: () {
+                  setState(() => selectedStylishFrame = frame.$2);
+                  Navigator.pop(c);
+                },
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Image.asset(
+                        frame.$2,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.broken_image, size: 36),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(frame.$1, textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11)),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   void msg(String s) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
@@ -335,6 +397,15 @@ class _EditorState extends State<Editor> {
             ),
           ),
           ...overlays.asMap().entries.map((entry) => Positioned(left: 10 + (entry.key % 4) * 35, top: 12 + (entry.key % 3) * 38, child: GestureDetector(onLongPress: () => setState(() => overlays.removeAt(entry.key)), child: Text(entry.value, style: const TextStyle(fontSize: 28, color: Colors.white))))),
+          if (selectedStylishFrame != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Image.asset(
+                  selectedStylishFrame!,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
         ]),
       ))),
       const SizedBox(height: 10), const Text('A یا B منتخب کریں، پھر گیلری سے تصویر لگائیں', style: TextStyle(color: Colors.white70, fontSize: 12)),
@@ -345,6 +416,7 @@ class _EditorState extends State<Editor> {
       tool('☻', 'Stickers', emojiTool), tool('▣', 'Frame', frameTool),
       tool('😊', 'Emoji', emojiTool), tool('▱', 'Canvas', canvasTool),
       tool('▦', 'Background', backgrounds), tool('↗', 'Share Poster', share),
+      tool('✨', 'Stylish Frames', stylishFramesTool),
     ]))),
   ])));
 }
