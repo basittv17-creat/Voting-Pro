@@ -151,8 +151,16 @@ class _EditorState extends State<Editor> {
   double frameWidth = 3, canvasRatio = .8;
   bool busy = false;
   final List<String> overlays = [];
+  final Set<int> textOverlayIds = {};
+  bool showTextTools = false;
+  int? selectedTextIndex;
+  final Map<int, Offset> textPositions = {};
+  final Map<int, double> textScales = {};
+  double textGestureStartScale = 1.0;
+  Offset textGestureStartPosition = Offset.zero;
+  Offset textGestureStartFocalPoint = Offset.zero;
+  Offset textGestureLastFocalPoint = Offset.zero;
   String? selectedStylishFrame;
-
   bool showVs = true;
   bool isVsSelected = false;
   Offset vsOffset = Offset.zero;
@@ -407,7 +415,7 @@ class _EditorState extends State<Editor> {
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
       padding: const EdgeInsets.all(18),
       child: Wrap(spacing: 12, runSpacing: 12, children: emojis.map((e) => InkWell(
-        onTap: () { setState(() => overlays.add(e)); Navigator.pop(c); },
+        onTap: () { setState(() { overlays.add(e); }); Navigator.pop(c); },
         child: Container(width: 52, height: 52, alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
       )).toList()),
     ));
@@ -420,7 +428,65 @@ class _EditorState extends State<Editor> {
       actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: const Text('Add'))],
     ));
     controller.dispose();
-    if (value != null && value.isNotEmpty && mounted) setState(() => overlays.add(value));
+    if (value != null && value.isNotEmpty && mounted) {
+      setState(() {
+        overlays.add(value);
+        textOverlayIds.add(overlays.length - 1);
+        selectedTextIndex = overlays.length - 1;
+      });
+    }
+  }
+
+  void zoomSelectedText(double factor) {
+    final index = selectedTextIndex;
+    if (index == null || index < 0 || index >= overlays.length || !textOverlayIds.contains(index)) return;
+    setState(() {
+      textScales[index] = ((textScales[index] ?? 1.0) * factor)
+          .clamp(0.4, 4.0).toDouble();
+    });
+  }
+
+  void deleteSelectedText() {
+    final index = selectedTextIndex;
+    if (index == null ||
+        index < 0 ||
+        index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      return;
+    }
+
+    setState(() {
+      overlays.removeAt(index);
+
+      final oldPositions = Map<int, Offset>.from(textPositions);
+      final oldScales = Map<int, double>.from(textScales);
+
+      textPositions.clear();
+      textScales.clear();
+
+      final oldTextIds = Set<int>.from(textOverlayIds);
+      textOverlayIds.clear();
+
+      for (var i = 0; i < overlays.length; i++) {
+        final sourceIndex = i < index ? i : i + 1;
+
+        if (oldPositions.containsKey(sourceIndex)) {
+          textPositions[i] = oldPositions[sourceIndex]!;
+        }
+        if (oldScales.containsKey(sourceIndex)) {
+          textScales[i] = oldScales[sourceIndex]!;
+        }
+        if (oldTextIds.contains(sourceIndex)) {
+          textOverlayIds.add(i);
+        }
+      }
+
+      selectedTextIndex = null;
+    });
+  }
+
+  void openTextTools() {
+    setState(() => showTextTools = !showTextTools);
   }
 
   Widget tool(String icon, String title, VoidCallback tap) {
@@ -588,7 +654,43 @@ class _EditorState extends State<Editor> {
                 ),
               ),
             ),
-          ...overlays.asMap().entries.map((entry) => Positioned(left: 10 + (entry.key % 4) * 35, top: 12 + (entry.key % 3) * 38, child: GestureDetector(onLongPress: () => setState(() => overlays.removeAt(entry.key)), child: Text(entry.value, style: const TextStyle(fontSize: 28, color: Colors.white))))),
+          ...overlays.asMap().entries.map((entry) {
+            final index = entry.key;
+            final position = textPositions[index] ??
+                Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
+            final scale = textScales[index] ?? 1.0;
+            return Positioned(
+              left: position.dx,
+              top: position.dy,
+              child: GestureDetector(
+                onTap: () => setState(() => selectedTextIndex = index),
+                onScaleStart: (_) {
+                  selectedTextIndex = index;
+                  textGestureStartPosition = textPositions[index] ??
+                      Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
+                  textGestureStartScale = textScales[index] ?? 1.0;
+                },
+                onScaleUpdate: (details) => setState(() {
+                  selectedTextIndex = index;
+                  textPositions[index] = textGestureStartPosition + details.focalPointDelta;
+                  textScales[index] = (textGestureStartScale * details.scale).clamp(0.4, 4.0);
+                }),
+                child: Transform.scale(
+                  scale: scale,
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    decoration: selectedTextIndex == index
+                        ? BoxDecoration(border: Border.all(color: gold, width: 1))
+                        : null,
+                    child: Text(
+                      entry.value,
+                      style: const TextStyle(fontSize: 28, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
           if (selectedStylishFrame != null)
             Positioned.fill(
               child: IgnorePointer(
@@ -605,9 +707,24 @@ class _EditorState extends State<Editor> {
       ))),
 
     ]))),
+    if (showTextTools)
+      Container(
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+        color: const Color(0xFF101827),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            tool('+', 'Add Text', addText),
+            tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
+            tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
+            tool('🗑', 'Delete', deleteSelectedText),
+            tool('←', 'Back', openTextTools),
+          ]),
+        ),
+      ),
     Container(padding: const EdgeInsets.fromLTRB(8, 10, 8, 14), color: const Color(0xFF101827), child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
       tool('A', 'Add A Photo', () => pick(true)), tool('B', 'Add B Photo', () => pick(false)),
-      tool('T', 'Text', addText), tool('✦', '3D Backgrounds', backgrounds),
+      tool('T', 'Text', openTextTools), tool('✦', '3D Backgrounds', backgrounds),
       tool('☻', 'Stickers', emojiTool), tool('▣', 'Frame', frameTool),
       tool('😊', 'Emoji', emojiTool), tool('▱', 'Canvas', canvasTool),
       tool('▦', 'Background', backgrounds), tool('↗', 'Share Poster', share),
