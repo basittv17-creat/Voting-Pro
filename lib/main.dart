@@ -656,6 +656,7 @@ class _EditorState extends State<Editor> {
             ),
           ...overlays.asMap().entries.map((entry) {
             final index = entry.key;
+            final isText = textOverlayIds.contains(index);
             final position = textPositions[index] ??
                 Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
             final scale = textScales[index] ?? 1.0;
@@ -663,23 +664,23 @@ class _EditorState extends State<Editor> {
               left: position.dx,
               top: position.dy,
               child: GestureDetector(
-                onTap: () => setState(() => selectedTextIndex = index),
-                onScaleStart: (_) {
+                onTap: isText ? () => setState(() => selectedTextIndex = index) : null,
+                onScaleStart: isText ? (details) {
                   selectedTextIndex = index;
                   textGestureStartPosition = textPositions[index] ??
                       Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
                   textGestureStartScale = textScales[index] ?? 1.0;
-                },
-                onScaleUpdate: (details) => setState(() {
+                } : null,
+                onScaleUpdate: isText ? (details) => setState(() {
                   selectedTextIndex = index;
-                  textPositions[index] = textGestureStartPosition + details.focalPointDelta;
-                  textScales[index] = (textGestureStartScale * details.scale).clamp(0.4, 4.0);
-                }),
+                  textPositions[index] = (textPositions[index] ?? textGestureStartPosition) + details.focalPointDelta;
+                  textScales[index] = (textGestureStartScale * details.scale).clamp(0.4, 4.0).toDouble();
+                }) : null,
                 child: Transform.scale(
-                  scale: scale,
+                  scale: isText ? scale : 1.0,
                   alignment: Alignment.topLeft,
                   child: Container(
-                    decoration: selectedTextIndex == index
+                    decoration: isText && selectedTextIndex == index
                         ? BoxDecoration(border: Border.all(color: gold, width: 1))
                         : null,
                     child: Text(
