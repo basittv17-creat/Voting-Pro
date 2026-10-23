@@ -148,7 +148,7 @@ class _EditorState extends State<Editor> {
   final shot = ScreenshotController();
   File? a, b;
   Color background = const Color(0xFF000000), frameColor = gold;
-  double frameWidth = 3, canvasRatio = .8;
+  double frameWidth = 3, canvasRatio = 4 / 3;
   bool busy = false;
   final List<String> overlays = [];
   final Set<int> textOverlayIds = {};
