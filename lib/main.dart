@@ -152,6 +152,10 @@ class _EditorState extends State<Editor> {
   bool busy = false;
   final List<String> overlays = [];
   final Set<int> textOverlayIds = {};
+  final Set<int> stickerOverlayIds = {};
+  int? selectedStickerIndex;
+  double stickerGestureStartScale = 1.0;
+  double stickerScaleStartY = 0.0;
   bool showTextTools = false;
   int? selectedTextIndex;
   final Map<int, Offset> textPositions = {};
@@ -516,7 +520,7 @@ class _EditorState extends State<Editor> {
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
       padding: const EdgeInsets.all(18),
       child: Wrap(spacing: 12, runSpacing: 12, children: emojis.map((e) => InkWell(
-        onTap: () { setState(() { overlays.add(e); }); Navigator.pop(c); },
+        onTap: () { setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); selectedStickerIndex = index; selectedTextIndex = null; }); Navigator.pop(c); },
         child: Container(width: 52, height: 52, alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
       )).toList()),
     ));
@@ -583,6 +587,45 @@ class _EditorState extends State<Editor> {
       }
 
       selectedTextIndex = null;
+    });
+  }
+
+
+  void deleteSelectedSticker() {
+    final index = selectedStickerIndex;
+    if (index == null ||
+        index < 0 ||
+        index >= overlays.length ||
+        !stickerOverlayIds.contains(index)) {
+      return;
+    }
+
+    setState(() {
+      overlays.removeAt(index);
+
+      final oldPositions = Map<int, Offset>.from(textPositions);
+      final oldScales = Map<int, double>.from(textScales);
+      final oldTextIds = Set<int>.from(textOverlayIds);
+      final oldStickerIds = Set<int>.from(stickerOverlayIds);
+
+      textPositions.clear();
+      textScales.clear();
+      textOverlayIds.clear();
+      stickerOverlayIds.clear();
+
+      for (var i = 0; i < overlays.length; i++) {
+        final sourceIndex = i < index ? i : i + 1;
+        if (oldPositions.containsKey(sourceIndex)) {
+          textPositions[i] = oldPositions[sourceIndex]!;
+        }
+        if (oldScales.containsKey(sourceIndex)) {
+          textScales[i] = oldScales[sourceIndex]!;
+        }
+        if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
+        if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
+      }
+
+      selectedStickerIndex = null;
     });
   }
 
@@ -809,6 +852,8 @@ class _EditorState extends State<Editor> {
           ...overlays.asMap().entries.map((entry) {
             final index = entry.key;
             final isText = textOverlayIds.contains(index);
+            final isSticker = stickerOverlayIds.contains(index);
+            final isSelectedSticker = isSticker && selectedStickerIndex == index;
             final position = textPositions[index] ??
                 Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
             final scale = textScales[index] ?? 1.0;
@@ -817,30 +862,50 @@ class _EditorState extends State<Editor> {
               top: position.dy,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTap: isText ? () => setState(() => selectedTextIndex = index) : null,
-                onPanStart: isText ? (_) {
-                  setState(() {
+                onTap: () => setState(() {
+                  if (isText) {
                     selectedTextIndex = index;
+                    selectedStickerIndex = null;
+                  } else {
+                    selectedStickerIndex = index;
+                    selectedTextIndex = null;
+                  }
+                }),
+                onPanStart: (_) {
+                  setState(() {
+                    if (isText) {
+                      selectedTextIndex = index;
+                      selectedStickerIndex = null;
+                    } else {
+                      selectedStickerIndex = index;
+                      selectedTextIndex = null;
+                    }
                     textGestureStartPosition = textPositions[index] ??
                         Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
                   });
-                } : null,
-                onPanUpdate: isText ? (details) => setState(() {
-                  selectedTextIndex = index;
-                  textPositions[index] = (textPositions[index] ?? textGestureStartPosition) + details.delta;
-                }) : null,
+                },
+                onPanUpdate: (details) => setState(() {
+                  if (isText) {
+                    selectedTextIndex = index;
+                  } else {
+                    selectedStickerIndex = index;
+                  }
+                  textPositions[index] =
+                      (textPositions[index] ?? textGestureStartPosition) + details.delta;
+                }),
                 child: Transform.scale(
-                  scale: isText ? scale : 1.0,
+                  scale: (isText || isSticker) ? scale : 1.0,
                   alignment: Alignment.topLeft,
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: isText && selectedTextIndex == index
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        padding: const EdgeInsets.all(5),
+                        decoration: (isText && selectedTextIndex == index) || isSelectedSticker
                             ? BoxDecoration(
                                 border: Border.all(color: gold, width: 2),
-                                borderRadius: BorderRadius.circular(3),
+                                borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
                               )
                             : null,
                         child: Text(
@@ -848,6 +913,55 @@ class _EditorState extends State<Editor> {
                           style: const TextStyle(fontSize: 28, color: Colors.white),
                         ),
                       ),
+                      if (isSticker && isSelectedSticker)
+                        Positioned(
+                          right: -13,
+                          top: -13,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: deleteSelectedSticker,
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.delete, size: 15, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      if (isSticker && isSelectedSticker)
+                        Positioned(
+                          right: -13,
+                          bottom: -13,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanStart: (details) {
+                              setState(() {
+                                selectedStickerIndex = index;
+                                stickerGestureStartScale = textScales[index] ?? 1.0;
+                                stickerScaleStartY = details.globalPosition.dy;
+                              });
+                            },
+                            onPanUpdate: (details) {
+                              setState(() {
+                                final deltaY = details.globalPosition.dy - stickerScaleStartY;
+                                textScales[index] = (stickerGestureStartScale + deltaY * 0.01).clamp(0.4, 4.0).toDouble();
+                              });
+                            },
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: gold,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(Icons.open_in_full, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
                       if (isText && selectedTextIndex == index)
                         Positioned(
                           right: -15,
