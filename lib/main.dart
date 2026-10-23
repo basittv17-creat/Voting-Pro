@@ -536,7 +536,7 @@ class _EditorState extends State<Editor> {
         const SizedBox(width: 8), IconButton(onPressed: share, icon: const Icon(Icons.share)),
       ]),
     ])),
-    Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(12), child: Column(children: [
+    Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 12), child: Column(children: [
       Screenshot(controller: shot, child: AspectRatio(aspectRatio: canvasRatio, child: Container(
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(color: background, border: Border.all(color: frameColor, width: frameWidth)),
