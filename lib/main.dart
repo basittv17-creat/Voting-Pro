@@ -849,7 +849,7 @@ class _EditorState extends State<Editor> {
               child: IgnorePointer(
                 child: Image.asset(
                   selectedStylishFrame!,
-                  fit: BoxFit.contain,
+                  fit: BoxFit.fill,
                   width: double.infinity,
                   height: double.infinity,
                   alignment: Alignment.center,
