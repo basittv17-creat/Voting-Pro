@@ -157,6 +157,7 @@ class _EditorState extends State<Editor> {
   double stickerGestureStartScale = 1.0;
   double stickerScaleStartY = 0.0;
   bool showTextTools = false;
+  bool showStickerTools = false;
   int? selectedTextIndex;
   final Map<int, Offset> textPositions = {};
   final Map<int, double> textScales = {};
@@ -551,6 +552,14 @@ class _EditorState extends State<Editor> {
     });
   }
 
+  void zoomSelectedSticker(double factor) {
+    final index = selectedStickerIndex;
+    if (index == null || index < 0 || index >= overlays.length || stickerOverlayIds.contains(index) == false) return;
+    setState(() {
+      textScales[index] = ((textScales[index] ?? 1.0) * factor).clamp(0.4, 4.0).toDouble();
+    });
+  }
+
   void deleteSelectedText() {
     final index = selectedTextIndex;
     if (index == null ||
@@ -630,7 +639,17 @@ class _EditorState extends State<Editor> {
   }
 
   void openTextTools() {
-    setState(() => showTextTools = !showTextTools);
+    setState(() {
+      showTextTools = !showTextTools;
+      showStickerTools = false;
+    });
+  }
+
+  void openStickerTools() {
+    setState(() {
+      showStickerTools = !showStickerTools;
+      showTextTools = false;
+    });
   }
 
   Widget tool(String icon, String title, VoidCallback tap) {
@@ -1004,14 +1023,19 @@ class _EditorState extends State<Editor> {
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
-      child: showTextTools
+      child: (showTextTools || showStickerTools)
           ? Row(
               children: [
-                tool('←', 'Back', openTextTools),
+                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; })),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(children: [
+                    child: Row(children: showStickerTools ? [
+                      tool('+', 'Add Sticker', emojiTool),
+                      tool('+', 'Zoom +', () => zoomSelectedSticker(1.2)),
+                      tool('−', 'Zoom −', () => zoomSelectedSticker(0.8)),
+                      tool('🗑', 'Delete', deleteSelectedSticker),
+                    ] : [
                       tool('+', 'Add Text', addText),
                       tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
                       tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
@@ -1030,7 +1054,7 @@ class _EditorState extends State<Editor> {
                 tool('🟥', 'A Side Label', aSideLabelTool),
                 tool('🟩', 'B Side Label', bSideLabelTool),
                 tool('✦', '3D Backgrounds', backgrounds),
-                tool('☻', 'Stickers', emojiTool),
+                tool('☻', 'Stickers', openStickerTools),
                 tool('▣', 'Frame', frameTool),
                 tool('😊', 'Emoji', emojiTool),
                 tool('▱', 'Canvas', canvasTool),
