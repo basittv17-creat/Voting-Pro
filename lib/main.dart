@@ -164,6 +164,8 @@ class _EditorState extends State<Editor> {
   String? selectedASideLabel;
   Offset aSideLabelPosition = Offset.zero;
   bool showASideLabelDelete = false;
+  String? selectedBSideLabel;
+  bool showBSideLabelDelete = false;
   bool showVs = true;
   bool isVsSelected = false;
   Offset vsOffset = Offset.zero;
@@ -462,6 +464,53 @@ class _EditorState extends State<Editor> {
     );
   }
 
+  void bSideLabelTool() {
+    const styles = [
+      "assets/label_bars/b_side/B_Side_Style_1.png",
+      "assets/label_bars/b_side/B_Side_Style_2.png",
+      "assets/label_bars/b_side/B_Side_Style_3.png",
+      "assets/label_bars/b_side/B_Side_Style_4.png",
+      "assets/label_bars/b_side/B_Side_Style_5.png",
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(c).size.height * 0.65,
+          child: GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 2.2,
+            ),
+            itemCount: styles.length,
+            itemBuilder: (c, i) => InkWell(
+              onTap: () {
+                setState(() {
+                  selectedBSideLabel = styles[i];
+                  showBSideLabelDelete = false;
+                });
+                Navigator.pop(c);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10251A),
+                  border: Border.all(color: const Color(0xFF35D07F), width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(6),
+                child: Image.asset(styles[i], fit: BoxFit.contain),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void emojiTool() {
     const emojis = ['⭐','🔥','👑','❤️','🏆','⚡','🎉','💥','👍','🌟','😊','💯'];
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
@@ -567,31 +616,76 @@ class _EditorState extends State<Editor> {
 
   Widget photoSlot(bool sideA) {
     final file = sideA ? a : b;
-    return GestureDetector(onTap: () => pick(sideA), child: Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(color: const Color(0xFF18202B), border: Border.all(color: gold, width: 3), borderRadius: BorderRadius.circular(8)),
-      child: Stack(fit: StackFit.expand, children: [
-        if (file != null) Image.file(file, fit: BoxFit.cover)
-        else const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate_outlined, color: mint, size: 34), SizedBox(height: 8), Text('تصویر شامل کریں', textAlign: TextAlign.center)])),
-        if (sideA && selectedASideLabel != null)
-          Positioned(left: 0, right: 0, bottom: 0, height: 42, child: GestureDetector(
-            onDoubleTap: () => setState(() => showASideLabelDelete = true),
-            child: Stack(fit: StackFit.expand, children: [
-              Image.asset(selectedASideLabel!, fit: BoxFit.contain),
-              if (showASideLabelDelete)
-                Positioned(right: 0, top: 0, child: IconButton(
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => setState(() { selectedASideLabel = null; showASideLabelDelete = false; }),
-                  icon: const Icon(Icons.delete, color: Colors.white, size: 20),
-                  style: IconButton.styleFrom(backgroundColor: Colors.red),
-                )),
-            ]),
-          ))
-        else
-          Positioned(left: 0, right: 0, bottom: 0, child: Container(color: sideA ? const Color(0xCCB40E1B) : const Color(0xCC087B37), padding: const EdgeInsets.all(5), child: Text(sideA ? 'A SIDE' : 'B SIDE', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w900)))),
-
-      ]),
-    ));
+    final label = sideA ? selectedASideLabel : selectedBSideLabel;
+    final showDelete = sideA ? showASideLabelDelete : showBSideLabelDelete;
+    return GestureDetector(
+      onTap: () => pick(sideA),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: const Color(0xFF18202B),
+          border: Border.all(color: gold, width: 3),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Stack(fit: StackFit.expand, children: [
+          if (file != null)
+            Image.file(file, fit: BoxFit.cover)
+          else
+            const Center(child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_photo_alternate_outlined, color: mint, size: 34),
+                SizedBox(height: 8),
+                Text("تصویر شامل کریں", textAlign: TextAlign.center),
+              ],
+            )),
+          if (label != null)
+            Positioned(
+              left: 0, right: 0, bottom: 0, height: 42,
+              child: GestureDetector(
+                onDoubleTap: () => setState(() {
+                  if (sideA) { showASideLabelDelete = true; }
+                  else { showBSideLabelDelete = true; }
+                }),
+                child: Stack(fit: StackFit.expand, children: [
+                  Image.asset(label, fit: BoxFit.contain),
+                  if (showDelete)
+                    Positioned(
+                      right: 0, top: 0,
+                      child: IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => setState(() {
+                          if (sideA) {
+                            selectedASideLabel = null;
+                            showASideLabelDelete = false;
+                          } else {
+                            selectedBSideLabel = null;
+                            showBSideLabelDelete = false;
+                          }
+                        }),
+                        icon: const Icon(Icons.delete, color: Colors.white, size: 20),
+                        style: IconButton.styleFrom(backgroundColor: Colors.red),
+                      ),
+                    ),
+                ]),
+              ),
+            )
+          else
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: Container(
+                color: sideA ? const Color(0xCCB40E1B) : const Color(0xCC087B37),
+                padding: const EdgeInsets.all(5),
+                child: Text(
+                  sideA ? "A SIDE" : "B SIDE",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
   }
 
   @override
@@ -783,7 +877,7 @@ class _EditorState extends State<Editor> {
       ),
     Container(padding: const EdgeInsets.fromLTRB(8, 10, 8, 14), color: const Color(0xFF101827), child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
       tool('A', 'Add A Photo', () => pick(true)), tool('B', 'Add B Photo', () => pick(false)),
-      tool('T', 'Text', openTextTools), tool('🟥', 'A Side Label', aSideLabelTool), tool('✦', '3D Backgrounds', backgrounds),
+      tool('T', 'Text', openTextTools), tool('🟥', 'A Side Label', aSideLabelTool), tool('🟩', 'B Side Label', bSideLabelTool), tool('✦', '3D Backgrounds', backgrounds),
       tool('☻', 'Stickers', emojiTool), tool('▣', 'Frame', frameTool),
       tool('😊', 'Emoji', emojiTool), tool('▱', 'Canvas', canvasTool),
       tool('▦', 'Background', backgrounds), tool('↗', 'Share Poster', share),
