@@ -147,7 +147,7 @@ class _EditorState extends State<Editor> {
   final picker = ImagePicker();
   final shot = ScreenshotController();
   File? a, b;
-  Color background = const Color(0xFF064B27), frameColor = gold;
+  Color background = const Color(0xFF000000), frameColor = gold;
   double frameWidth = 3, canvasRatio = .8;
   bool busy = false;
   final List<String> overlays = [];
@@ -369,6 +369,7 @@ class _EditorState extends State<Editor> {
     const sizes = <(String, double)>[
       ('Poster 4:5', 4 / 5),
       ('Portrait 3:4', 3 / 4),
+      ('Portrait 4:3', 4 / 3),
       ('Portrait 2:3', 2 / 3),
       ('Story 9:16', 9 / 16),
       ('Square 1:1', 1),
@@ -543,16 +544,6 @@ class _EditorState extends State<Editor> {
         child: Stack(children: [
           Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Icon(Icons.workspace_premium, color: gold, size: 38),
-                    Icon(Icons.workspace_premium, color: gold, size: 38),
-                  ],
-                ),
-              ),
               Expanded(
                 child: Row(
                   children: [
