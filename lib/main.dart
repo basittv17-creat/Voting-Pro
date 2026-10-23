@@ -816,29 +816,56 @@ class _EditorState extends State<Editor> {
               left: position.dx,
               top: position.dy,
               child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
                 onTap: isText ? () => setState(() => selectedTextIndex = index) : null,
-                onScaleStart: isText ? (details) {
-                  selectedTextIndex = index;
-                  textGestureStartPosition = textPositions[index] ??
-                      Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
-                  textGestureStartScale = textScales[index] ?? 1.0;
+                onPanStart: isText ? (_) {
+                  setState(() {
+                    selectedTextIndex = index;
+                    textGestureStartPosition = textPositions[index] ??
+                        Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
+                  });
                 } : null,
-                onScaleUpdate: isText ? (details) => setState(() {
+                onPanUpdate: isText ? (details) => setState(() {
                   selectedTextIndex = index;
-                  textPositions[index] = (textPositions[index] ?? textGestureStartPosition) + details.focalPointDelta;
-                  textScales[index] = (textGestureStartScale * details.scale).clamp(0.4, 4.0).toDouble();
+                  textPositions[index] = (textPositions[index] ?? textGestureStartPosition) + details.delta;
                 }) : null,
                 child: Transform.scale(
                   scale: isText ? scale : 1.0,
                   alignment: Alignment.topLeft,
-                  child: Container(
-                    decoration: isText && selectedTextIndex == index
-                        ? BoxDecoration(border: Border.all(color: gold, width: 1))
-                        : null,
-                    child: Text(
-                      entry.value,
-                      style: const TextStyle(fontSize: 28, color: Colors.white),
-                    ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: isText && selectedTextIndex == index
+                            ? BoxDecoration(
+                                border: Border.all(color: gold, width: 2),
+                                borderRadius: BorderRadius.circular(3),
+                              )
+                            : null,
+                        child: Text(
+                          entry.value,
+                          style: const TextStyle(fontSize: 28, color: Colors.white),
+                        ),
+                      ),
+                      if (isText && selectedTextIndex == index)
+                        Positioned(
+                          right: -15,
+                          top: -15,
+                          child: GestureDetector(
+                            onTap: deleteSelectedText,
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.delete, size: 17, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
