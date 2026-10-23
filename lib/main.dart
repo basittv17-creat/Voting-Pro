@@ -887,29 +887,45 @@ class _EditorState extends State<Editor> {
       ))),
 
     ]))),
-    if (showTextTools)
-      Container(
-        padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
-        color: const Color(0xFF101827),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(children: [
-            tool('+', 'Add Text', addText),
-            tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
-            tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
-            tool('🗑', 'Delete', deleteSelectedText),
-            tool('←', 'Back', openTextTools),
-          ]),
-        ),
-      ),
-    Container(padding: const EdgeInsets.fromLTRB(8, 10, 8, 14), color: const Color(0xFF101827), child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-      tool('A', 'Add A Photo', () => pick(true)), tool('B', 'Add B Photo', () => pick(false)),
-      tool('T', 'Text', openTextTools), tool('🟥', 'A Side Label', aSideLabelTool), tool('🟩', 'B Side Label', bSideLabelTool), tool('✦', '3D Backgrounds', backgrounds),
-      tool('☻', 'Stickers', emojiTool), tool('▣', 'Frame', frameTool),
-      tool('😊', 'Emoji', emojiTool), tool('▱', 'Canvas', canvasTool),
-      tool('▦', 'Background', backgrounds), tool('↗', 'Share Poster', share),
-      tool('✨', 'Stylish Frames', stylishFramesTool),
-      tool('⚔️', 'VS Styles', vsStylesTool),
-    ]))),
+    Container(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+      color: const Color(0xFF101827),
+      child: showTextTools
+          ? Row(
+              children: [
+                tool('←', 'Back', openTextTools),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(children: [
+                      tool('+', 'Add Text', addText),
+                      tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
+                      tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
+                      tool('🗑', 'Delete', deleteSelectedText),
+                    ]),
+                  ),
+                ),
+              ],
+            )
+          : SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                tool('A', 'Add A Photo', () => pick(true)),
+                tool('B', 'Add B Photo', () => pick(false)),
+                tool('T', 'Text', openTextTools),
+                tool('🟥', 'A Side Label', aSideLabelTool),
+                tool('🟩', 'B Side Label', bSideLabelTool),
+                tool('✦', '3D Backgrounds', backgrounds),
+                tool('☻', 'Stickers', emojiTool),
+                tool('▣', 'Frame', frameTool),
+                tool('😊', 'Emoji', emojiTool),
+                tool('▱', 'Canvas', canvasTool),
+                tool('▦', 'Background', backgrounds),
+                tool('↗', 'Share Poster', share),
+                tool('✨', 'Stylish Frames', stylishFramesTool),
+                tool('⚔️', 'VS Styles', vsStylesTool),
+              ]),
+            ),
+    ),
   ])));
 }
