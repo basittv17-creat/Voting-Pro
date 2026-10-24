@@ -179,6 +179,7 @@ class _EditorState extends State<Editor> {
   final Map<int, Offset> textPositions = {};
   final Map<int, double> textScales = {};
   final Map<int, String> textFonts = {};
+  final Map<int, Color> textColors = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
   Offset textGestureStartFocalPoint = Offset.zero;
@@ -528,6 +529,255 @@ class _EditorState extends State<Editor> {
   }
 
 
+
+  void chooseTextColor() {
+    final index = selectedTextIndex;
+    if (index == null ||
+        index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+
+    final premium = <Color>[
+      const Color(0xFFFFD700), const Color(0xFFFFC857),
+      const Color(0xFFB8860B), const Color(0xFFFFE5A3),
+      const Color(0xFFE5C07B), const Color(0xFFB76E79),
+      const Color(0xFFE8A0A8), const Color(0xFFAD6A6A),
+      const Color(0xFFC0C0C0), const Color(0xFFE8E8E8),
+      const Color(0xFF8A8A8A), const Color(0xFFFFFFFF),
+      const Color(0xFF39FF14), const Color(0xFFFF00FF),
+      const Color(0xFF00FFFF), const Color(0xFFFF3131),
+      const Color(0xFF7DF9FF), const Color(0xFFFF6EC7),
+      const Color(0xFFB026FF), const Color(0xFFFE4EDA),
+      const Color(0xFF00FF9C), const Color(0xFFFF7A00),
+      const Color(0xFF001F3F), const Color(0xFF4B0082),
+      const Color(0xFF004D40), const Color(0xFF800020),
+      const Color(0xFF4169E1), const Color(0xFFDC143C),
+      const Color(0xFF228B22), const Color(0xFFFFDAB9),
+      const Color(0xFFFFB6C1), const Color(0xFFB0E0E6),
+      const Color(0xFFD8BFD8), const Color(0xFFF5F5DC),
+    ];
+
+    final palette = <Color>[...premium];
+    for (var h = 0; h < 360; h += 12) {
+      for (final sat in <double>[0.45, 0.70, 0.90, 1.0]) {
+        for (final val in <double>[0.55, 0.75, 0.95]) {
+          palette.add(HSVColor.fromAHSV(1, h.toDouble(), sat, val).toColor());
+        }
+      }
+    }
+    for (var i = 0; i <= 10; i++) {
+      final v = i / 10;
+      palette.add(HSVColor.fromAHSV(1, 0, 0, v).toColor());
+    }
+
+    Future<void> openCustomPicker(BuildContext sheetContext) async {
+      final initial = textColors[index] ?? Colors.white;
+      final hsv = HSVColor.fromColor(initial);
+      var hue = hsv.hue;
+      var saturation = hsv.saturation;
+      var value = hsv.value;
+
+      await showDialog<void>(
+        context: sheetContext,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, dialogSetState) {
+            final color = HSVColor.fromAHSV(1, hue, saturation, value).toColor();
+            void updateColor() {
+              final next = HSVColor.fromAHSV(1, hue, saturation, value).toColor();
+              setState(() => textColors[index] = next);
+            }
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF101827),
+              title: const Text(
+                'Custom Color',
+                style: TextStyle(color: Colors.white),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      height: 54,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white54),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text('Hue: ${hue.round()}°',
+                        style: const TextStyle(color: Colors.white)),
+                    Slider(
+                      value: hue,
+                      min: 0,
+                      max: 360,
+                      activeColor: color,
+                      onChanged: (v) {
+                        dialogSetState(() => hue = v);
+                        updateColor();
+                      },
+                    ),
+                    Text('Saturation: ${(saturation * 100).round()}%',
+                        style: const TextStyle(color: Colors.white)),
+                    Slider(
+                      value: saturation,
+                      min: 0,
+                      max: 1,
+                      activeColor: color,
+                      onChanged: (v) {
+                        dialogSetState(() => saturation = v);
+                        updateColor();
+                      },
+                    ),
+                    Text('Brightness: ${(value * 100).round()}%',
+                        style: const TextStyle(color: Colors.white)),
+                    Slider(
+                      value: value,
+                      min: 0,
+                      max: 1,
+                      activeColor: color,
+                      onChanged: (v) {
+                        dialogSetState(() => value = v);
+                        updateColor();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF101827),
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.72,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Text Color Studio',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => openCustomPicker(sheetContext),
+                      icon: const Icon(Icons.colorize, color: Colors.white),
+                      label: const Text(
+                        'Custom',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                const Text(
+                  'Premium • Gold • Neon • Pastel • 300+ Colors',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('Preview: ',
+                        style: TextStyle(color: Colors.white70)),
+                    Expanded(
+                      child: Text(
+                        overlays[index],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textColors[index] ?? Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Reset to white',
+                      onPressed: () => setState(
+                          () => textColors[index] = Colors.white),
+                      icon: const Icon(Icons.refresh, color: Colors.white),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 9,
+                      runSpacing: 11,
+                      children: palette.map((color) {
+                        final selected = (textColors[index] ?? Colors.white) == color;
+                        return GestureDetector(
+                          onTap: () => setState(() => textColors[index] = color),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: selected ? Colors.white : Colors.white24,
+                                width: selected ? 3 : 1,
+                              ),
+                              boxShadow: selected
+                                  ? [
+                                      const BoxShadow(
+                                        color: Colors.white30,
+                                        blurRadius: 7,
+                                      )
+                                    ]
+                                  : null,
+                            ),
+                            child: selected
+                                ? const Icon(Icons.check,
+                                    size: 19, color: Colors.black)
+                                : null,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Apply Color'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void chooseTextFont() {
     final index = selectedTextIndex;
     if (index == null ||
@@ -629,10 +879,12 @@ class _EditorState extends State<Editor> {
       final oldPositions = Map<int, Offset>.from(textPositions);
       final oldScales = Map<int, double>.from(textScales);
       final oldFonts = Map<int, String>.from(textFonts);
+      final oldColors = Map<int, Color>.from(textColors);
 
       textPositions.clear();
       textScales.clear();
       textFonts.clear();
+      textColors.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
       textOverlayIds.clear();
@@ -647,6 +899,7 @@ class _EditorState extends State<Editor> {
           textScales[i] = oldScales[sourceIndex]!;
         }
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
+        if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
@@ -672,12 +925,14 @@ class _EditorState extends State<Editor> {
       final oldPositions = Map<int, Offset>.from(textPositions);
       final oldScales = Map<int, double>.from(textScales);
       final oldFonts = Map<int, String>.from(textFonts);
+      final oldColors = Map<int, Color>.from(textColors);
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
 
       textPositions.clear();
       textScales.clear();
       textFonts.clear();
+      textColors.clear();
       textOverlayIds.clear();
       stickerOverlayIds.clear();
 
@@ -690,6 +945,7 @@ class _EditorState extends State<Editor> {
           textScales[i] = oldScales[sourceIndex]!;
         }
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
+        if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
@@ -1049,7 +1305,7 @@ class _EditorState extends State<Editor> {
                                     ? 'Noto Nastaliq Urdu'
                                     : 'Roboto'),
                             fontSize: 28,
-                            color: Colors.white,
+                            color: textColors[index] ?? Colors.white,
                           ),
                         ),
                       ),
@@ -1224,6 +1480,7 @@ class _EditorState extends State<Editor> {
                     ] : [
                       tool('+', 'Add Text', addText),
                       tool('Aa', 'Font', chooseTextFont),
+                      tool('🎨', 'Color', chooseTextColor),
                       tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
                       tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
                       tool('🗑', 'Delete', deleteSelectedText),
