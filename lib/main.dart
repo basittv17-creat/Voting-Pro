@@ -158,6 +158,7 @@ class _EditorState extends State<Editor> {
   double stickerScaleStartY = 0.0;
   bool showTextTools = false;
   bool showStickerTools = false;
+  bool showCanvasTools = false;
   int? selectedTextIndex;
   final Map<int, Offset> textPositions = {};
   final Map<int, double> textScales = {};
@@ -376,49 +377,11 @@ class _EditorState extends State<Editor> {
   }
 
   void canvasTool() {
-    const sizes = <(String, double)>[
-      ('Poster 4:5', 4 / 5),
-      ('Portrait 3:4', 3 / 4),
-      ('Portrait 4:3', 4 / 3),
-      ('Portrait 2:3', 2 / 3),
-      ('Story 9:16', 9 / 16),
-      ('Square 1:1', 1),
-      ('Landscape 4:3', 4 / 3),
-      ('Landscape 3:2', 3 / 2),
-      ('Landscape 16:9', 16 / 9),
-      ('Landscape 5:4', 5 / 4),
-      ('Banner 2:1', 2),
-    ];
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(c).size.height * 0.7,
-          child: ListView(
-            children: [
-              const ListTile(
-                title: Text('Canvas Size'),
-                subtitle: Text('اپنے پوسٹر کا سائز منتخب کریں'),
-              ),
-              for (final opt in sizes)
-                ListTile(
-                  leading: const Icon(Icons.aspect_ratio),
-                  title: Text(opt.$1),
-                  trailing: canvasRatio == opt.$2
-                      ? const Icon(Icons.check, color: gold)
-                      : null,
-                  onTap: () {
-                    setState(() => canvasRatio = opt.$2);
-                    Navigator.pop(c);
-                  },
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+    setState(() {
+      showCanvasTools = true;
+      showTextTools = false;
+      showStickerTools = false;
+    });
   }
 
   void aSideLabelTool() {
@@ -642,6 +605,7 @@ class _EditorState extends State<Editor> {
     setState(() {
       showTextTools = !showTextTools;
       showStickerTools = false;
+      showCanvasTools = false;
     });
   }
 
@@ -649,6 +613,7 @@ class _EditorState extends State<Editor> {
     setState(() {
       showStickerTools = !showStickerTools;
       showTextTools = false;
+      showCanvasTools = false;
     });
   }
 
@@ -668,7 +633,7 @@ class _EditorState extends State<Editor> {
             children: [
               Text(icon, style: const TextStyle(color: mint, fontSize: 23, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              Text(title, maxLines: 2, softWrap: true, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -1023,14 +988,29 @@ class _EditorState extends State<Editor> {
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
-      child: (showTextTools || showStickerTools)
+      child: (showTextTools || showStickerTools || showCanvasTools)
           ? Row(
               children: [
-                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; })),
+                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; })),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(children: showStickerTools ? [
+                    child: Row(children: showCanvasTools ? [
+                      for (final opt in const <(String, double)>[
+                        ('Poster 4:5', 4 / 5),
+                        ('Portrait 3:4', 3 / 4),
+                        ('Portrait 4:3', 4 / 3),
+                        ('Portrait 2:3', 2 / 3),
+                        ('Story 9:16', 9 / 16),
+                        ('Square 1:1', 1),
+                        ('Landscape 4:3', 4 / 3),
+                        ('Landscape 3:2', 3 / 2),
+                        ('Landscape 16:9', 16 / 9),
+                        ('Landscape 5:4', 5 / 4),
+                        ('Banner 2:1', 2),
+                      ])
+                        tool(canvasRatio == opt.$2 ? '✓' : '▱', opt.$1, () => setState(() => canvasRatio = opt.$2)),
+                    ] : showStickerTools ? [
                       tool('+', 'Add Sticker', emojiTool),
                       tool('+', 'Zoom +', () => zoomSelectedSticker(1.2)),
                       tool('−', 'Zoom −', () => zoomSelectedSticker(0.8)),
