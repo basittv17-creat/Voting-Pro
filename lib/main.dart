@@ -1721,12 +1721,15 @@ class _EditorState extends State<Editor> {
           if (selectedStylishFrame != null)
             Positioned.fill(
               child: IgnorePointer(
-                child: Image.asset(
-                  selectedStylishFrame!,
-                  fit: BoxFit.fill,
-                  width: double.infinity,
-                  height: double.infinity,
-                  alignment: Alignment.center,
+                child: SizedBox.expand(
+                  child: Image.asset(
+                    selectedStylishFrame!,
+                    fit: BoxFit.fill,
+                    width: double.infinity,
+                    height: double.infinity,
+                    alignment: Alignment.center,
+                    gaplessPlayback: true,
+                  ),
                 ),
               ),
             ),
