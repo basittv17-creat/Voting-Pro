@@ -1,5 +1,8 @@
 import 'dart:io';
+import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
@@ -161,7 +164,12 @@ class Editor extends StatefulWidget {
   State<Editor> createState() => _EditorState();
 }
 
-class _EditorState extends State<Editor> {
+class _EditorState extends State<Editor> with WidgetsBindingObserver {
+  static const String _projectSaveKey = 'voting_pro_project_v1';
+  Timer? _autoSaveTimer;
+  bool _isRestoringProject = true;
+  bool _isRestartingProject = false;
+
   final picker = ImagePicker();
   final shot = ScreenshotController();
   File? a, b;
@@ -288,6 +296,287 @@ class _EditorState extends State<Editor> {
     ('Golden Border', 'assets/stylish_frames/12_golden_border_frame.png'),
   ];
 
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _restoreProject();
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _scheduleProjectSave();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _autoSaveTimer?.cancel();
+      unawaited(_saveProject());
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _scheduleProjectSave() {
+    if (!mounted || _isRestoringProject || _isRestartingProject) return;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 650), () {
+      unawaited(_saveProject());
+    });
+  }
+
+  Future<Directory> _projectDirectory() async {
+    final support = await getApplicationSupportDirectory();
+    final dir = Directory('${support.path}/voting_pro_project');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
+  }
+
+  Future<String?> _persistProjectImage(File? source, String filename) async {
+    if (source == null || !await source.exists()) return null;
+    final dir = await _projectDirectory();
+    final target = File('${dir.path}/$filename');
+    if (source.absolute.path != target.absolute.path) {
+      await source.copy(target.path);
+    }
+    return target.path;
+  }
+
+  List<double> _offsetJson(Offset value) => <double>[value.dx, value.dy];
+
+  Offset _offsetFromJson(dynamic value, [Offset fallback = Offset.zero]) {
+    if (value is List && value.length >= 2 &&
+        value[0] is num && value[1] is num) {
+      return Offset((value[0] as num).toDouble(), (value[1] as num).toDouble());
+    }
+    return fallback;
+  }
+
+  Map<String, dynamic> _offsetMapJson(Map<int, Offset> map) => {
+    for (final entry in map.entries)
+      entry.key.toString(): _offsetJson(entry.value),
+  };
+
+  Map<String, dynamic> _doubleMapJson(Map<int, double> map) => {
+    for (final entry in map.entries)
+      entry.key.toString(): entry.value,
+  };
+
+  Map<String, dynamic> _stringMapJson(Map<int, String> map) => {
+    for (final entry in map.entries)
+      entry.key.toString(): entry.value,
+  };
+
+  Map<String, dynamic> _colorMapJson(Map<int, Color> map) => {
+    for (final entry in map.entries)
+      entry.key.toString(): entry.value.value,
+  };
+
+  Future<void> _saveProject() async {
+    if (_isRestoringProject || _isRestartingProject) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final imageA = await _persistProjectImage(a, 'side_a.img');
+      final imageB = await _persistProjectImage(b, 'side_b.img');
+      if (imageA != null) a = File(imageA);
+      if (imageB != null) b = File(imageB);
+
+      final data = <String, dynamic>{
+        'version': 1,
+        'imageA': imageA,
+        'imageB': imageB,
+        'background': background.value,
+        'frameColor': frameColor.value,
+        'frameWidth': frameWidth,
+        'canvasRatio': canvasRatio,
+        'overlays': overlays,
+        'textOverlayIds': textOverlayIds.toList(),
+        'stickerOverlayIds': stickerOverlayIds.toList(),
+        'textPositions': _offsetMapJson(textPositions),
+        'textScales': _doubleMapJson(textScales),
+        'textFonts': _stringMapJson(textFonts),
+        'textColors': _colorMapJson(textColors),
+        'tagraStickerOverlays': [
+          for (final item in tagraStickerOverlays)
+            {'asset': item.asset, 'position': _offsetJson(item.position), 'scale': item.scale},
+        ],
+        'letterOverlays': [
+          for (final item in letterOverlays)
+            {'asset': item.asset, 'sideA': item.sideA, 'position': _offsetJson(item.position), 'scale': item.scale},
+        ],
+        'leftVotingSticker': leftVotingSticker,
+        'rightVotingSticker': rightVotingSticker,
+        'selectedStylishFrame': selectedStylishFrame,
+        'aSideLabelText': aSideLabelText,
+        'bSideLabelText': bSideLabelText,
+        'aSideLabelPosition': _offsetJson(aSideLabelPosition),
+        'selectedASideLabel': selectedASideLabel,
+        'selectedBSideLabel': selectedBSideLabel,
+        'showVs': showVs,
+        'vsOffset': _offsetJson(vsOffset),
+        'vsScale': vsScale,
+        'vsStyle': vsStyle,
+        'photoScales': {'a': _photoScales[true] ?? 1.0, 'b': _photoScales[false] ?? 1.0},
+        'photoOffsets': {'a': _offsetJson(_photoOffsets[true] ?? Offset.zero), 'b': _offsetJson(_photoOffsets[false] ?? Offset.zero)},
+      };
+      await prefs.setString(_projectSaveKey, jsonEncode(data));
+    } catch (_) {
+      // Autosave is best-effort; keep editing even if storage is temporarily unavailable.
+    }
+  }
+
+  Future<void> _restoreProject() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_projectSaveKey);
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      final data = Map<String, dynamic>.from(decoded);
+      final imageAPath = data['imageA'] as String?;
+      final imageBPath = data['imageB'] as String?;
+      final imageA = imageAPath == null ? null : File(imageAPath);
+      final imageB = imageBPath == null ? null : File(imageBPath);
+
+      setState(() {
+        a = imageA != null && imageA.existsSync() ? imageA : null;
+        b = imageB != null && imageB.existsSync() ? imageB : null;
+        background = Color((data['background'] as num?)?.toInt() ?? const Color(0xFF000000).value);
+        frameColor = Color((data['frameColor'] as num?)?.toInt() ?? gold.value);
+        frameWidth = (data['frameWidth'] as num?)?.toDouble() ?? 3;
+        canvasRatio = (data['canvasRatio'] as num?)?.toDouble() ?? 4 / 3;
+        overlays
+          ..clear()
+          ..addAll((data['overlays'] as List? ?? const []).whereType<String>());
+        textOverlayIds
+          ..clear()
+          ..addAll((data['textOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        stickerOverlayIds
+          ..clear()
+          ..addAll((data['stickerOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        textPositions.clear();
+        final positions = data['textPositions'];
+        if (positions is Map) {
+          for (final entry in positions.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null) textPositions[index] = _offsetFromJson(entry.value);
+          }
+        }
+        textScales.clear();
+        final scales = data['textScales'];
+        if (scales is Map) {
+          for (final entry in scales.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) textScales[index] = (entry.value as num).toDouble();
+          }
+        }
+        textFonts.clear();
+        final fonts = data['textFonts'];
+        if (fonts is Map) {
+          for (final entry in fonts.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is String) textFonts[index] = entry.value as String;
+          }
+        }
+        textColors.clear();
+        final colors = data['textColors'];
+        if (colors is Map) {
+          for (final entry in colors.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) textColors[index] = Color((entry.value as num).toInt());
+          }
+        }
+        tagraStickerOverlays
+          ..clear()
+          ..addAll((data['tagraStickerOverlays'] as List? ?? const []).whereType<Map>().map((item) {
+            final overlay = _TagraStickerOverlay(asset: item['asset'] as String);
+            overlay.position = _offsetFromJson(item['position']);
+            overlay.scale = (item['scale'] as num?)?.toDouble() ?? 1.0;
+            return overlay;
+          }));
+        letterOverlays
+          ..clear()
+          ..addAll((data['letterOverlays'] as List? ?? const []).whereType<Map>().map((item) {
+            final overlay = _LetterStyleOverlay(asset: item['asset'] as String, sideA: item['sideA'] as bool? ?? true);
+            overlay.position = _offsetFromJson(item['position'], const Offset(30, 30));
+            overlay.scale = (item['scale'] as num?)?.toDouble() ?? 1.0;
+            return overlay;
+          }));
+        leftVotingSticker = data['leftVotingSticker'] as String?;
+        rightVotingSticker = data['rightVotingSticker'] as String?;
+        selectedStylishFrame = data['selectedStylishFrame'] as String?;
+        aSideLabelText = data['aSideLabelText'] as String? ?? 'A SIDE';
+        bSideLabelText = data['bSideLabelText'] as String? ?? 'B SIDE';
+        aSideLabelPosition = _offsetFromJson(data['aSideLabelPosition']);
+        selectedASideLabel = data['selectedASideLabel'] as String?;
+        selectedBSideLabel = data['selectedBSideLabel'] as String?;
+        showVs = data['showVs'] as bool? ?? true;
+        vsOffset = _offsetFromJson(data['vsOffset']);
+        vsScale = (data['vsScale'] as num?)?.toDouble() ?? 1.0;
+        vsStyle = data['vsStyle'] as String? ?? 'Classic';
+        final photoScales = data['photoScales'];
+        if (photoScales is Map) {
+          _photoScales[true] = (photoScales['a'] as num?)?.toDouble() ?? 1.0;
+          _photoScales[false] = (photoScales['b'] as num?)?.toDouble() ?? 1.0;
+        }
+        final photoOffsets = data['photoOffsets'];
+        if (photoOffsets is Map) {
+          _photoOffsets[true] = _offsetFromJson(photoOffsets['a']);
+          _photoOffsets[false] = _offsetFromJson(photoOffsets['b']);
+        }
+        showTextTools = false;
+        showStickerTools = false;
+        showCanvasTools = false;
+        showVotingStickerTools = false;
+        showAStyleGallery = false;
+        showBStyleGallery = false;
+        showTagraStickerGallery = false;
+      });
+    } catch (_) {
+      // Ignore an invalid old save and open a clean editor.
+    } finally {
+      _isRestoringProject = false;
+    }
+  }
+
+  Future<void> restartProject() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('نیا پروجیکٹ شروع کریں؟'),
+        content: const Text('موجودہ محفوظ پروجیکٹ صاف ہو جائے گا۔ کیا آپ جاری رکھنا چاہتے ہیں؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('منسوخ')),
+          ElevatedButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Restart')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    _isRestartingProject = true;
+    _autoSaveTimer?.cancel();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_projectSaveKey);
+      final dir = await _projectDirectory();
+      if (await dir.exists()) await dir.delete(recursive: true);
+    } catch (_) {}
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const Editor()),
+      (_) => false,
+    );
+  }
+
   void vsStylesTool() {
     const styles = <(String, Color, List<Color>)>[
       ('Royal Gold', Color(0xFFFFD700), [Color(0xFFFFF1A8), Color(0xFFB8860B)]),
@@ -413,8 +702,20 @@ class _EditorState extends State<Editor> {
   Future<void> pick(bool sideA) async {
     try {
       final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 95);
-      if (x != null && mounted) setState(() { if (sideA) { a = File(x.path); } else { b = File(x.path); } });
-    } catch (e) { msg('تصویر منتخب نہیں ہو سکی: $e'); }
+      if (x != null && mounted) {
+        final permanentPath = await _persistProjectImage(File(x.path), sideA ? 'side_a.img' : 'side_b.img');
+        if (!mounted || permanentPath == null) return;
+        setState(() {
+          if (sideA) {
+            a = File(permanentPath);
+          } else {
+            b = File(permanentPath);
+          }
+        });
+      }
+    } catch (e) {
+      msg('تصویر منتخب نہیں ہو سکی: $e');
+    }
   }
 
   Future<void> save() async {
@@ -2042,6 +2343,7 @@ class _EditorState extends State<Editor> {
                 tool('✨', 'Stylish Frames', stylishFramesTool),
                 tool('⚔️', 'VS Styles', vsStylesTool),
                 tool('🏆', 'تگڑا مقابلہ اسٹیکرز', openTagraStickerGallery),
+                tool('↻', 'Restart Project', restartProject),
               ]),
             ),
     ),
