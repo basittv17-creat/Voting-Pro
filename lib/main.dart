@@ -138,6 +138,15 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
+class _LetterStyleOverlay {
+  _LetterStyleOverlay({required this.asset, required this.sideA});
+
+  final String asset;
+  final bool sideA;
+  Offset position = const Offset(30, 30);
+  double scale = 1.0;
+}
+
 class Editor extends StatefulWidget {
   const Editor({super.key});
   @override
@@ -161,6 +170,41 @@ class _EditorState extends State<Editor> {
   bool showStickerTools = false;
   bool showCanvasTools = false;
   bool showVotingStickerTools = false;
+
+  bool showAStyleGallery = false;
+  bool showBStyleGallery = false;
+  final List<_LetterStyleOverlay> letterOverlays = [];
+  int? selectedLetterOverlayIndex;
+  Offset letterGestureStartPosition = Offset.zero;
+  double letterGestureStartScale = 1.0;
+  double letterResizeStartY = 0.0;
+  double letterResizeStartScale = 1.0;
+
+  static const List<String> aStyleAssets = [
+    "assets/a_letter_styles/A_Style_01.png",
+    "assets/a_letter_styles/A_Style_02.png",
+    "assets/a_letter_styles/A_Style_03.png",
+    "assets/a_letter_styles/A_Style_04.png",
+    "assets/a_letter_styles/A_Style_05.png",
+    "assets/a_letter_styles/A_Style_06.png",
+    "assets/a_letter_styles/A_Style_07.png",
+    "assets/a_letter_styles/A_Style_08.png",
+    "assets/a_letter_styles/A_Style_09.png",
+    "assets/a_letter_styles/A_Style_10.png",
+  ];
+  static const List<String> bStyleAssets = [
+    "assets/b_letter_styles/B_Style_01.png",
+    "assets/b_letter_styles/B_Style_02.png",
+    "assets/b_letter_styles/B_Style_03.png",
+    "assets/b_letter_styles/B_Style_04.png",
+    "assets/b_letter_styles/B_Style_05.png",
+    "assets/b_letter_styles/B_Style_06.png",
+    "assets/b_letter_styles/B_Style_07.png",
+    "assets/b_letter_styles/B_Style_08.png",
+    "assets/b_letter_styles/B_Style_09.png",
+    "assets/b_letter_styles/B_Style_10.png",
+  ];
+
   String? leftVotingSticker;
   String? rightVotingSticker;
   static const List<String> votingStickerAssets = [
@@ -972,6 +1016,70 @@ class _EditorState extends State<Editor> {
     });
   }
 
+
+  void openLetterStyleGallery(bool sideA) {
+    setState(() {
+      showAStyleGallery = sideA;
+      showBStyleGallery = !sideA;
+      showTextTools = false;
+      showStickerTools = false;
+      showCanvasTools = false;
+      showVotingStickerTools = false;
+    });
+  }
+
+  void addLetterStyleOverlay(String asset, bool sideA) {
+    setState(() {
+      letterOverlays.add(_LetterStyleOverlay(asset: asset, sideA: sideA));
+      selectedLetterOverlayIndex = letterOverlays.length - 1;
+      selectedTextIndex = null;
+      selectedStickerIndex = null;
+    });
+  }
+
+  void deleteSelectedLetterOverlay() {
+    final index = selectedLetterOverlayIndex;
+    if (index == null || index < 0 || index >= letterOverlays.length) return;
+    setState(() {
+      letterOverlays.removeAt(index);
+      selectedLetterOverlayIndex = null;
+    });
+  }
+
+  Widget letterStyleTool(String asset, String title, VoidCallback tap) {
+    return Container(
+      width: 112,
+      height: 80,
+      margin: const EdgeInsets.symmetric(horizontal: 5),
+      child: Material(
+        color: const Color(0xFF1B2638),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: tap,
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: 43,
+                width: 64,
+                child: Image.asset(asset, fit: BoxFit.contain),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget tool(String icon, String title, VoidCallback tap) {
     return Container(
       width: 112,
@@ -1322,6 +1430,106 @@ class _EditorState extends State<Editor> {
                 ),
               ),
             ),
+
+          ...letterOverlays.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final selected = selectedLetterOverlayIndex == index;
+            return Positioned(
+              left: item.position.dx,
+              top: item.position.dy,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => setState(() {
+                  selectedLetterOverlayIndex = index;
+                  selectedTextIndex = null;
+                  selectedStickerIndex = null;
+                }),
+                onScaleStart: (details) {
+                  setState(() {
+                    selectedLetterOverlayIndex = index;
+                    letterGestureStartPosition = item.position;
+                    letterGestureStartScale = item.scale;
+                  });
+                },
+                onScaleUpdate: (details) => setState(() {
+                  item.position += details.focalPointDelta;
+                  if (details.pointerCount >= 2) {
+                    item.scale =
+                        (letterGestureStartScale * details.scale).clamp(0.2, 5.0).toDouble();
+                  }
+                }),
+                child: Transform.scale(
+                  scale: item.scale,
+                  alignment: Alignment.topLeft,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        decoration: selected
+                            ? BoxDecoration(
+                                border: Border.all(color: gold, width: 1.5),
+                              )
+                            : null,
+                        child: Image.asset(
+                          item.asset,
+                          width: 110,
+                          height: 110,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      if (selected)
+                        Positioned(
+                          right: -12,
+                          top: -12,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: deleteSelectedLetterOverlay,
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, size: 16, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      if (selected)
+                        Positioned(
+                          right: -12,
+                          bottom: -12,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanStart: (details) {
+                              letterResizeStartY = details.globalPosition.dy;
+                              letterResizeStartScale = item.scale;
+                              setState(() => selectedLetterOverlayIndex = index);
+                            },
+                            onPanUpdate: (details) => setState(() {
+                              final dy = details.globalPosition.dy - letterResizeStartY;
+                              item.scale =
+                                  (letterResizeStartScale + dy * 0.01).clamp(0.2, 5.0).toDouble();
+                            }),
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: gold,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(Icons.open_in_full, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
           ...overlays.asMap().entries.map((entry) {
             final index = entry.key;
             final isText = textOverlayIds.contains(index);
@@ -1529,14 +1737,21 @@ class _EditorState extends State<Editor> {
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
-      child: (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools)
+      child: (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery)
           ? Row(
               children: [
-                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; })),
+                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; selectedLetterOverlayIndex = null; })),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(children: showVotingStickerTools ? [
+                    child: Row(children: (showAStyleGallery || showBStyleGallery) ? [
+                      for (final asset in (showAStyleGallery ? aStyleAssets : bStyleAssets))
+                        letterStyleTool(
+                          asset,
+                          asset.split("/").last.replaceAll(".png", "").replaceAll("_", " "),
+                          () => addLetterStyleOverlay(asset, showAStyleGallery),
+                        ),
+                    ] : showVotingStickerTools ? [
                       for (final asset in votingStickerAssets)
                         tool(
                           "👑",
@@ -1586,8 +1801,10 @@ class _EditorState extends State<Editor> {
           : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
-                tool('A', 'Add A Photo', () => pick(true)),
-                tool('B', 'Add B Photo', () => pick(false)),
+                tool('A', 'Add Photo A', () => pick(true)),
+                tool('B', 'Add Photo B', () => pick(false)),
+                letterStyleTool('assets/a_letter_styles/A_Style_01.png', 'A Style', () => openLetterStyleGallery(true)),
+                letterStyleTool('assets/b_letter_styles/B_Style_01.png', 'B Style', () => openLetterStyleGallery(false)),
                 tool('T', 'Text', openTextTools),
                 tool('🟥', 'A Side Label', aSideLabelTool),
                 tool('🟩', 'B Side Label', bSideLabelTool),

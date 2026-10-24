@@ -24,3 +24,5 @@ flutter:
     - assets/label_bars/a_side/
     - assets/label_bars/b_side/
     - assets/voting_stickers/
+    - assets/b_letter_styles/
+    - assets/a_letter_styles/
