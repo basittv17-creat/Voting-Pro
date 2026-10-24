@@ -656,12 +656,16 @@ class _EditorState extends State<Editor> {
     );
   }
 
+  final Map<bool, double> _photoScales = {true: 1.0, false: 1.0};
+  final Map<bool, Offset> _photoOffsets = {true: Offset.zero, false: Offset.zero};
+  final Map<bool, double> _photoStartScales = {true: 1.0, false: 1.0};
+
   Widget photoSlot(bool sideA) {
     final file = sideA ? a : b;
     final label = sideA ? selectedASideLabel : selectedBSideLabel;
     final showDelete = sideA ? showASideLabelDelete : showBSideLabelDelete;
     return GestureDetector(
-      onTap: () => pick(sideA),
+      onTap: file == null ? () => pick(sideA) : null,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -671,7 +675,29 @@ class _EditorState extends State<Editor> {
         ),
         child: Stack(fit: StackFit.expand, children: [
           if (file != null)
-            Image.file(file, fit: BoxFit.cover)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onScaleStart: (_) {
+                _photoStartScales[sideA] = _photoScales[sideA] ?? 1.0;
+              },
+              onScaleUpdate: (details) {
+                setState(() {
+                  _photoScales[sideA] = ((_photoStartScales[sideA] ?? 1.0) *
+                      details.scale).clamp(1.0, 5.0).toDouble();
+                  _photoOffsets[sideA] =
+                      (_photoOffsets[sideA] ?? Offset.zero) + details.focalPointDelta;
+                });
+              },
+              child: ClipRect(
+                child: Transform.translate(
+                  offset: _photoOffsets[sideA] ?? Offset.zero,
+                  child: Transform.scale(
+                    scale: _photoScales[sideA] ?? 1.0,
+                    child: Image.file(file, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                  ),
+                ),
+              ),
+            )
           else
             const Center(child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
