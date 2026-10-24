@@ -912,7 +912,7 @@ class _EditorState extends State<Editor> {
                     selectedTextIndex = null;
                   }
                 }),
-                onPanStart: (_) {
+                onScaleStart: (details) {
                   setState(() {
                     if (isText) {
                       selectedTextIndex = index;
@@ -923,16 +923,26 @@ class _EditorState extends State<Editor> {
                     }
                     textGestureStartPosition = textPositions[index] ??
                         Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
+                    textGestureStartScale = textScales[index] ?? 1.0;
                   });
                 },
-                onPanUpdate: (details) => setState(() {
+                onScaleUpdate: (details) => setState(() {
                   if (isText) {
                     selectedTextIndex = index;
+                    if (details.pointerCount >= 2) {
+                      textScales[index] =
+                          (textGestureStartScale * details.scale).clamp(0.4, 4.0).toDouble();
+                    } else {
+                      textPositions[index] =
+                          (textPositions[index] ?? textGestureStartPosition) +
+                          details.focalPointDelta;
+                    }
                   } else {
                     selectedStickerIndex = index;
+                    textPositions[index] =
+                        (textPositions[index] ?? textGestureStartPosition) +
+                        details.focalPointDelta;
                   }
-                  textPositions[index] =
-                      (textPositions[index] ?? textGestureStartPosition) + details.delta;
                 }),
                 child: Transform.scale(
                   scale: (isText || isSticker) ? scale : 1.0,
@@ -1017,6 +1027,41 @@ class _EditorState extends State<Editor> {
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(Icons.delete, size: 17, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      if (isText && selectedTextIndex == index)
+                        Positioned(
+                          right: -13,
+                          bottom: -13,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanStart: (_) {
+                              setState(() {
+                                selectedTextIndex = index;
+                                textGestureStartScale = textScales[index] ?? 1.0;
+                              });
+                            },
+                            onPanUpdate: (details) {
+                              setState(() {
+                                textScales[index] = (textGestureStartScale +
+                                    details.delta.dy * 0.015)
+                                    .clamp(0.4, 4.0).toDouble();
+                              });
+                            },
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: gold,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(
+                                Icons.open_in_full,
+                                size: 14,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
