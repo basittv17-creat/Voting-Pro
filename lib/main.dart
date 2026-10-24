@@ -186,6 +186,8 @@ class _EditorState extends State<Editor> {
   Offset textGestureLastFocalPoint = Offset.zero;
   String? selectedStylishFrame;
   String? selectedASideLabel;
+  String aSideLabelText = 'A SIDE';
+  String bSideLabelText = 'B SIDE';
   Offset aSideLabelPosition = Offset.zero;
   bool showASideLabelDelete = false;
   String? selectedBSideLabel;
@@ -998,10 +1000,60 @@ class _EditorState extends State<Editor> {
   final Map<bool, Offset> _photoOffsets = {true: Offset.zero, false: Offset.zero};
   final Map<bool, double> _photoStartScales = {true: 1.0, false: 1.0};
 
+  Future<void> editSideLabelText(bool sideA) async {
+    final controller = TextEditingController(
+      text: sideA ? aSideLabelText : bSideLabelText,
+    );
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(sideA ? 'Edit A Side Name' : 'Edit B Side Name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 28,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            labelText: 'Enter your text',
+            hintText: 'Type name here',
+          ),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              controller.text.trim(),
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (result != null && result.isNotEmpty && mounted) {
+      setState(() {
+        if (sideA) {
+          aSideLabelText = result;
+        } else {
+          bSideLabelText = result;
+        }
+      });
+    }
+  }
+
   Widget photoSlot(bool sideA) {
     final file = sideA ? a : b;
     final label = sideA ? selectedASideLabel : selectedBSideLabel;
     final showDelete = sideA ? showASideLabelDelete : showBSideLabelDelete;
+    final labelText = sideA ? aSideLabelText : bSideLabelText;
     return GestureDetector(
       onTap: file == null ? () => pick(sideA) : null,
       child: Container(
@@ -1049,12 +1101,51 @@ class _EditorState extends State<Editor> {
             Positioned(
               left: 0, right: 0, bottom: 0, height: 42,
               child: GestureDetector(
+                onTap: () => editSideLabelText(sideA),
                 onDoubleTap: () => setState(() {
                   if (sideA) { showASideLabelDelete = true; }
                   else { showBSideLabelDelete = true; }
                 }),
                 child: Stack(fit: StackFit.expand, children: [
                   Image.asset(label, fit: BoxFit.contain),
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.48,
+                        heightFactor: 0.78,
+                        child: Container(
+                          alignment: Alignment.center,
+                          color: sideA
+                              ? const Color(0xFF5C080D)
+                              : const Color(0xFF063D1C),
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              labelText,
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: label.contains('Style_4')
+                                    ? const Color(0xFFFFD45C)
+                                    : Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                fontStyle: FontStyle.italic,
+                                shadows: const [
+                                  Shadow(
+                                    color: Colors.black,
+                                    blurRadius: 3,
+                                    offset: Offset(1, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   if (showDelete)
                     Positioned(
                       right: 0, top: 0,
@@ -1082,10 +1173,13 @@ class _EditorState extends State<Editor> {
               child: Container(
                 color: sideA ? const Color(0xCCB40E1B) : const Color(0xCC087B37),
                 padding: const EdgeInsets.all(5),
-                child: Text(
-                  sideA ? "A SIDE" : "B SIDE",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                child: GestureDetector(
+                  onTap: () => editSideLabelText(sideA),
+                  child: Text(
+                    labelText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
                 ),
               ),
             ),
