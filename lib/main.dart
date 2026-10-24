@@ -159,6 +159,21 @@ class _EditorState extends State<Editor> {
   bool showTextTools = false;
   bool showStickerTools = false;
   bool showCanvasTools = false;
+  bool showVotingStickerTools = false;
+  String? leftVotingSticker;
+  String? rightVotingSticker;
+  static const List<String> votingStickerAssets = [
+    "assets/voting_stickers/01_lion.png",
+    "assets/voting_stickers/02_cheetah.png",
+    "assets/voting_stickers/03_tiger.png",
+    "assets/voting_stickers/04_elephant.png",
+    "assets/voting_stickers/05_eagle.png",
+    "assets/voting_stickers/06_wolf.png",
+    "assets/voting_stickers/07_panther.png",
+    "assets/voting_stickers/08_bear.png",
+    "assets/voting_stickers/09_cobra.png",
+    "assets/voting_stickers/10_crossed_swords.png",
+  ];
   int? selectedTextIndex;
   final Map<int, Offset> textPositions = {};
   final Map<int, double> textScales = {};
@@ -743,6 +758,22 @@ class _EditorState extends State<Editor> {
               ),
             ],
           ),
+          if (leftVotingSticker != null)
+            Positioned(
+              left: 2,
+              top: 2,
+              width: 42,
+              height: 42,
+              child: Image.asset(leftVotingSticker!, fit: BoxFit.contain),
+            ),
+          if (rightVotingSticker != null)
+            Positioned(
+              right: 2,
+              top: 2,
+              width: 42,
+              height: 42,
+              child: Image.asset(rightVotingSticker!, fit: BoxFit.contain),
+            ),
           if (showVs)
             Align(
               alignment: Alignment.center,
@@ -988,14 +1019,29 @@ class _EditorState extends State<Editor> {
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
-      child: (showTextTools || showStickerTools || showCanvasTools)
+      child: (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools)
           ? Row(
               children: [
-                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; })),
+                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; })),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(children: showCanvasTools ? [
+                    child: Row(children: showVotingStickerTools ? [
+                      for (final asset in votingStickerAssets)
+                        tool(
+                          "👑",
+                          asset.split("/").last.replaceAll(".png", "").replaceAll(RegExp(r"^\d+_"), "").replaceAll("_", " "),
+                          () => setState(() {
+                            if (leftVotingSticker == null) {
+                              leftVotingSticker = asset;
+                            } else if (rightVotingSticker == null) {
+                              rightVotingSticker = asset;
+                            } else {
+                              rightVotingSticker = asset;
+                            }
+                          }),
+                        ),
+                    ] : showCanvasTools ? [
                       for (final opt in const <(String, double)>[
                         ('Poster 4:5', 4 / 5),
                         ('Portrait 3:4', 3 / 4),
@@ -1038,6 +1084,7 @@ class _EditorState extends State<Editor> {
                 tool('▣', 'Frame', frameTool),
                 tool('😊', 'Emoji', emojiTool),
                 tool('▱', 'Canvas', canvasTool),
+                tool('👑', 'Voting Sticker', () => setState(() { showVotingStickerTools = true; showTextTools = false; showStickerTools = false; showCanvasTools = false; })),
                 tool('▦', 'Background', backgrounds),
                 tool('↗', 'Share Poster', share),
                 tool('✨', 'Stylish Frames', stylishFramesTool),
