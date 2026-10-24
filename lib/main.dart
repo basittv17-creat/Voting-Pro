@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -177,6 +178,7 @@ class _EditorState extends State<Editor> {
   int? selectedTextIndex;
   final Map<int, Offset> textPositions = {};
   final Map<int, double> textScales = {};
+  final Map<int, String> textFonts = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
   Offset textGestureStartFocalPoint = Offset.zero;
@@ -515,10 +517,84 @@ class _EditorState extends State<Editor> {
     if (value != null && value.isNotEmpty && mounted) {
       setState(() {
         overlays.add(value);
-        textOverlayIds.add(overlays.length - 1);
-        selectedTextIndex = overlays.length - 1;
+        final index = overlays.length - 1;
+        textOverlayIds.add(index);
+        textFonts[index] = RegExp(r'[\u0600-\u06FF]').hasMatch(value)
+            ? 'Noto Nastaliq Urdu'
+            : 'Roboto';
+        selectedTextIndex = index;
       });
     }
+  }
+
+
+  void chooseTextFont() {
+    final index = selectedTextIndex;
+    if (index == null ||
+        index < 0 ||
+        index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+
+    final isUrdu = RegExp(r'[\u0600-\u06FF]').hasMatch(overlays[index]);
+    final fonts = isUrdu
+        ? <(String, String)>[
+            ('Noto Nastaliq Urdu', 'اردو نستعلیق'),
+            ('Amiri', 'عربی خطاطی'),
+            ('Noto Sans Arabic', 'ماڈرن اردو'),
+          ]
+        : <(String, String)>[
+            ('Roboto', 'Modern'),
+            ('Oswald', 'Bold'),
+            ('Playfair Display', 'Elegant'),
+            ('Lato', 'Clean'),
+            ('Pacifico', 'Handwriting'),
+          ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF101827),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isUrdu ? 'اردو فونٹس منتخب کریں' : 'Choose English Font',
+                style: const TextStyle(
+                  color: gold, fontSize: 20, fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: fonts.map((font) => ActionChip(
+                  label: Text(
+                    font.$2,
+                    style: GoogleFonts.getFont(
+                      font.$1, color: Colors.white, fontSize: 16,
+                    ),
+                  ),
+                  backgroundColor: textFonts[index] == font.$1
+                      ? const Color(0xFF087B65)
+                      : const Color(0xFF263247),
+                  onPressed: () {
+                    setState(() => textFonts[index] = font.$1);
+                    Navigator.pop(sheetContext);
+                  },
+                )).toList(),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void zoomSelectedText(double factor) {
@@ -552,9 +628,11 @@ class _EditorState extends State<Editor> {
 
       final oldPositions = Map<int, Offset>.from(textPositions);
       final oldScales = Map<int, double>.from(textScales);
+      final oldFonts = Map<int, String>.from(textFonts);
 
       textPositions.clear();
       textScales.clear();
+      textFonts.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
       textOverlayIds.clear();
@@ -568,6 +646,7 @@ class _EditorState extends State<Editor> {
         if (oldScales.containsKey(sourceIndex)) {
           textScales[i] = oldScales[sourceIndex]!;
         }
+        if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
@@ -592,11 +671,13 @@ class _EditorState extends State<Editor> {
 
       final oldPositions = Map<int, Offset>.from(textPositions);
       final oldScales = Map<int, double>.from(textScales);
+      final oldFonts = Map<int, String>.from(textFonts);
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
 
       textPositions.clear();
       textScales.clear();
+      textFonts.clear();
       textOverlayIds.clear();
       stickerOverlayIds.clear();
 
@@ -608,6 +689,7 @@ class _EditorState extends State<Editor> {
         if (oldScales.containsKey(sourceIndex)) {
           textScales[i] = oldScales[sourceIndex]!;
         }
+        if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
@@ -961,7 +1043,14 @@ class _EditorState extends State<Editor> {
                             : null,
                         child: Text(
                           entry.value,
-                          style: const TextStyle(fontSize: 28, color: Colors.white),
+                          style: GoogleFonts.getFont(
+                            textFonts[index] ??
+                                (RegExp(r'[\u0600-\u06FF]').hasMatch(entry.value)
+                                    ? 'Noto Nastaliq Urdu'
+                                    : 'Roboto'),
+                            fontSize: 28,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       if (isSticker && isSelectedSticker)
@@ -1134,6 +1223,7 @@ class _EditorState extends State<Editor> {
                       tool('🗑', 'Delete', deleteSelectedSticker),
                     ] : [
                       tool('+', 'Add Text', addText),
+                      tool('Aa', 'Font', chooseTextFont),
                       tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
                       tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
                       tool('🗑', 'Delete', deleteSelectedText),
