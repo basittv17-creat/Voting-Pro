@@ -147,6 +147,14 @@ class _LetterStyleOverlay {
   double scale = 1.0;
 }
 
+class _TagraStickerOverlay {
+  _TagraStickerOverlay({required this.asset});
+
+  final String asset;
+  Offset position = const Offset(70, 100);
+  double scale = 1.0;
+}
+
 class Editor extends StatefulWidget {
   const Editor({super.key});
   @override
@@ -173,6 +181,28 @@ class _EditorState extends State<Editor> {
 
   bool showAStyleGallery = false;
   bool showBStyleGallery = false;
+  bool showTagraStickerGallery = false;
+
+  final List<_TagraStickerOverlay> tagraStickerOverlays = [];
+  int? selectedTagraStickerIndex;
+  Offset tagraGestureStartPosition = Offset.zero;
+  double tagraGestureStartScale = 1.0;
+
+  static const List<String> tagraStickerAssets = [
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_01_Royal_Gold.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_02_Comic_Burst.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_03_Green_Crown.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_04_Fire.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_05_Blue_Megaphone.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_06_Red_Brush.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_07_Gold_Trophy.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_08_Pakistan_Flag.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_09_Purple_Neon.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_10_Ice_Blue.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_11_Royal_Ribbon.png",
+    "assets/tagra_muqabla_stickers/Tagra_Muqabla_12_Pink_Neon.png",
+  ];
+
   final List<_LetterStyleOverlay> letterOverlays = [];
   int? selectedLetterOverlayIndex;
   Offset letterGestureStartPosition = Offset.zero;
@@ -1017,6 +1047,42 @@ class _EditorState extends State<Editor> {
   }
 
 
+  void openTagraStickerGallery() {
+    setState(() {
+      showTagraStickerGallery = true;
+      showAStyleGallery = false;
+      showBStyleGallery = false;
+      showTextTools = false;
+      showStickerTools = false;
+      showCanvasTools = false;
+      showVotingStickerTools = false;
+    });
+  }
+
+  void addTagraStickerOverlay(String asset) {
+    setState(() {
+      tagraStickerOverlays.add(_TagraStickerOverlay(asset: asset));
+      selectedTagraStickerIndex = tagraStickerOverlays.length - 1;
+      selectedLetterOverlayIndex = null;
+      selectedTextIndex = null;
+      selectedStickerIndex = null;
+    });
+  }
+
+  void deleteSelectedTagraSticker() {
+    final index = selectedTagraStickerIndex;
+    if (index == null ||
+        index < 0 ||
+        index >= tagraStickerOverlays.length) {
+      return;
+    }
+
+    setState(() {
+      tagraStickerOverlays.removeAt(index);
+      selectedTagraStickerIndex = null;
+    });
+  }
+
   void openLetterStyleGallery(bool sideA) {
     setState(() {
       showAStyleGallery = sideA;
@@ -1431,6 +1497,150 @@ class _EditorState extends State<Editor> {
               ),
             ),
 
+
+          ...tagraStickerOverlays.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final selected = selectedTagraStickerIndex == index;
+
+            return Positioned(
+              left: item.position.dx,
+              top: item.position.dy,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => setState(() {
+                  selectedTagraStickerIndex = index;
+                  selectedLetterOverlayIndex = null;
+                  selectedTextIndex = null;
+                  selectedStickerIndex = null;
+                }),
+                onScaleStart: (details) {
+                  setState(() {
+                    selectedTagraStickerIndex = index;
+                    selectedLetterOverlayIndex = null;
+                    tagraGestureStartPosition = item.position;
+                    tagraGestureStartScale = item.scale;
+                  });
+                },
+                onScaleUpdate: (details) {
+                  setState(() {
+                    item.position =
+                        tagraGestureStartPosition + details.focalPointDelta;
+                    if (details.pointerCount >= 2) {
+                      item.scale = (tagraGestureStartScale * details.scale)
+                          .clamp(0.2, 5.0)
+                          .toDouble();
+                    }
+                  });
+                },
+                child: Transform.scale(
+                  scale: item.scale,
+                  alignment: Alignment.topLeft,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: selected
+                            ? BoxDecoration(
+                                border: Border.all(
+                                  color: gold,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              )
+                            : null,
+                        child: Image.asset(
+                          item.asset,
+                          width: 140,
+                          height: 140,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                            Icons.broken_image,
+                            color: Colors.red,
+                            size: 40,
+                          ),
+                        ),
+                      ),
+                      if (selected)
+                        Positioned(
+                          right: -12,
+                          top: -12,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: deleteSelectedTagraSticker,
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (selected)
+                        Positioned(
+                          right: -12,
+                          bottom: -12,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanStart: (details) {
+                              setState(() {
+                                selectedTagraStickerIndex = index;
+                                tagraGestureStartScale = item.scale;
+                                tagraGestureStartPosition = Offset(
+                                  details.globalPosition.dx,
+                                  details.globalPosition.dy,
+                                );
+                              });
+                            },
+                            onPanUpdate: (details) {
+                              setState(() {
+                                final delta =
+                                    details.globalPosition.dy -
+                                    tagraGestureStartPosition.dy;
+                                item.scale =
+                                    (tagraGestureStartScale + delta * 0.01)
+                                        .clamp(0.2, 5.0)
+                                        .toDouble();
+                              });
+                            },
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: gold,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.open_in_full,
+                                size: 15,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+
           ...letterOverlays.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
@@ -1740,14 +1950,24 @@ class _EditorState extends State<Editor> {
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
-      child: (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery)
+      child: (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery || showTagraStickerGallery)
           ? Row(
               children: [
-                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; selectedLetterOverlayIndex = null; })),
+                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; showTagraStickerGallery = false; selectedLetterOverlayIndex = null; selectedTagraStickerIndex = null; })),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(children: (showAStyleGallery || showBStyleGallery) ? [
+                    child: Row(children: showTagraStickerGallery ? [
+                      for (final asset in tagraStickerAssets)
+                        letterStyleTool(
+                          asset,
+                          asset.split("/").last
+                              .replaceAll(".png", "")
+                              .replaceAll("Tagra_Muqabla_", "")
+                              .replaceAll("_", " "),
+                          () => addTagraStickerOverlay(asset),
+                        ),
+                    ] : (showAStyleGallery || showBStyleGallery) ? [
                       for (final asset in (showAStyleGallery ? aStyleAssets : bStyleAssets))
                         letterStyleTool(
                           asset,
@@ -1821,6 +2041,7 @@ class _EditorState extends State<Editor> {
                 tool('↗', 'Share Poster', share),
                 tool('✨', 'Stylish Frames', stylishFramesTool),
                 tool('⚔️', 'VS Styles', vsStylesTool),
+                tool('🏆', 'تگڑا مقابلہ اسٹیکرز', openTagraStickerGallery),
               ]),
             ),
     ),
