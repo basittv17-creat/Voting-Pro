@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -176,6 +177,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Color background = const Color(0xFF000000), frameColor = gold;
   double frameWidth = 3, canvasRatio = 4 / 3;
   bool busy = false;
+  bool isExportingPoster = false;
   final List<String> overlays = [];
   final Set<int> textOverlayIds = {};
   final Set<int> stickerOverlayIds = {};
@@ -195,6 +197,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   int? selectedTagraStickerIndex;
   Offset tagraGestureStartPosition = Offset.zero;
   double tagraGestureStartScale = 1.0;
+  double tagraResizeStartY = 0.0;
 
   static const List<String> tagraStickerAssets = [
     "assets/tagra_muqabla_stickers/Tagra_Muqabla_01_Royal_Gold.png",
@@ -718,27 +721,57 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
   }
 
+  Future<Uint8List?> capturePosterWithoutControls() async {
+    if (!mounted) return null;
+    setState(() => isExportingPoster = true);
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      return await shot.capture(pixelRatio: 2.5);
+    } finally {
+      if (mounted) {
+        setState(() => isExportingPoster = false);
+      }
+    }
+  }
+
   Future<void> save() async {
     if (busy) return;
     setState(() => busy = true);
     try {
-      final bytes = await shot.capture(pixelRatio: 2.5);
-      if (bytes == null) { msg('پوسٹر تیار نہیں ہو سکا۔'); return; }
-      await Gal.putImageBytes(bytes, name: 'voting_pro_${DateTime.now().millisecondsSinceEpoch}');
+      final bytes = await capturePosterWithoutControls();
+      if (bytes == null) {
+        msg('پوسٹر تیار نہیں ہو سکا۔');
+        return;
+      }
+      await Gal.putImageBytes(
+        bytes,
+        name: 'voting_pro_${DateTime.now().millisecondsSinceEpoch}',
+      );
       msg('پوسٹر گیلری میں محفوظ ہو گیا۔');
-    } catch (e) { msg('محفوظ نہیں ہو سکا۔ گیلری کی اجازت چیک کریں۔'); }
-    finally { if (mounted) setState(() => busy = false); }
+    } catch (e) {
+      msg('محفوظ نہیں ہو سکا۔ گیلری کی اجازت چیک کریں۔');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> share() async {
     try {
-      final bytes = await shot.capture(pixelRatio: 2.5);
-      if (bytes == null) { msg('پوسٹر تیار نہیں ہو سکا۔'); return; }
+      final bytes = await capturePosterWithoutControls();
+      if (bytes == null) {
+        msg('پوسٹر تیار نہیں ہو سکا۔');
+        return;
+      }
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/voting_pro_poster.png');
       await file.writeAsBytes(bytes, flush: true);
-      await Share.shareXFiles([XFile(file.path, mimeType: 'image/png')], text: 'Voting Pro Poster');
-    } catch (e) { msg('شیئر نہیں ہو سکا: $e'); }
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png')],
+        text: 'Voting Pro Poster',
+      );
+    } catch (e) {
+      msg('شیئر نہیں ہو سکا: $e');
+    }
   }
 
   void backgrounds() {
@@ -1802,7 +1835,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           ...tagraStickerOverlays.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
-            final selected = selectedTagraStickerIndex == index;
+            final selected = !isExportingPoster && selectedTagraStickerIndex == index;
 
             return Positioned(
               left: item.position.dx,
@@ -1825,8 +1858,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 },
                 onScaleUpdate: (details) {
                   setState(() {
-                    item.position =
-                        tagraGestureStartPosition + details.focalPointDelta;
+                    item.position += details.focalPointDelta;
                     if (details.pointerCount >= 2) {
                       item.scale = (tagraGestureStartScale * details.scale)
                           .clamp(0.2, 5.0)
@@ -1898,17 +1930,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                               setState(() {
                                 selectedTagraStickerIndex = index;
                                 tagraGestureStartScale = item.scale;
-                                tagraGestureStartPosition = Offset(
-                                  details.globalPosition.dx,
-                                  details.globalPosition.dy,
-                                );
+                                tagraResizeStartY = details.globalPosition.dy;
                               });
                             },
                             onPanUpdate: (details) {
                               setState(() {
                                 final delta =
                                     details.globalPosition.dy -
-                                    tagraGestureStartPosition.dy;
+                                    tagraResizeStartY;
                                 item.scale =
                                     (tagraGestureStartScale + delta * 0.01)
                                         .clamp(0.2, 5.0)
