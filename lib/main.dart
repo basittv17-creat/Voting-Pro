@@ -1484,6 +1484,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Widget tool(String icon, String title, VoidCallback tap) {
+    final originalTap = tap;
+    tap = () {
+      if (isVsSelected && mounted) {
+        setState(() => isVsSelected = false);
+      }
+      originalTap();
+    };
     return Container(
       width: 112,
       height: 80,
