@@ -264,6 +264,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<int, double> textScales = {};
   final Map<int, String> textFonts = {};
   final Map<int, Color> textColors = {};
+  final Map<int, Color> textGlowColors = {};
+  final Map<int, double> textGlowStrengths = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
   Offset textGestureStartFocalPoint = Offset.zero;
@@ -411,6 +413,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'textScales': _doubleMapJson(textScales),
         'textFonts': _stringMapJson(textFonts),
         'textColors': _colorMapJson(textColors),
+        'textGlowColors': _colorMapJson(textGlowColors),
+        'textGlowStrengths': _doubleMapJson(textGlowStrengths),
         'tagraStickerOverlays': [
           for (final item in tagraStickerOverlays)
             {'asset': item.asset, 'position': _offsetJson(item.position), 'scale': item.scale},
@@ -501,7 +505,32 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (colors is Map) {
           for (final entry in colors.entries) {
             final index = int.tryParse(entry.key.toString());
-            if (index != null && entry.value is num) textColors[index] = Color((entry.value as num).toInt());
+            if (index != null && entry.value is num) {
+              textColors[index] = Color((entry.value as num).toInt());
+            }
+          }
+        }
+
+        textGlowColors.clear();
+        final savedGlowColors = data['textGlowColors'];
+        if (savedGlowColors is Map) {
+          for (final entry in savedGlowColors.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textGlowColors[index] = Color((entry.value as num).toInt());
+            }
+          }
+        }
+
+        textGlowStrengths.clear();
+        final savedGlowStrengths = data['textGlowStrengths'];
+        if (savedGlowStrengths is Map) {
+          for (final entry in savedGlowStrengths.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textGlowStrengths[index] =
+                  (entry.value as num).toDouble().clamp(0.0, 100.0).toDouble();
+            }
           }
         }
         tagraStickerOverlays
@@ -1424,6 +1453,265 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
 
 
+
+  List<Shadow> _textGlowShadows(int index) {
+    final intensity =
+        (textGlowStrengths[index] ?? 0.0).clamp(0.0, 100.0).toDouble();
+
+    if (intensity <= 0) return const <Shadow>[];
+
+    final color =
+        textGlowColors[index] ?? const Color(0xFFFF1744);
+    final level = intensity / 100.0;
+
+    return <Shadow>[
+      Shadow(
+        color: color.withOpacity(0.28 + 0.32 * level),
+        blurRadius: 1.5 + 4.0 * level,
+      ),
+      Shadow(
+        color: color.withOpacity(0.22 + 0.48 * level),
+        blurRadius: 3.0 + 10.0 * level,
+      ),
+      Shadow(
+        color: color.withOpacity(0.16 + 0.54 * level),
+        blurRadius: 6.0 + 20.0 * level,
+      ),
+    ];
+  }
+
+  void textGlowTool() {
+    final index = selectedTextIndex;
+
+    if (index == null ||
+        index < 0 ||
+        index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں، پھر Glow کھولیں۔');
+      return;
+    }
+
+    const palette = <Color>[
+      Color(0xFFFF1744),
+      Color(0xFFFF4081),
+      Color(0xFFFF6D00),
+      Color(0xFFFFD600),
+      Color(0xFF76FF03),
+      Color(0xFF00E5FF),
+      Color(0xFF2979FF),
+      Color(0xFFD500F9),
+      Color(0xFFFFFFFF),
+    ];
+
+    double strength =
+        (textGlowStrengths[index] ?? 0.0).clamp(0.0, 100.0).toDouble();
+    Color selectedColor =
+        textGlowColors[index] ?? const Color(0xFFFF1744);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF101827),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, modalSetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              18,
+              20,
+              18,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 18,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: gold, size: 26),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Text Glow',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selectedColor.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selectedColor.withOpacity(0.65),
+                          ),
+                        ),
+                        child: Text(
+                          '${strength.round()}%',
+                          style: TextStyle(
+                            color: selectedColor,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  const Text(
+                    'Glow Color',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: palette.map((color) {
+                      final isSelected = selectedColor == color;
+                      return InkWell(
+                        onTap: () {
+                          modalSetState(() => selectedColor = color);
+                          setState(() => textGlowColors[index] = color);
+                        },
+                        customBorder: const CircleBorder(),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 140),
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.white24,
+                              width: isSelected ? 3 : 1,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: color.withOpacity(0.55),
+                                      blurRadius: 10,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 20,
+                                  color: Colors.black,
+                                )
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 26),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Glow Intensity',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${strength.round()} / 100',
+                        style: TextStyle(
+                          color: selectedColor,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(sheetContext).copyWith(
+                      activeTrackColor: selectedColor,
+                      thumbColor: Colors.white,
+                      inactiveTrackColor: Colors.white24,
+                      overlayColor: selectedColor.withOpacity(0.16),
+                      trackHeight: 5,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 9,
+                      ),
+                    ),
+                    child: Slider(
+                      value: strength,
+                      min: 0,
+                      max: 100,
+                      divisions: 100,
+                      onChanged: (value) {
+                        modalSetState(() => strength = value);
+                        setState(() {
+                          textGlowStrengths[index] = value;
+                          textGlowColors[index] = selectedColor;
+                        });
+                      },
+                    ),
+                  ),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Off',
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                      Text(
+                        'Soft',
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                      Text(
+                        'Strong',
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          modalSetState(() => strength = 0.0);
+                          setState(() => textGlowStrengths[index] = 0.0);
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reset Glow'),
+                      ),
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.check),
+                        label: const Text('Done'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void chooseTextColor() {
     final index = selectedTextIndex;
     if (index == null ||
@@ -1776,11 +2064,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldScales = Map<int, double>.from(textScales);
       final oldFonts = Map<int, String>.from(textFonts);
       final oldColors = Map<int, Color>.from(textColors);
+      final oldGlowColors = Map<int, Color>.from(textGlowColors);
+      final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
 
       textPositions.clear();
       textScales.clear();
       textFonts.clear();
       textColors.clear();
+      textGlowColors.clear();
+      textGlowStrengths.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
       textOverlayIds.clear();
@@ -1796,6 +2088,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
+        if (oldGlowColors.containsKey(sourceIndex)) {
+          textGlowColors[i] = oldGlowColors[sourceIndex]!;
+        }
+        if (oldGlowStrengths.containsKey(sourceIndex)) {
+          textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
+        }
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
@@ -1822,6 +2120,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldScales = Map<int, double>.from(textScales);
       final oldFonts = Map<int, String>.from(textFonts);
       final oldColors = Map<int, Color>.from(textColors);
+      final oldGlowColors = Map<int, Color>.from(textGlowColors);
+      final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
 
@@ -1829,6 +2129,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textScales.clear();
       textFonts.clear();
       textColors.clear();
+      textGlowColors.clear();
+      textGlowStrengths.clear();
       textOverlayIds.clear();
       stickerOverlayIds.clear();
 
@@ -1842,6 +2144,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
+        if (oldGlowColors.containsKey(sourceIndex)) {
+          textGlowColors[i] = oldGlowColors[sourceIndex]!;
+        }
+        if (oldGlowStrengths.containsKey(sourceIndex)) {
+          textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
+        }
         if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
@@ -2645,6 +2953,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                     : 'RobotoLocal'),
                             fontSize: 28,
                             color: textColors[index] ?? Colors.white,
+                            shadows: _textGlowShadows(index),
                           ),
                         ),
                       ),
@@ -2863,6 +3172,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('+', 'Add Text', addText),
                       tool('Aa', 'Font', chooseTextFont),
                       tool('🎨', 'Color', chooseTextColor),
+                      tool('✨', 'Glow', textGlowTool),
                       tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
                       tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
                       tool('🗑', 'Delete', deleteSelectedText),
