@@ -22,6 +22,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/stylish_frames/
+    - assets/templates/
     - assets/label_bars/a_side/
     - assets/label_bars/b_side/
     - assets/voting_stickers/

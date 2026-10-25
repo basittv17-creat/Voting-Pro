@@ -269,6 +269,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Offset textGestureStartFocalPoint = Offset.zero;
   Offset textGestureLastFocalPoint = Offset.zero;
   String? selectedStylishFrame;
+  String? selectedReadyMadeTemplate;
+  bool _templateANameEdited = false;
+  bool _templateBNameEdited = false;
   String? selectedASideLabel;
   String aSideLabelText = 'A SIDE';
   String bSideLabelText = 'B SIDE';
@@ -419,6 +422,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'leftVotingSticker': leftVotingSticker,
         'rightVotingSticker': rightVotingSticker,
         'selectedStylishFrame': selectedStylishFrame,
+        'selectedReadyMadeTemplate': selectedReadyMadeTemplate,
+        'templateANameEdited': _templateANameEdited,
+        'templateBNameEdited': _templateBNameEdited,
         'aSideLabelText': aSideLabelText,
         'bSideLabelText': bSideLabelText,
         'aSideLabelPosition': _offsetJson(aSideLabelPosition),
@@ -517,6 +523,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         leftVotingSticker = data['leftVotingSticker'] as String?;
         rightVotingSticker = data['rightVotingSticker'] as String?;
         selectedStylishFrame = data['selectedStylishFrame'] as String?;
+        selectedReadyMadeTemplate = data['selectedReadyMadeTemplate'] as String?;
+        _templateANameEdited = data['templateANameEdited'] as bool? ?? false;
+        _templateBNameEdited = data['templateBNameEdited'] as bool? ?? false;
         aSideLabelText = data['aSideLabelText'] as String? ?? 'A SIDE';
         bSideLabelText = data['bSideLabelText'] as String? ?? 'B SIDE';
         aSideLabelPosition = _offsetFromJson(data['aSideLabelPosition']);
@@ -776,7 +785,305 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
   }
 
+
+  Widget _readyTemplateName(String text, {required bool sideA, required double availableWidth}) {
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'NotoNastaliqUrdu',
+            fontSize: availableWidth * 0.26,
+            height: 1.0,
+            fontWeight: FontWeight.w900,
+            color: sideA ? const Color(0xFFFFD51B) : const Color(0xFFFFF5FC),
+            shadows: sideA
+                ? const [
+                    Shadow(color: Color(0xFF10102A), blurRadius: 2, offset: Offset(2, 3)),
+                    Shadow(color: Color(0xFFFF9800), blurRadius: 8),
+                  ]
+                : const [
+                    Shadow(color: Color(0xFF260014), blurRadius: 2, offset: Offset(2, 3)),
+                    Shadow(color: Color(0xFFE60062), blurRadius: 8),
+                  ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+
+        Widget photoLayer(bool sideA) {
+          final File? photo = preview ? null : (sideA ? a : b);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: sideA
+                        ? const [Color(0xFF0B3A7A), Color(0xFF09162C)]
+                        : const [Color(0xFF7E123D), Color(0xFF170C19)],
+                  ),
+                ),
+              ),
+              if (photo != null)
+                Image.file(
+                  photo!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.high,
+                )
+              else if (!isExportingPoster)
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_photo_alternate_outlined,
+                          color: Colors.white.withOpacity(0.82), size: w * 0.045),
+                      const SizedBox(height: 4),
+                      Text(
+                        sideA ? 'A کی تصویر' : 'B کی تصویر',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.82),
+                          fontSize: w * 0.025,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        }
+
+        return ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Color(0xFF080E19)),
+              Positioned(
+                left: w * 0.010,
+                top: h * 0.215,
+                width: w * 0.345,
+                height: h * 0.545,
+                child: photoLayer(true),
+              ),
+              Positioned(
+                left: w * 0.650,
+                top: h * 0.215,
+                width: w * 0.345,
+                height: h * 0.545,
+                child: photoLayer(false),
+              ),
+              Image.asset(
+                'assets/templates/Tagra_Muqabla_Template.png',
+                fit: BoxFit.fill,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.high,
+              ),
+
+              if (!preview && _templateANameEdited)
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/templates/Tagra_Muqabla_A_NamePlate.png',
+                    fit: BoxFit.fill,
+                    gaplessPlayback: true,
+                  ),
+                ),
+              if (!preview && _templateBNameEdited)
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/templates/Tagra_Muqabla_B_NamePlate.png',
+                    fit: BoxFit.fill,
+                    gaplessPlayback: true,
+                  ),
+                ),
+
+              if (!preview)
+                Positioned(
+                  left: w * 0.055,
+                  top: h * 0.765,
+                  width: w * 0.315,
+                  height: h * 0.145,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => editSideLabelText(true),
+                    child: _templateANameEdited
+                        ? _readyTemplateName(aSideLabelText, sideA: true, availableWidth: w * 0.315)
+                        : const SizedBox.expand(),
+                  ),
+                ),
+              if (!preview)
+                Positioned(
+                  left: w * 0.630,
+                  top: h * 0.765,
+                  width: w * 0.315,
+                  height: h * 0.145,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => editSideLabelText(false),
+                    child: _templateBNameEdited
+                        ? _readyTemplateName(bSideLabelText, sideA: false, availableWidth: w * 0.315)
+                        : const SizedBox.expand(),
+                  ),
+                ),
+
+              // Separate photo hit areas sit above the artwork, so transparent PNG pixels never block taps.
+              if (!preview)
+                Positioned(
+                  left: w * 0.018,
+                  top: h * 0.220,
+                  width: w * 0.320,
+                  height: h * 0.530,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => pick(true),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              if (!preview)
+                Positioned(
+                  left: w * 0.655,
+                  top: h * 0.220,
+                  width: w * 0.330,
+                  height: h * 0.530,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => pick(false),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
   void readyMadeTemplatesTool() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF080E19),
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.88,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Ready-made Voting Templates',
+                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.history),
+                      label: const Text('پرانے Templates'),
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) _legacyReadyMadeTemplatesTool();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'تگڑا مقابلہ — اصل پوسٹر کا ڈیزائن برقرار رہے گا۔',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: AspectRatio(
+                        aspectRatio: 1447 / 1087,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: _buildReadyMadeTemplateArtwork(preview: true),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'صرف A/B کی تصاویر اور نیچے کے نام تبدیل کیے جا سکتے ہیں۔',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('یہ ٹیمپلیٹ استعمال کریں'),
+                    onPressed: () {
+                      setState(() {
+                        selectedReadyMadeTemplate = 'tagra_muqabla';
+                        _templateANameEdited = false;
+                        _templateBNameEdited = false;
+                        canvasRatio = 1447 / 1087;
+                        background = dark;
+                        frameWidth = 0;
+                        selectedStylishFrame = null;
+                        selectedASideLabel = null;
+                        selectedBSideLabel = null;
+                        aSideLabelText = 'اسد';
+                        bSideLabelText = 'رقیہ';
+                        showASideLabelDelete = false;
+                        showBSideLabelDelete = false;
+                        isVsSelected = false;
+                        showTextTools = false;
+                        showStickerTools = false;
+                        showCanvasTools = false;
+                        showVotingStickerTools = false;
+                        showAStyleGallery = false;
+                        showBStyleGallery = false;
+                        showTagraStickerGallery = false;
+                        selectedTextIndex = null;
+                        selectedStickerIndex = null;
+                        selectedTagraStickerIndex = null;
+                        selectedLetterOverlayIndex = null;
+                      });
+                      Navigator.pop(sheetContext);
+                      msg('تگڑا مقابلہ ٹیمپلیٹ منتخب ہوگیا۔ تصویر بدلنے کے لیے A/B حصے پر، اور نام بدلنے کے لیے نام پر ٹیپ کریں۔');
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _legacyReadyMadeTemplatesTool() {
     const templates = <({
       String name,
       String subtitle,
@@ -1736,8 +2043,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       setState(() {
         if (sideA) {
           aSideLabelText = result;
+          if (selectedReadyMadeTemplate != null) _templateANameEdited = true;
         } else {
           bSideLabelText = result;
+          if (selectedReadyMadeTemplate != null) _templateBNameEdited = true;
         }
       });
     }
@@ -1893,10 +2202,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     ])),
     Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Column(children: [
       Screenshot(controller: shot, child: AspectRatio(aspectRatio: canvasRatio, child: Container(
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(color: background, border: Border.all(color: frameColor, width: frameWidth)),
+        padding: selectedReadyMadeTemplate == null ? const EdgeInsets.all(7) : EdgeInsets.zero,
+        decoration: selectedReadyMadeTemplate == null
+            ? BoxDecoration(color: background, border: Border.all(color: frameColor, width: frameWidth))
+            : const BoxDecoration(color: dark),
         child: Stack(children: [
-          Column(
+          if (selectedReadyMadeTemplate == null)
+            Column(
             children: [
               Expanded(
                 child: Row(
@@ -1909,7 +2221,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             ],
           ),
-          if (leftVotingSticker != null)
+          if (selectedReadyMadeTemplate == null && leftVotingSticker != null)
             Positioned(
               left: 2,
               top: 2,
@@ -1917,7 +2229,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               height: 42,
               child: Image.asset(leftVotingSticker!, fit: BoxFit.contain),
             ),
-          if (rightVotingSticker != null)
+          if (selectedReadyMadeTemplate == null && rightVotingSticker != null)
             Positioned(
               right: 2,
               top: 2,
@@ -1925,7 +2237,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               height: 42,
               child: Image.asset(rightVotingSticker!, fit: BoxFit.contain),
             ),
-          if (showVs)
+          if (selectedReadyMadeTemplate == null && showVs)
             Align(
               alignment: Alignment.center,
               child: Transform.translate(
@@ -2017,7 +2329,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             ),
 
 
-          ...tagraStickerOverlays.asMap().entries.map((entry) {
+          if (selectedReadyMadeTemplate == null) ...tagraStickerOverlays.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
             final selected = !isExportingPoster && selectedTagraStickerIndex == index;
@@ -2156,7 +2468,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             );
           }),
 
-          ...letterOverlays.asMap().entries.map((entry) {
+          if (selectedReadyMadeTemplate == null) ...letterOverlays.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
             final selected = selectedLetterOverlayIndex == index;
@@ -2255,7 +2567,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             );
           }),
-          ...overlays.asMap().entries.map((entry) {
+          if (selectedReadyMadeTemplate == null) ...overlays.asMap().entries.map((entry) {
             final index = entry.key;
             final isText = textOverlayIds.contains(index);
             final isSticker = stickerOverlayIds.contains(index);
@@ -2443,7 +2755,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             );
           }),
-          if (selectedStylishFrame != null)
+          if (selectedReadyMadeTemplate == null && selectedStylishFrame != null)
             Positioned.fill(
               child: IgnorePointer(
                 child: SizedBox.expand(
@@ -2458,6 +2770,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 ),
               ),
             ),
+          if (selectedReadyMadeTemplate != null)
+            Positioned.fill(child: _buildReadyMadeTemplateArtwork()),
         ]),
       ))),
 
@@ -2465,7 +2779,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
-      child: (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery || showTagraStickerGallery)
+      child: selectedReadyMadeTemplate != null
+          ? SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                tool('A', 'Change Photo A', () => pick(true)),
+                tool('B', 'Change Photo B', () => pick(false)),
+                tool('🎨', 'Templates', readyMadeTemplatesTool),
+                tool('↩', 'Classic Editor', () => setState(() {
+                  selectedReadyMadeTemplate = null;
+                  _templateANameEdited = false;
+                  _templateBNameEdited = false;
+                  canvasRatio = 4 / 3;
+                  frameWidth = 3;
+                  frameColor = gold;
+                  background = dark;
+                })),
+              ]),
+            )
+          : (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery || showTagraStickerGallery)
           ? Row(
               children: [
                 tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; showTagraStickerGallery = false; selectedLetterOverlayIndex = null; selectedTagraStickerIndex = null; })),
