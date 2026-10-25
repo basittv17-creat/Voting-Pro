@@ -708,11 +708,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (x != null && mounted) {
         final permanentPath = await _persistProjectImage(File(x.path), sideA ? 'side_a.img' : 'side_b.img');
         if (!mounted || permanentPath == null) return;
+        final newImageFile = File(permanentPath);
+        await FileImage(newImageFile).evict();
+        if (!mounted) return;
         setState(() {
           if (sideA) {
-            a = File(permanentPath);
+            a = newImageFile;
           } else {
-            b = File(permanentPath);
+            b = newImageFile;
           }
         });
       }
