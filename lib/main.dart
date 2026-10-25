@@ -776,6 +776,181 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
   }
 
+  void readyMadeTemplatesTool() {
+    const templates = <({
+      String name,
+      String subtitle,
+      Color base,
+      Color accent,
+      String frame,
+      String aLabel,
+      String bLabel,
+      String vs,
+    })>[
+      (
+        name: 'Royal Blue & Pink',
+        subtitle: 'آپ کے نمونے سے متاثر',
+        base: Color(0xFF102C67),
+        accent: Color(0xFFFF4F9A),
+        frame: 'assets/stylish_frames/01_royal_gold_frame.png',
+        aLabel: 'assets/label_bars/a_side/A_Side_Style_1.png',
+        bLabel: 'assets/label_bars/b_side/B_Side_Style_2.png',
+        vs: 'Royal Gold',
+      ),
+      (
+        name: 'Classic Crown Battle',
+        subtitle: 'گولڈن کراؤن اسٹائل',
+        base: Color(0xFF111827),
+        accent: Color(0xFFFFD700),
+        frame: 'assets/stylish_frames/03_luxury_gold_frame.png',
+        aLabel: 'assets/label_bars/a_side/A_Side_Style_2.png',
+        bLabel: 'assets/label_bars/b_side/B_Side_Style_1.png',
+        vs: 'Luxury',
+      ),
+      (
+        name: 'Neon Battle',
+        subtitle: 'نیون بلیو اور پنک',
+        base: Color(0xFF090B2B),
+        accent: Color(0xFFE040FB),
+        frame: 'assets/stylish_frames/08_blue_light_frame.png',
+        aLabel: 'assets/label_bars/a_side/A_Side_Style_4.png',
+        bLabel: 'assets/label_bars/b_side/B_Side_Style_4.png',
+        vs: 'Electric',
+      ),
+      (
+        name: 'Red & Gold Arena',
+        subtitle: 'ریڈ گلو اور گولڈ',
+        base: Color(0xFF7F101B),
+        accent: Color(0xFFFFD700),
+        frame: 'assets/stylish_frames/05_red_glow_frame.png',
+        aLabel: 'assets/label_bars/a_side/A_Side_Style_3.png',
+        bLabel: 'assets/label_bars/b_side/B_Side_Style_5.png',
+        vs: 'Fire',
+      ),
+      (
+        name: 'Blue & Gold Classic',
+        subtitle: 'شاہانہ بلیو اور گولڈ',
+        base: Color(0xFF102C67),
+        accent: Color(0xFFFFD700),
+        frame: 'assets/stylish_frames/02_elegant_gold_frame.png',
+        aLabel: 'assets/label_bars/a_side/A_Side_Style_5.png',
+        bLabel: 'assets/label_bars/b_side/B_Side_Style_3.png',
+        vs: 'Golden Glow',
+      ),
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF111827),
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.78,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 18, 16, 8),
+                child: Text(
+                  'Ready-made Templates',
+                  style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  'ٹیمپلیٹ منتخب کریں، پھر A/B تصاویر اور نام اپنی مرضی سے تبدیل کریں۔',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.92,
+                  ),
+                  itemCount: templates.length,
+                  itemBuilder: (context, index) {
+                    final template = templates[index];
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () {
+                        setState(() {
+                          canvasRatio = 4 / 3;
+                          background = template.base;
+                          frameColor = template.accent;
+                          frameWidth = 4;
+                          selectedStylishFrame = template.frame;
+                          selectedASideLabel = template.aLabel;
+                          selectedBSideLabel = template.bLabel;
+                          vsStyle = template.vs;
+                          showVs = true;
+                          isVsSelected = false;
+                          vsOffset = Offset.zero;
+                          vsScale = 1.0;
+                          vsStartScale = 1.0;
+                        });
+                        Navigator.pop(sheetContext);
+                        msg('${template.name} ٹیمپلیٹ منتخب ہوگیا۔');
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [template.base, template.accent.withOpacity(0.72)],
+                          ),
+                          border: Border.all(color: template.accent, width: 2),
+                          boxShadow: [
+                            BoxShadow(color: template.accent.withOpacity(0.2), blurRadius: 8),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.emoji_events, size: 32, color: template.accent),
+                              const SizedBox(height: 8),
+                              Text(
+                                template.name,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                template.subtitle,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.28),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text('4:3  •  منتخب کریں', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void backgrounds() {
     const colors = [Color(0xFF064B27), Color(0xFF102C67), Color(0xFF7F101B), Color(0xFF241044), Color(0xFF111827), Color(0xFF744210)];
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
@@ -1631,34 +1806,33 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     child: Align(
                       alignment: Alignment.center,
                       child: FractionallySizedBox(
-                        widthFactor: 0.48,
-                        heightFactor: 0.78,
-                        child: Container(
-                          alignment: Alignment.center,
-                          color: sideA
-                              ? const Color(0xFF5C080D)
-                              : const Color(0xFF063D1C),
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              labelText,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: label.contains('Style_4')
-                                    ? const Color(0xFFFFD45C)
-                                    : Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                fontStyle: FontStyle.italic,
-                                shadows: const [
-                                  Shadow(
-                                    color: Colors.black,
-                                    blurRadius: 3,
-                                    offset: Offset(1, 2),
-                                  ),
-                                ],
-                              ),
+                        widthFactor: 0.68,
+                        heightFactor: 0.86,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            labelText,
+                            maxLines: 1,
+                            textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(labelText)
+                                ? TextDirection.rtl
+                                : TextDirection.ltr,
+                            style: TextStyle(
+                              fontFamily: RegExp(r'[\u0600-\u06FF]').hasMatch(labelText)
+                                  ? 'NotoNastaliqUrdu'
+                                  : 'OswaldLocal',
+                              color: label.contains('Style_4')
+                                  ? const Color(0xFFFFD45C)
+                                  : Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                              shadows: const [
+                                Shadow(
+                                  color: Colors.black,
+                                  blurRadius: 3,
+                                  offset: Offset(1, 2),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -2367,6 +2541,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               child: Row(children: [
                 tool('A', 'Add Photo A', () => pick(true)),
                 tool('B', 'Add Photo B', () => pick(false)),
+                tool('🎨', 'Ready-made Templates', readyMadeTemplatesTool),
                 letterStyleTool('assets/a_letter_styles/A_Style_01.png', 'A Style', () => openLetterStyleGallery(true)),
                 letterStyleTool('assets/b_letter_styles/B_Style_01.png', 'B Style', () => openLetterStyleGallery(false)),
                 tool('T', 'Text', openTextTools),
