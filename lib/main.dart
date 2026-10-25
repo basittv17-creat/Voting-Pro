@@ -2758,14 +2758,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           if (selectedReadyMadeTemplate == null && selectedStylishFrame != null)
             Positioned.fill(
               child: IgnorePointer(
-                child: SizedBox.expand(
-                  child: Image.asset(
-                    selectedStylishFrame!,
-                    fit: BoxFit.fill,
-                    width: double.infinity,
-                    height: double.infinity,
-                    alignment: Alignment.center,
-                    gaplessPlayback: true,
+                child: ClipRect(
+                  child: Transform.scale(
+                    scale: 1.10,
+                    child: Image.asset(
+                      selectedStylishFrame!,
+                      fit: BoxFit.fill,
+                      width: double.infinity,
+                      height: double.infinity,
+                      alignment: Alignment.center,
+                      gaplessPlayback: true,
+                    ),
                   ),
                 ),
               ),
