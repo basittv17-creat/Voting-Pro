@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -934,8 +933,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         final index = overlays.length - 1;
         textOverlayIds.add(index);
         textFonts[index] = RegExp(r'[\u0600-\u06FF]').hasMatch(value)
-            ? 'Noto Nastaliq Urdu'
-            : 'Roboto';
+            ? 'NotoNastaliqUrdu'
+            : 'RobotoLocal';
         selectedTextIndex = index;
       });
     }
@@ -1204,16 +1203,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final isUrdu = RegExp(r'[\u0600-\u06FF]').hasMatch(overlays[index]);
     final fonts = isUrdu
         ? <(String, String)>[
-            ('Noto Nastaliq Urdu', 'اردو نستعلیق'),
-            ('Amiri', 'عربی خطاطی'),
-            ('Noto Sans Arabic', 'ماڈرن اردو'),
+            ('NotoNastaliqUrdu', 'اردو نستعلیق'),
+            ('NotoNastaliqUrdu', 'عربی خطاطی'),
+            ('NotoNastaliqUrdu', 'ماڈرن اردو'),
           ]
         : <(String, String)>[
-            ('Roboto', 'Modern'),
-            ('Oswald', 'Bold'),
-            ('Playfair Display', 'Elegant'),
-            ('Lato', 'Clean'),
-            ('Pacifico', 'Handwriting'),
+            ('RobotoLocal', 'Modern'),
+            ('OswaldLocal', 'Bold'),
+            ('PlayfairDisplayLocal', 'Elegant'),
+            ('RobotoLocal', 'Clean'),
+            ('PacificoLocal', 'Handwriting'),
           ];
 
     showModalBottomSheet<void>(
@@ -1239,8 +1238,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 children: fonts.map((font) => ActionChip(
                   label: Text(
                     font.$2,
-                    style: GoogleFonts.getFont(
-                      font.$1, color: Colors.white, fontSize: 16,
+                    style: TextStyle(
+                      fontFamily: font.$1,
+                      color: Colors.white,
+                      fontSize: 16,
                     ),
                   ),
                   backgroundColor: textFonts[index] == font.$1
@@ -2151,11 +2152,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             : null,
                         child: Text(
                           entry.value,
-                          style: GoogleFonts.getFont(
-                            textFonts[index] ??
+                          style: TextStyle(
+                            fontFamily: textFonts[index] ??
                                 (RegExp(r'[\u0600-\u06FF]').hasMatch(entry.value)
-                                    ? 'Noto Nastaliq Urdu'
-                                    : 'Roboto'),
+                                    ? 'NotoNastaliqUrdu'
+                                    : 'RobotoLocal'),
                             fontSize: 28,
                             color: textColors[index] ?? Colors.white,
                           ),

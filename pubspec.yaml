@@ -28,3 +28,20 @@ flutter:
     - assets/tagra_muqabla_stickers/
     - assets/b_letter_styles/
     - assets/a_letter_styles/
+
+  fonts:
+    - family: NotoNastaliqUrdu
+      fonts:
+        - asset: assets/fonts/NotoNastaliqUrdu.ttf
+    - family: RobotoLocal
+      fonts:
+        - asset: assets/fonts/Roboto.ttf
+    - family: OswaldLocal
+      fonts:
+        - asset: assets/fonts/Oswald.ttf
+    - family: PlayfairDisplayLocal
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay.ttf
+    - family: PacificoLocal
+      fonts:
+        - asset: assets/fonts/Pacifico.ttf
