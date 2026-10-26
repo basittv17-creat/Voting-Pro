@@ -2465,12 +2465,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     bool isVs = false,
     bool? photoSideA,
   }) {
+    // Centralized exclusive selection: passing one target clears every other
+    // movable object's selection. Label asset paths are content, not selection.
     selectedTagraStickerIndex = tagraIndex;
     selectedLetterOverlayIndex = letterIndex;
     selectedTextIndex = textIndex;
     selectedStickerIndex = stickerIndex;
     isVsSelected = isVs;
     _selectedPhotoSideA = photoSideA;
+
+    // Close stale label-delete handles when the user selects another object.
+    showASideLabelDelete = false;
+    showBSideLabelDelete = false;
   }
 
   Future<void> editSideLabelText(bool sideA) async {
