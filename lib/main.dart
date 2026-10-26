@@ -2933,15 +2933,28 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           top: -12,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: deleteSelectedLetterOverlay,
+                            onTap: () {
+                              if (index < 0 || index >= letterOverlays.length) {
+                                return;
+                              }
+                              setState(() {
+                                letterOverlays.removeAt(index);
+                                selectedLetterOverlayIndex = null;
+                              });
+                            },
                             child: Container(
-                              width: 26,
-                              height: 26,
+                              width: 30,
+                              height: 30,
+                              alignment: Alignment.center,
                               decoration: const BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, size: 16, color: Colors.white),
+                              child: const Icon(
+                                Icons.close,
+                                size: 18,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
