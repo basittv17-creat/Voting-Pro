@@ -3001,6 +3001,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     selectedTextIndex = null;
                   }
                 }),
+                onDoubleTap: () {
+                  if (isText) {
+                    deleteSelectedText();
+                  }
+                },
                 onScaleStart: (details) {
                   setState(() {
                     if (isText) {
@@ -3115,6 +3120,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           right: -15,
                           top: -15,
                           child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: deleteSelectedText,
                             child: Container(
                               width: 30,
@@ -3133,16 +3139,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           bottom: -13,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onPanStart: (_) {
+                            onPanStart: (details) {
                               setState(() {
                                 selectedTextIndex = index;
                                 textGestureStartScale = textScales[index] ?? 1.0;
+                                textGestureStartFocalPoint = details.globalPosition;
                               });
                             },
                             onPanUpdate: (details) {
                               setState(() {
+                                final deltaY = details.globalPosition.dy -
+                                    textGestureStartFocalPoint.dy;
                                 textScales[index] = (textGestureStartScale +
-                                    details.delta.dy * 0.015)
+                                    deltaY * 0.015)
                                     .clamp(0.4, 4.0).toDouble();
                               });
                             },
