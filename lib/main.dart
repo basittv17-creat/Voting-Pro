@@ -437,6 +437,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'vsStyle': vsStyle,
         'photoScales': {'a': _photoScales[true] ?? 1.0, 'b': _photoScales[false] ?? 1.0},
         'photoOffsets': {'a': _offsetJson(_photoOffsets[true] ?? Offset.zero), 'b': _offsetJson(_photoOffsets[false] ?? Offset.zero)},
+        'templatePhotoScales': {
+          'a': _templatePhotoScales[true] ?? 1.0,
+          'b': _templatePhotoScales[false] ?? 1.0,
+        },
+        'templatePhotoOffsets': {
+          'a': _offsetJson(_templatePhotoOffsets[true] ?? Offset.zero),
+          'b': _offsetJson(_templatePhotoOffsets[false] ?? Offset.zero),
+        },
       };
       await prefs.setString(_projectSaveKey, jsonEncode(data));
     } catch (_) {
@@ -571,6 +579,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           _photoOffsets[true] = _offsetFromJson(photoOffsets['a']);
           _photoOffsets[false] = _offsetFromJson(photoOffsets['b']);
         }
+
+        final templatePhotoScales = data['templatePhotoScales'];
+        if (templatePhotoScales is Map) {
+          _templatePhotoScales[true] =
+              (templatePhotoScales['a'] as num?)?.toDouble() ?? 1.0;
+          _templatePhotoScales[false] =
+              (templatePhotoScales['b'] as num?)?.toDouble() ?? 1.0;
+        }
+        final templatePhotoOffsets = data['templatePhotoOffsets'];
+        if (templatePhotoOffsets is Map) {
+          _templatePhotoOffsets[true] =
+              _offsetFromJson(templatePhotoOffsets['a']);
+          _templatePhotoOffsets[false] =
+              _offsetFromJson(templatePhotoOffsets['b']);
+        }
+
         showTextTools = false;
         showStickerTools = false;
         showCanvasTools = false;
@@ -872,16 +896,24 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 ),
               ),
               if (photo != null)
-                Image.file(
-                  photo!,
-                  key: ValueKey<String>(
-                    'template-photo-${sideA ? "A" : "B"}-${photo.path}',
+                ClipRect(
+                  child: Transform.translate(
+                    offset: _templatePhotoOffsets[sideA] ?? Offset.zero,
+                    child: Transform.scale(
+                      scale: _templatePhotoScales[sideA] ?? 1.0,
+                      child: Image.file(
+                        photo,
+                        key: ValueKey<String>(
+                          'template-photo-${sideA ? "A" : "B"}-${photo.path}',
+                        ),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        gaplessPlayback: true,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
                   ),
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.high,
                 )
               else if (!isExportingPoster)
                 Center(
@@ -989,6 +1021,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => pick(true),
+                    onScaleStart: (_) {
+                      _templatePhotoStartScales[true] =
+                          _templatePhotoScales[true] ?? 1.0;
+                    },
+                    onScaleUpdate: (details) {
+                      setState(() {
+                        _templatePhotoScales[true] =
+                            ((_templatePhotoStartScales[true] ?? 1.0) *
+                                    details.scale)
+                                .clamp(0.8, 8.0)
+                                .toDouble();
+                        _templatePhotoOffsets[true] =
+                            (_templatePhotoOffsets[true] ?? Offset.zero) +
+                                details.focalPointDelta;
+                      });
+                    },
                     child: const SizedBox.expand(),
                   ),
                 ),
@@ -1001,6 +1049,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => pick(false),
+                    onScaleStart: (_) {
+                      _templatePhotoStartScales[false] =
+                          _templatePhotoScales[false] ?? 1.0;
+                    },
+                    onScaleUpdate: (details) {
+                      setState(() {
+                        _templatePhotoScales[false] =
+                            ((_templatePhotoStartScales[false] ?? 1.0) *
+                                    details.scale)
+                                .clamp(0.8, 8.0)
+                                .toDouble();
+                        _templatePhotoOffsets[false] =
+                            (_templatePhotoOffsets[false] ?? Offset.zero) +
+                                details.focalPointDelta;
+                      });
+                    },
                     child: const SizedBox.expand(),
                   ),
                 ),
@@ -2314,6 +2378,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<bool, double> _photoScales = {true: 1.0, false: 1.0};
   final Map<bool, Offset> _photoOffsets = {true: Offset.zero, false: Offset.zero};
   final Map<bool, double> _photoStartScales = {true: 1.0, false: 1.0};
+
+  // Independent zoom and pan for Ready-made template photos.
+  final Map<bool, double> _templatePhotoScales = {true: 1.0, false: 1.0};
+  final Map<bool, Offset> _templatePhotoOffsets = {
+    true: Offset.zero,
+    false: Offset.zero,
+  };
+  final Map<bool, double> _templatePhotoStartScales = {
+    true: 1.0,
+    false: 1.0,
+  };
 
   Future<void> editSideLabelText(bool sideA) async {
     final controller = TextEditingController(
