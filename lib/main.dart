@@ -1496,7 +1496,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
       padding: const EdgeInsets.all(18),
       child: Wrap(spacing: 12, runSpacing: 12, children: emojis.map((e) => InkWell(
-        onTap: () { setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); selectedStickerIndex = index; selectedTextIndex = null; }); Navigator.pop(c); },
+        onTap: () { setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
         child: Container(width: 52, height: 52, alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
       )).toList()),
     ));
@@ -1517,7 +1517,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         textFonts[index] = RegExp(r'[\u0600-\u06FF]').hasMatch(value)
             ? 'NotoNastaliqUrdu'
             : 'RobotoLocal';
-        selectedTextIndex = index;
+        _selectCanvasObject(textIndex: index);
       });
     }
   }
@@ -2270,10 +2270,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void addTagraStickerOverlay(String asset) {
     setState(() {
       tagraStickerOverlays.add(_TagraStickerOverlay(asset: asset));
-      selectedTagraStickerIndex = tagraStickerOverlays.length - 1;
-      selectedLetterOverlayIndex = null;
-      selectedTextIndex = null;
-      selectedStickerIndex = null;
+      _selectCanvasObject(tagraIndex: tagraStickerOverlays.length - 1);
     });
   }
 
@@ -2305,9 +2302,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void addLetterStyleOverlay(String asset, bool sideA) {
     setState(() {
       letterOverlays.add(_LetterStyleOverlay(asset: asset, sideA: sideA));
-      selectedLetterOverlayIndex = letterOverlays.length - 1;
-      selectedTextIndex = null;
-      selectedStickerIndex = null;
+      _selectCanvasObject(letterIndex: letterOverlays.length - 1);
     });
   }
 
@@ -2458,6 +2453,26 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     false: 1.0,
   };
 
+  // Exactly one canvas object is active at a time. This prevents overlapping
+  // GestureDetectors from leaving multiple objects selected or moving together.
+  bool? _selectedPhotoSideA;
+
+  void _selectCanvasObject({
+    int? tagraIndex,
+    int? letterIndex,
+    int? textIndex,
+    int? stickerIndex,
+    bool isVs = false,
+    bool? photoSideA,
+  }) {
+    selectedTagraStickerIndex = tagraIndex;
+    selectedLetterOverlayIndex = letterIndex;
+    selectedTextIndex = textIndex;
+    selectedStickerIndex = stickerIndex;
+    isVsSelected = isVs;
+    _selectedPhotoSideA = photoSideA;
+  }
+
   Future<void> editSideLabelText(bool sideA) async {
     final controller = TextEditingController(
       text: sideA ? aSideLabelText : bSideLabelText,
@@ -2515,7 +2530,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final showDelete = sideA ? showASideLabelDelete : showBSideLabelDelete;
     final labelText = sideA ? aSideLabelText : bSideLabelText;
     return GestureDetector(
-      onTap: file == null ? () => pick(sideA) : null,
+      onTap: () {
+        if (file == null) {
+          pick(sideA);
+          return;
+        }
+        setState(() => _selectCanvasObject(photoSideA: sideA));
+      },
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -2527,10 +2548,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           if (file != null)
             GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _selectCanvasObject(photoSideA: sideA)),
               onScaleStart: (_) {
-                _photoStartScales[sideA] = _photoScales[sideA] ?? 1.0;
+                setState(() {
+                  _selectCanvasObject(photoSideA: sideA);
+                  _photoStartScales[sideA] = _photoScales[sideA] ?? 1.0;
+                });
               },
               onScaleUpdate: (details) {
+                if (_selectedPhotoSideA != sideA) return;
                 setState(() {
                   _photoScales[sideA] = ((_photoStartScales[sideA] ?? 1.0) *
                       details.scale).clamp(1.0, 5.0).toDouble();
@@ -2712,14 +2738,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 child: Transform.scale(
                   scale: vsScale,
                   child: GestureDetector(
-                    onTap: () => setState(() => isVsSelected = true),
+                    onTap: () => setState(() => _selectCanvasObject(isVs: true)),
                     onScaleStart: (_) {
                       setState(() {
-                        isVsSelected = true;
+                        _selectCanvasObject(isVs: true);
                         vsStartScale = vsScale;
                       });
                     },
                     onScaleUpdate: (details) {
+                      if (!isVsSelected) return;
                       setState(() {
                         vsOffset += details.focalPointDelta;
                         vsScale =
@@ -2807,20 +2834,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: () => setState(() {
-                  selectedTagraStickerIndex = index;
-                  selectedLetterOverlayIndex = null;
-                  selectedTextIndex = null;
-                  selectedStickerIndex = null;
+                  _selectCanvasObject(tagraIndex: index);
                 }),
                 onScaleStart: (details) {
                   setState(() {
-                    selectedTagraStickerIndex = index;
-                    selectedLetterOverlayIndex = null;
+                    _selectCanvasObject(tagraIndex: index);
                     tagraGestureStartPosition = item.position;
                     tagraGestureStartScale = item.scale;
                   });
                 },
                 onScaleUpdate: (details) {
+                  if (selectedTagraStickerIndex != index) return;
                   setState(() {
                     item.position += details.focalPointDelta;
                     if (details.pointerCount >= 2) {
@@ -2892,12 +2916,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
                               setState(() {
-                                selectedTagraStickerIndex = index;
+                                _selectCanvasObject(tagraIndex: index);
                                 tagraGestureStartScale = item.scale;
                                 tagraResizeStartY = details.globalPosition.dy;
                               });
                             },
                             onPanUpdate: (details) {
+                              if (selectedTagraStickerIndex != index) return;
                               setState(() {
                                 final delta =
                                     details.globalPosition.dy -
@@ -2945,24 +2970,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: () => setState(() {
-                  selectedLetterOverlayIndex = index;
-                  selectedTextIndex = null;
-                  selectedStickerIndex = null;
+                  _selectCanvasObject(letterIndex: index);
                 }),
                 onScaleStart: (details) {
                   setState(() {
-                    selectedLetterOverlayIndex = index;
+                    _selectCanvasObject(letterIndex: index);
                     letterGestureStartPosition = item.position;
                     letterGestureStartScale = item.scale;
                   });
                 },
-                onScaleUpdate: (details) => setState(() {
-                  item.position += details.focalPointDelta;
-                  if (details.pointerCount >= 2) {
-                    item.scale =
-                        (letterGestureStartScale * details.scale).clamp(0.2, 5.0).toDouble();
-                  }
-                }),
+                onScaleUpdate: (details) {
+                  if (selectedLetterOverlayIndex != index) return;
+                  setState(() {
+                    item.position += details.focalPointDelta;
+                    if (details.pointerCount >= 2) {
+                      item.scale =
+                          (letterGestureStartScale * details.scale).clamp(0.2, 5.0).toDouble();
+                    }
+                  });
+                },
                 child: Transform.scale(
                   scale: item.scale,
                   alignment: Alignment.topLeft,
@@ -3020,15 +3046,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
-                              letterResizeStartY = details.globalPosition.dy;
-                              letterResizeStartScale = item.scale;
-                              setState(() => selectedLetterOverlayIndex = index);
+                              setState(() {
+                                _selectCanvasObject(letterIndex: index);
+                                letterResizeStartY = details.globalPosition.dy;
+                                letterResizeStartScale = item.scale;
+                              });
                             },
-                            onPanUpdate: (details) => setState(() {
-                              final dy = details.globalPosition.dy - letterResizeStartY;
-                              item.scale =
-                                  (letterResizeStartScale + dy * 0.01).clamp(0.2, 5.0).toDouble();
-                            }),
+                            onPanUpdate: (details) {
+                              if (selectedLetterOverlayIndex != index) return;
+                              setState(() {
+                                final dy = details.globalPosition.dy - letterResizeStartY;
+                                item.scale =
+                                    (letterResizeStartScale + dy * 0.01).clamp(0.2, 5.0).toDouble();
+                              });
+                            },
                             child: Container(
                               width: 26,
                               height: 26,
@@ -3062,11 +3093,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 behavior: HitTestBehavior.translucent,
                 onTap: () => setState(() {
                   if (isText) {
-                    selectedTextIndex = index;
-                    selectedStickerIndex = null;
+                    _selectCanvasObject(textIndex: index);
                   } else {
-                    selectedStickerIndex = index;
-                    selectedTextIndex = null;
+                    _selectCanvasObject(stickerIndex: index);
                   }
                 }),
                 onDoubleTap: () {
@@ -3077,35 +3106,34 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 onScaleStart: (details) {
                   setState(() {
                     if (isText) {
-                      selectedTextIndex = index;
-                      selectedStickerIndex = null;
+                      _selectCanvasObject(textIndex: index);
                     } else {
-                      selectedStickerIndex = index;
-                      selectedTextIndex = null;
+                      _selectCanvasObject(stickerIndex: index);
                     }
                     textGestureStartPosition = textPositions[index] ??
                         Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
                     textGestureStartScale = textScales[index] ?? 1.0;
                   });
                 },
-                onScaleUpdate: (details) => setState(() {
-                  if (isText) {
-                    selectedTextIndex = index;
-                    if (details.pointerCount >= 2) {
-                      textScales[index] =
-                          (textGestureStartScale * details.scale).clamp(0.4, 4.0).toDouble();
+                onScaleUpdate: (details) {
+                  if (isText ? selectedTextIndex != index : selectedStickerIndex != index) return;
+                  setState(() {
+                    if (isText) {
+                      if (details.pointerCount >= 2) {
+                        textScales[index] =
+                            (textGestureStartScale * details.scale).clamp(0.4, 4.0).toDouble();
+                      } else {
+                        textPositions[index] =
+                            (textPositions[index] ?? textGestureStartPosition) +
+                            details.focalPointDelta;
+                      }
                     } else {
                       textPositions[index] =
                           (textPositions[index] ?? textGestureStartPosition) +
                           details.focalPointDelta;
                     }
-                  } else {
-                    selectedStickerIndex = index;
-                    textPositions[index] =
-                        (textPositions[index] ?? textGestureStartPosition) +
-                        details.focalPointDelta;
-                  }
-                }),
+                  });
+                },
                 child: Transform.scale(
                   scale: (isText || isSticker) ? scale : 1.0,
                   alignment: Alignment.topLeft,
@@ -3160,12 +3188,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
                               setState(() {
-                                selectedStickerIndex = index;
+                                _selectCanvasObject(stickerIndex: index);
                                 stickerGestureStartScale = textScales[index] ?? 1.0;
                                 stickerScaleStartY = details.globalPosition.dy;
                               });
                             },
                             onPanUpdate: (details) {
+                              if (selectedStickerIndex != index) return;
                               setState(() {
                                 final deltaY = details.globalPosition.dy - stickerScaleStartY;
                                 textScales[index] = (stickerGestureStartScale + deltaY * 0.01).clamp(0.4, 4.0).toDouble();
@@ -3232,12 +3261,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
                               setState(() {
-                                selectedTextIndex = index;
+                                _selectCanvasObject(textIndex: index);
                                 textGestureStartScale = textScales[index] ?? 1.0;
                                 textGestureStartFocalPoint = details.globalPosition;
                               });
                             },
                             onPanUpdate: (details) {
+                              if (selectedTextIndex != index) return;
                               setState(() {
                                 final deltaY = details.globalPosition.dy -
                                     textGestureStartFocalPoint.dy;
