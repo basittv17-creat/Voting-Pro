@@ -1525,6 +1525,61 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
 
 
+  Future<void> editSelectedText() async {
+    final index = selectedTextIndex;
+
+    if (index == null ||
+        index < 0 ||
+        index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      msg('پہلے وہ ٹیکسٹ منتخب کریں جسے تبدیل کرنا ہے۔');
+      return;
+    }
+
+    final controller = TextEditingController(
+      text: overlays[index],
+    );
+
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit Text'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'اپنا ٹیکسٹ یہاں تبدیل کریں',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              controller.text.trim(),
+            ),
+            icon: const Icon(Icons.check),
+            label: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (value != null && value.isNotEmpty && mounted) {
+      setState(() {
+        overlays[index] = value;
+        selectedTextIndex = index;
+      });
+    }
+  }
+
   List<Shadow> _textGlowShadows(int index) {
     final intensity =
         (textGlowStrengths[index] ?? 0.0).clamp(0.0, 200.0).toDouble();
@@ -3148,6 +3203,29 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                       if (isText && selectedTextIndex == index)
                         Positioned(
+                          left: -15,
+                          top: -15,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: editSelectedText,
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF00A6A6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.edit,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (isText && selectedTextIndex == index)
+                        Positioned(
                           right: -13,
                           bottom: -13,
                           child: GestureDetector(
@@ -3298,6 +3376,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('🗑', 'Delete', deleteSelectedSticker),
                     ] : [
                       tool('+', 'Add Text', addText),
+                      tool('✎', 'Edit Text', editSelectedText),
                       tool('Aa', 'Font', chooseTextFont),
                       tool('🎨', 'Color', chooseTextColor),
                       tool(
