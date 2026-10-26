@@ -184,6 +184,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   double stickerGestureStartScale = 1.0;
   double stickerScaleStartY = 0.0;
   bool showTextTools = false;
+  bool showGlowPanel = false;
   bool showStickerTools = false;
   bool showCanvasTools = false;
   bool showVotingStickerTools = false;
@@ -1526,26 +1527,27 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   List<Shadow> _textGlowShadows(int index) {
     final intensity =
-        (textGlowStrengths[index] ?? 0.0).clamp(0.0, 100.0).toDouble();
+        (textGlowStrengths[index] ?? 0.0).clamp(0.0, 200.0).toDouble();
 
     if (intensity <= 0) return const <Shadow>[];
 
     final color =
         textGlowColors[index] ?? const Color(0xFFFF1744);
-    final level = intensity / 100.0;
+    final level = intensity / 200.0;
+    final power = intensity / 100.0;
 
     return <Shadow>[
       Shadow(
-        color: color.withOpacity(0.28 + 0.32 * level),
-        blurRadius: 1.5 + 4.0 * level,
+        color: color.withOpacity((0.35 + 0.35 * level).clamp(0.0, 1.0)),
+        blurRadius: 3.0 + 8.0 * power,
       ),
       Shadow(
-        color: color.withOpacity(0.22 + 0.48 * level),
-        blurRadius: 3.0 + 10.0 * level,
+        color: color.withOpacity((0.30 + 0.50 * level).clamp(0.0, 1.0)),
+        blurRadius: 6.0 + 18.0 * power,
       ),
       Shadow(
-        color: color.withOpacity(0.16 + 0.54 * level),
-        blurRadius: 6.0 + 20.0 * level,
+        color: color.withOpacity((0.25 + 0.60 * level).clamp(0.0, 1.0)),
+        blurRadius: 10.0 + 30.0 * power,
       ),
     ];
   }
@@ -1561,6 +1563,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
 
+    setState(() {
+      showGlowPanel = !showGlowPanel;
+    });
+  }
+
+  Widget _buildInlineGlowPanel() {
+    final index = selectedTextIndex;
+
+    if (index == null ||
+        index < 0 ||
+        index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      return const SizedBox.shrink();
+    }
+
     const palette = <Color>[
       Color(0xFFFF1744),
       Color(0xFFFF4081),
@@ -1573,211 +1590,149 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       Color(0xFFFFFFFF),
     ];
 
-    double strength =
-        (textGlowStrengths[index] ?? 0.0).clamp(0.0, 100.0).toDouble();
-    Color selectedColor =
+    final strength =
+        (textGlowStrengths[index] ?? 0.0).clamp(0.0, 200.0).toDouble();
+    final selectedColor =
         textGlowColors[index] ?? const Color(0xFFFF1744);
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF101827),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, modalSetState) => SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              18,
-              20,
-              18,
-              MediaQuery.of(sheetContext).viewInsets.bottom + 18,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.auto_awesome, color: gold, size: 26),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Text Glow',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selectedColor.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: selectedColor.withOpacity(0.65),
-                          ),
-                        ),
-                        child: Text(
-                          '${strength.round()}%',
-                          style: TextStyle(
-                            color: selectedColor,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  const Text(
-                    'Glow Color',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: palette.map((color) {
-                      final isSelected = selectedColor == color;
-                      return InkWell(
-                        onTap: () {
-                          modalSetState(() => selectedColor = color);
-                          setState(() => textGlowColors[index] = color);
-                        },
-                        customBorder: const CircleBorder(),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 140),
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.white24,
-                              width: isSelected ? 3 : 1,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: color.withOpacity(0.55),
-                                      blurRadius: 10,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 20,
-                                  color: Colors.black,
-                                )
-                              : null,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 26),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Glow Intensity',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${strength.round()} / 100',
-                        style: TextStyle(
-                          color: selectedColor,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SliderTheme(
-                    data: SliderTheme.of(sheetContext).copyWith(
-                      activeTrackColor: selectedColor,
-                      thumbColor: Colors.white,
-                      inactiveTrackColor: Colors.white24,
-                      overlayColor: selectedColor.withOpacity(0.16),
-                      trackHeight: 5,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 9,
-                      ),
-                    ),
-                    child: Slider(
-                      value: strength,
-                      min: 0,
-                      max: 100,
-                      divisions: 100,
-                      onChanged: (value) {
-                        modalSetState(() => strength = value);
-                        setState(() {
-                          textGlowStrengths[index] = value;
-                          textGlowColors[index] = selectedColor;
-                        });
-                      },
-                    ),
-                  ),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Off',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                      Text(
-                        'Soft',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                      Text(
-                        'Strong',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          modalSetState(() => strength = 0.0);
-                          setState(() => textGlowStrengths[index] = 0.0);
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Reset Glow'),
-                      ),
-                      const Spacer(),
-                      FilledButton.icon(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        icon: const Icon(Icons.check),
-                        label: const Text('Done'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF07111F),
+        border: const Border(
+          top: BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+          bottom: BorderSide(color: Color(0xFF17364A), width: 1),
         ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4400E5FF),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.auto_awesome,
+                color: Color(0xFF00E5FF),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'NEON GLOW STUDIO',
+                  style: TextStyle(
+                    color: Color(0xFF00E5FF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Text(
+                '${strength.round()}%',
+                style: const TextStyle(
+                  color: Color(0xFF00E5FF),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Close Glow',
+                onPressed: () => setState(() => showGlowPanel = false),
+                icon: const Icon(Icons.close, color: Colors.white70, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Glow Color',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              for (final color in palette)
+                GestureDetector(
+                  onTap: () {
+                    setState(() => textGlowColors[index] = color);
+                  },
+                  child: Container(
+                    width: 29,
+                    height: 29,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selectedColor == color
+                            ? Colors.white
+                            : Colors.white24,
+                        width: selectedColor == color ? 3 : 1,
+                      ),
+                      boxShadow: [
+                        if (selectedColor == color)
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.65),
+                            blurRadius: 9,
+                            spreadRadius: 1,
+                          ),
+                      ],
+                    ),
+                    child: selectedColor == color
+                        ? const Icon(Icons.check, size: 16, color: Colors.black)
+                        : null,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.blur_on,
+                color: Color(0xFF00E5FF),
+                size: 19,
+              ),
+              const SizedBox(width: 7),
+              const Text(
+                'Intensity',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+              Expanded(
+                child: Slider(
+                  value: strength,
+                  min: 0,
+                  max: 200,
+                  divisions: 200,
+                  activeColor: const Color(0xFF00E5FF),
+                  inactiveColor: Colors.white24,
+                  onChanged: (value) {
+                    setState(() => textGlowStrengths[index] = value);
+                  },
+                ),
+              ),
+              IconButton(
+                tooltip: 'Reset Glow',
+                visualDensity: VisualDensity.compact,
+                onPressed: () {
+                  setState(() => textGlowStrengths[index] = 0.0);
+                },
+                icon: const Icon(
+                  Icons.refresh,
+                  color: Color(0xFF00E5FF),
+                  size: 21,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -2345,6 +2300,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Widget tool(String icon, String title, VoidCallback tap) {
+    final isGlowTool = title == 'Glow';
     final originalTap = tap;
     tap = () {
       if (isVsSelected && mounted) {
@@ -2356,19 +2312,76 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       width: 112,
       height: 80,
       margin: const EdgeInsets.symmetric(horizontal: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isGlowTool
+            ? const [
+                BoxShadow(
+                  color: Color(0x6600E5FF),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ]
+            : null,
+      ),
       child: Material(
-        color: const Color(0xFF1B2638),
+        color: isGlowTool
+            ? const Color(0xFF063747)
+            : const Color(0xFF1B2638),
+        elevation: isGlowTool ? 8 : 0,
+        shadowColor: const Color(0xFF00E5FF),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: tap,
           borderRadius: BorderRadius.circular(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(icon, style: const TextStyle(color: mint, fontSize: 23, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Text(title, maxLines: 2, softWrap: true, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            ],
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: isGlowTool
+                  ? Border.all(
+                      color: const Color(0xFF00E5FF),
+                      width: 1.8,
+                    )
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  icon,
+                  style: TextStyle(
+                    color: isGlowTool
+                        ? const Color(0xFF00E5FF)
+                        : mint,
+                    fontSize: isGlowTool ? 27 : 23,
+                    fontWeight: FontWeight.bold,
+                    shadows: isGlowTool
+                        ? const [
+                            Shadow(
+                              color: Color(0xFF00E5FF),
+                              blurRadius: 12,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  title,
+                  maxLines: 2,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isGlowTool
+                        ? const Color(0xFF00E5FF)
+                        : Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -3179,6 +3192,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ))),
 
     ]))),
+    if (showGlowPanel && showTextTools && selectedTextIndex != null)
+      _buildInlineGlowPanel(),
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
@@ -3263,7 +3278,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('+', 'Add Text', addText),
                       tool('Aa', 'Font', chooseTextFont),
                       tool('🎨', 'Color', chooseTextColor),
-                      tool('✨', 'Glow', textGlowTool),
+                      tool(
+                        '✨',
+                        'Glow',
+                        textGlowTool,
+                      ),
                       tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
                       tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
                       tool('🗑', 'Delete', deleteSelectedText),
