@@ -395,9 +395,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       final imageA = await _persistProjectImage(a, 'side_a.img');
       final imageB = await _persistProjectImage(b, 'side_b.img');
-      if (imageA != null) a = File(imageA);
-      if (imageB != null) b = File(imageB);
-
       final data = <String, dynamic>{
         'version': 1,
         'imageA': imageA,
@@ -743,9 +740,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     try {
       final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 95);
       if (x != null && mounted) {
-        final permanentPath = await _persistProjectImage(File(x.path), sideA ? 'side_a.img' : 'side_b.img');
-        if (!mounted || permanentPath == null) return;
-        final newImageFile = File(permanentPath);
+        final sourceFile = File(x.path);
+        final projectDir = await _projectDirectory();
+        final extension = x.path.contains('.')
+            ? x.path.split('.').last.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')
+            : 'jpg';
+        final uniqueName =
+            '${sideA ? 'side_a' : 'side_b'}_${DateTime.now().microsecondsSinceEpoch}.${extension.isEmpty ? 'jpg' : extension}';
+        final newImageFile = await sourceFile.copy('${projectDir.path}/$uniqueName');
+        if (!mounted) return;
         await FileImage(newImageFile).evict();
         if (!mounted) return;
         setState(() {
@@ -871,6 +874,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               if (photo != null)
                 Image.file(
                   photo!,
+                  key: ValueKey<String>(
+                    'template-photo-${sideA ? "A" : "B"}-${photo.path}',
+                  ),
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
@@ -2394,7 +2400,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   offset: _photoOffsets[sideA] ?? Offset.zero,
                   child: Transform.scale(
                     scale: _photoScales[sideA] ?? 1.0,
-                    child: Image.file(file, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                    child: Image.file(
+                      file,
+                      key: ValueKey<String>(
+                        'editor-photo-${sideA ? "A" : "B"}-${file.path}',
+                      ),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      gaplessPlayback: true,
+                      filterQuality: FilterQuality.medium,
+                    ),
                   ),
                 ),
               ),
