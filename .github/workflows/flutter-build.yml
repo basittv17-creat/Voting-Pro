@@ -36,11 +36,97 @@ jobs:
             sed -i 's/android:label="[^"]*"/android:label="Voting Pro"/' android/app/src/main/AndroidManifest.xml
           fi
 
+      - name: Configure Android release signing
+        env:
+          STORE_FILE_BASE64: ${{ secrets.STORE_FILE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$STORE_FILE_BASE64"
+          printf '%s' "$STORE_FILE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          test -s android/app/upload-keystore.jks
+          python3 - <<'PYGRADLE'
+          from pathlib import Path
+          import sys
+
+          p = Path("android/app/build.gradle.kts")
+          if not p.is_file():
+              print("ERROR: Generated Kotlin Gradle file not found.")
+              sys.exit(1)
+
+          s = p.read_text()
+          anchor = '    buildTypes {'
+          debug = 'signingConfig = signingConfigs.getByName("debug")'
+
+          if anchor not in s or debug not in s:
+              print("ERROR: Expected Gradle anchors not found; stopping.")
+              sys.exit(1)
+
+          signing = (
+              '    signingConfigs {\n'
+              '        create("release") {\n'
+              '            storeFile = file("upload-keystore.jks")\n'
+              '            storePassword = System.getenv("STORE_PASSWORD") ?: error("STORE_PASSWORD missing")\n'
+              '            keyAlias = System.getenv("KEY_ALIAS") ?: error("KEY_ALIAS missing")\n'
+              '            keyPassword = System.getenv("KEY_PASSWORD") ?: error("KEY_PASSWORD missing")\n'
+              '        }\n'
+              '    }\n\n'
+          )
+
+          if s.count(anchor) != 1:
+              print("ERROR: Gradle buildTypes anchor is not unique.")
+              sys.exit(1)
+          if s.count(debug) != 1:
+              print("ERROR: Debug signing anchor is not unique.")
+              sys.exit(1)
+
+          s = s.replace(anchor, signing + anchor, 1)
+          s = s.replace(debug, 'signingConfig = signingConfigs.getByName("release")', 1)
+
+          if debug in s or 'signingConfig = signingConfigs.getByName("release")' not in s:
+              print("ERROR: Release signing verification failed.")
+              sys.exit(1)
+
+          p.write_text(s)
+          print("ANDROID_SIGNING_CONFIGURED_AND_VERIFIED")
+          PYGRADLE
+
+          keytool -list \
+            -keystore android/app/upload-keystore.jks \
+            -storepass "$STORE_PASSWORD" \
+            -alias "$KEY_ALIAS" >/dev/null
+
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build Android APK
+      - name: Build Signed Android APK
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: flutter build apk --release
+
+      - name: Build Signed Android App Bundle
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: flutter build appbundle --release
+
+      - name: Verify Android signatures
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          test -s "$APK"
+          test -s "$AAB"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify "$APK"
+          jarsigner -verify "$AAB" >/dev/null
+          echo "SIGNED_APK_AND_AAB_VERIFIED"
 
       - name: Build Web
         run: flutter build web --release
@@ -50,6 +136,13 @@ jobs:
         with:
           name: voting-pro-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload Android App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: voting-pro-aab
+          path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
       - name: Upload Web build
