@@ -33,7 +33,7 @@ jobs:
       - name: Set Android app display name
         run: |
           if [ -f android/app/src/main/AndroidManifest.xml ]; then
-            sed -i 's/android:label="voting_pro"/android:label="Voting Pro"/' android/app/src/main/AndroidManifest.xml
+            sed -i 's/android:label="[^"]*"/android:label="Voting Pro"/' android/app/src/main/AndroidManifest.xml
           fi
 
       - name: Get dependencies
