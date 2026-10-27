@@ -2257,6 +2257,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void openTagraStickerGallery() {
     setState(() {
+      final previousTagraIndex = selectedTagraStickerIndex;
       showTagraStickerGallery = true;
       showAStyleGallery = false;
       showBStyleGallery = false;
@@ -2264,13 +2265,47 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       showStickerTools = false;
       showCanvasTools = false;
       showVotingStickerTools = false;
+
+      // Keep the current Tagra sticker active while browsing alternative designs.
+      // If none is selected, target the most recently added sticker instead.
+      if (tagraStickerOverlays.isEmpty) {
+        _selectCanvasObject();
+      } else {
+        final targetIndex = previousTagraIndex != null &&
+                previousTagraIndex >= 0 &&
+                previousTagraIndex < tagraStickerOverlays.length
+            ? previousTagraIndex
+            : tagraStickerOverlays.length - 1;
+        _selectCanvasObject(tagraIndex: targetIndex);
+      }
     });
   }
 
   void addTagraStickerOverlay(String asset) {
     setState(() {
-      tagraStickerOverlays.add(_TagraStickerOverlay(asset: asset));
-      _selectCanvasObject(tagraIndex: tagraStickerOverlays.length - 1);
+      // The Tagra gallery is a design chooser, not an "add another layer" action.
+      // Replace the existing sticker, preserving its position and size, and clean
+      // up duplicates left by older versions of the app.
+      final selectedIndex = selectedTagraStickerIndex;
+      _TagraStickerOverlay? previous;
+      if (selectedIndex != null &&
+          selectedIndex >= 0 &&
+          selectedIndex < tagraStickerOverlays.length) {
+        previous = tagraStickerOverlays[selectedIndex];
+      } else if (tagraStickerOverlays.isNotEmpty) {
+        previous = tagraStickerOverlays.last;
+      }
+
+      final replacement = _TagraStickerOverlay(asset: asset);
+      if (previous != null) {
+        replacement.position = previous.position;
+        replacement.scale = previous.scale;
+      }
+
+      tagraStickerOverlays
+        ..clear()
+        ..add(replacement);
+      _selectCanvasObject(tagraIndex: 0);
     });
   }
 
@@ -2829,6 +2864,124 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             ),
 
 
+          if (selectedReadyMadeTemplate == null) ...letterOverlays.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final selected = selectedLetterOverlayIndex == index;
+            return Positioned(
+              left: item.position.dx,
+              top: item.position.dy,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => setState(() {
+                  _selectCanvasObject(letterIndex: index);
+                }),
+                onScaleStart: (details) {
+                  setState(() {
+                    _selectCanvasObject(letterIndex: index);
+                    letterGestureStartPosition = item.position;
+                    letterGestureStartScale = item.scale;
+                  });
+                },
+                onScaleUpdate: (details) {
+                  if (selectedLetterOverlayIndex != index) return;
+                  setState(() {
+                    item.position += details.focalPointDelta;
+                    if (details.pointerCount >= 2) {
+                      item.scale =
+                          (letterGestureStartScale * details.scale).clamp(0.2, 5.0).toDouble();
+                    }
+                  });
+                },
+                child: Transform.scale(
+                  scale: item.scale,
+                  alignment: Alignment.topLeft,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        decoration: selected
+                            ? BoxDecoration(
+                                border: Border.all(color: gold, width: 1.5),
+                              )
+                            : null,
+                        child: Image.asset(
+                          item.asset,
+                          width: 110,
+                          height: 110,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      if (selected)
+                        Positioned(
+                          right: -12,
+                          top: -12,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (index < 0 || index >= letterOverlays.length) {
+                                return;
+                              }
+                              setState(() {
+                                letterOverlays.removeAt(index);
+                                selectedLetterOverlayIndex = null;
+                              });
+                            },
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (selected)
+                        Positioned(
+                          right: -12,
+                          bottom: -12,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanStart: (details) {
+                              setState(() {
+                                _selectCanvasObject(letterIndex: index);
+                                letterResizeStartY = details.globalPosition.dy;
+                                letterResizeStartScale = item.scale;
+                              });
+                            },
+                            onPanUpdate: (details) {
+                              if (selectedLetterOverlayIndex != index) return;
+                              setState(() {
+                                final dy = details.globalPosition.dy - letterResizeStartY;
+                                item.scale =
+                                    (letterResizeStartScale + dy * 0.01).clamp(0.2, 5.0).toDouble();
+                              });
+                            },
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: gold,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(Icons.open_in_full, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
           if (selectedReadyMadeTemplate == null) ...tagraStickerOverlays.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
@@ -2966,124 +3119,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             );
           }),
 
-          if (selectedReadyMadeTemplate == null) ...letterOverlays.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            final selected = selectedLetterOverlayIndex == index;
-            return Positioned(
-              left: item.position.dx,
-              top: item.position.dy,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () => setState(() {
-                  _selectCanvasObject(letterIndex: index);
-                }),
-                onScaleStart: (details) {
-                  setState(() {
-                    _selectCanvasObject(letterIndex: index);
-                    letterGestureStartPosition = item.position;
-                    letterGestureStartScale = item.scale;
-                  });
-                },
-                onScaleUpdate: (details) {
-                  if (selectedLetterOverlayIndex != index) return;
-                  setState(() {
-                    item.position += details.focalPointDelta;
-                    if (details.pointerCount >= 2) {
-                      item.scale =
-                          (letterGestureStartScale * details.scale).clamp(0.2, 5.0).toDouble();
-                    }
-                  });
-                },
-                child: Transform.scale(
-                  scale: item.scale,
-                  alignment: Alignment.topLeft,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        decoration: selected
-                            ? BoxDecoration(
-                                border: Border.all(color: gold, width: 1.5),
-                              )
-                            : null,
-                        child: Image.asset(
-                          item.asset,
-                          width: 110,
-                          height: 110,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      if (selected)
-                        Positioned(
-                          right: -12,
-                          top: -12,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              if (index < 0 || index >= letterOverlays.length) {
-                                return;
-                              }
-                              setState(() {
-                                letterOverlays.removeAt(index);
-                                selectedLetterOverlayIndex = null;
-                              });
-                            },
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              alignment: Alignment.center,
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (selected)
-                        Positioned(
-                          right: -12,
-                          bottom: -12,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onPanStart: (details) {
-                              setState(() {
-                                _selectCanvasObject(letterIndex: index);
-                                letterResizeStartY = details.globalPosition.dy;
-                                letterResizeStartScale = item.scale;
-                              });
-                            },
-                            onPanUpdate: (details) {
-                              if (selectedLetterOverlayIndex != index) return;
-                              setState(() {
-                                final dy = details.globalPosition.dy - letterResizeStartY;
-                                item.scale =
-                                    (letterResizeStartScale + dy * 0.01).clamp(0.2, 5.0).toDouble();
-                              });
-                            },
-                            child: Container(
-                              width: 26,
-                              height: 26,
-                              decoration: BoxDecoration(
-                                color: gold,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
-                              ),
-                              child: const Icon(Icons.open_in_full, size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
           if (selectedReadyMadeTemplate == null) ...overlays.asMap().entries.map((entry) {
             final index = entry.key;
             final isText = textOverlayIds.contains(index);
