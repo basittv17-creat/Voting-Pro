@@ -2829,8 +2829,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                         if (isVsSelected)
                           Positioned(
-                            right: -12,
-                            top: -12,
+                            right: 0,
+                            top: 0,
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: () => setState(() {
