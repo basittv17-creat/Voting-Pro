@@ -2336,8 +2336,41 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void addLetterStyleOverlay(String asset, bool sideA) {
     setState(() {
-      letterOverlays.add(_LetterStyleOverlay(asset: asset, sideA: sideA));
-      _selectCanvasObject(letterIndex: letterOverlays.length - 1);
+      final matchingIndices = <int>[];
+
+      for (var i = 0; i < letterOverlays.length; i++) {
+        if (letterOverlays[i].sideA == sideA) {
+          matchingIndices.add(i);
+        }
+      }
+
+      late final int index;
+
+      if (matchingIndices.isNotEmpty) {
+        index = matchingIndices.first;
+        final old = letterOverlays[index];
+
+        final replacement = _LetterStyleOverlay(
+          asset: asset,
+          sideA: sideA,
+        )
+          ..position = old.position
+          ..scale = old.scale;
+
+        letterOverlays[index] = replacement;
+
+        for (final duplicateIndex
+            in matchingIndices.skip(1).toList().reversed) {
+          letterOverlays.removeAt(duplicateIndex);
+        }
+      } else {
+        letterOverlays.add(
+          _LetterStyleOverlay(asset: asset, sideA: sideA),
+        );
+        index = letterOverlays.length - 1;
+      }
+
+      _selectCanvasObject(letterIndex: index);
     });
   }
 
