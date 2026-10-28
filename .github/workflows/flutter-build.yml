@@ -165,6 +165,9 @@ jobs:
       - name: Build Web
         run: flutter build web --release
 
+      - name: Add Privacy Policy page
+        run: cp docs/privacy-policy.html build/web/privacy-policy.html
+
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
