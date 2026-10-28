@@ -29,6 +29,37 @@ jobs:
 
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpostermaker --org com.awisogera
+      - name: Set Android SDK levels for Google Play
+        run: |
+          python3 - <<'PYSDK'
+          from pathlib import Path
+          import sys
+
+          p = Path("android/app/build.gradle.kts")
+          if not p.is_file():
+              print("ERROR: Generated build.gradle.kts نہیں ملی۔")
+              sys.exit(1)
+
+          text = p.read_text()
+          replacements = {
+              "compileSdk = flutter.compileSdkVersion": "compileSdk = 36",
+              "targetSdk = flutter.targetSdkVersion": "targetSdk = 36",
+          }
+
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  print(f"ERROR: مطلوبہ Gradle لائن بالکل ایک بار نہیں ملی: {old}")
+                  sys.exit(1)
+
+          for old, new in replacements.items():
+              text = text.replace(old, new, 1)
+
+          p.write_text(text)
+          print("compileSdk = 36")
+          print("targetSdk = 36")
+          print("minSdk میں کوئی تبدیلی نہیں کی گئی۔")
+          PYSDK
+
 
       - name: Set Android app display name
         run: |
