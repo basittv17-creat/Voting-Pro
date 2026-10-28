@@ -802,9 +802,26 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
   }
 
+  // Clear selection state only; keep poster objects and their content intact.
+  // This prevents selection borders and edit/delete/resize handles from being
+  // included in the saved image.
+  void _clearCanvasSelection() {
+    selectedTextIndex = null;
+    selectedStickerIndex = null;
+    selectedTagraStickerIndex = null;
+    selectedLetterOverlayIndex = null;
+    isVsSelected = false;
+    _selectedPhotoSideA = null;
+    showASideLabelDelete = false;
+    showBSideLabelDelete = false;
+  }
+
   Future<void> save() async {
     if (busy) return;
-    setState(() => busy = true);
+    setState(() {
+      _clearCanvasSelection();
+      busy = true;
+    });
     try {
       final bytes = await capturePosterWithoutControls();
       if (bytes == null) {
