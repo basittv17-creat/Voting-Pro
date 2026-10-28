@@ -28,7 +28,7 @@ jobs:
           cache: true
 
       - name: Generate Android and Web platform folders
-        run: flutter create . --platforms=android,web --project-name votingpostermaker --org com.awisogera
+        run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
       - name: Set Android SDK levels for Google Play
         run: |
           python3 - <<'PYSDK'
