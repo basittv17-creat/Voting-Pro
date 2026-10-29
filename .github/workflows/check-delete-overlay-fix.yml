@@ -62,6 +62,23 @@ jobs:
           done
           echo "All ten A-side letter styles exist and are referenced."
 
+      - name: Verify all ten B-side letter styles are present and referenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          for style in $(seq -w 1 10); do
+            asset="assets/b_letter_styles/B_Style_${style}.png"
+            if [ ! -s "$asset" ]; then
+              echo "::error::Missing B-side letter style asset: $asset"
+              exit 1
+            fi
+            if ! grep -Fq "$asset" lib/main.dart; then
+              echo "::error::B-side letter style is not referenced in lib/main.dart: $asset"
+              exit 1
+            fi
+          done
+          echo "All ten B-side letter styles exist and are referenced."
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
