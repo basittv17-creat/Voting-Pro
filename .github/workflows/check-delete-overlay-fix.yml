@@ -137,6 +137,40 @@ jobs:
           done
           echo "All ten VS styles and expected select/move/scale/delete logic are present."
 
+      - name: Verify replacing one photo preserves the opposite photo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Future<void> pick(bool sideA) async {")
+          end = source.find("\n  Future<Uint8List?> capturePosterWithoutControls()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Could not locate the photo picker function.")
+          picker = source[start:end]
+          required = [
+              "if (sideA) {",
+              "a = newImageFile;",
+              "} else {",
+              "b = newImageFile;",
+              "_photoScales[sideA] = 1.0;",
+              "_photoOffsets[sideA] = Offset.zero;",
+              "_photoStartScales[sideA] = 1.0;",
+              "_selectCanvasObject(photoSideA: sideA);",
+          ]
+          missing = [item for item in required if item not in picker]
+          if missing:
+              for item in missing:
+                  print(f"::error::Photo replacement logic missing: {item}")
+              raise SystemExit(1)
+          a_assignment = picker.index("a = newImageFile;")
+          b_assignment = picker.index("b = newImageFile;")
+          if not (picker.index("if (sideA) {") < a_assignment < picker.index("} else {") < b_assignment):
+              raise SystemExit("::error::A/B photo assignments are not isolated by side.")
+          print("A/B photo replacement is side-specific; only the replaced side's crop/zoom is reset.")
+          PY
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
