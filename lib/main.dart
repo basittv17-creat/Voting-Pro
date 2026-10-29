@@ -631,7 +631,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       await prefs.remove(_projectSaveKey);
       final dir = await _projectDirectory();
       if (await dir.exists()) await dir.delete(recursive: true);
-    } catch (_) {}
+    } catch (_) {
+      // The next editor still starts from its default in-memory state.
+      // Do not restore the old project if clearing its files fails.
+    }
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const Editor()),
@@ -1329,11 +1332,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           // to a classic 4:3 template must restore the classic
                           // editor canvas instead of leaving the old artwork active.
                           selectedReadyMadeTemplate = null;
+                          // Reset template-only edit/gesture state when moving
+                          // from the Tagra Muqabla artwork to a classic template.
+                          _templateANameEdited = false;
+                          _templateBNameEdited = false;
                           _templatePhotoScales[true] = 1.0;
                           _templatePhotoScales[false] = 1.0;
                           _templatePhotoOffsets[true] = Offset.zero;
                           _templatePhotoOffsets[false] = Offset.zero;
                           _selectedTemplatePhotoSideA = null;
+                          _clearCanvasSelection();
                           canvasRatio = 4 / 3;
                           background = template.base;
                           frameColor = template.accent;
