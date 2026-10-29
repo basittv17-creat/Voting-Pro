@@ -223,6 +223,46 @@ jobs:
           print("Poster capture clears selection controls, waits for the frame, captures the canvas, and is used by save/share.")
           PY
 
+      - name: Verify five ready-made templates are available and selectable
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("void _legacyReadyMadeTemplatesTool() {")
+          end = source.find("\n  void ", start + 1)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template list was not found.")
+          section = source[start:end]
+          names = [
+              "Royal Blue & Pink",
+              "Classic Crown Battle",
+              "Neon Battle",
+              "Red & Gold Arena",
+              "Blue & Gold Classic",
+          ]
+          for name in names:
+              if f"name: '{name}'" not in section:
+                  print(f"::error::Ready-made template is missing: {name}")
+                  raise SystemExit(1)
+          required = [
+              "itemCount: templates.length",
+              "onTap: () {",
+              "selectedReadyMadeTemplate = null;",
+              "canvasRatio = 4 / 3;",
+              "selectedStylishFrame = template.frame;",
+              "selectedASideLabel = template.aLabel;",
+              "selectedBSideLabel = template.bLabel;",
+              "vsStyle = template.vs;",
+          ]
+          for item in required:
+              if item not in section:
+                  print(f"::error::Template selection behavior is missing: {item}")
+                  raise SystemExit(1)
+          print("All five classic ready-made templates are listed and have selectable 4:3 configuration.")
+          PY
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
