@@ -812,6 +812,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     selectedLetterOverlayIndex = null;
     isVsSelected = false;
     _selectedPhotoSideA = null;
+    _selectedTemplatePhotoSideA = null;
     showASideLabelDelete = false;
     showBSideLabelDelete = false;
   }
@@ -3466,6 +3467,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tool('B', 'Change Photo B', () => pick(false)),
                 tool('🎨', 'Templates', readyMadeTemplatesTool),
                 tool('↩', 'Classic Editor', () => setState(() {
+                  _clearCanvasSelection();
                   selectedReadyMadeTemplate = null;
                   _templateANameEdited = false;
                   _templateBNameEdited = false;
