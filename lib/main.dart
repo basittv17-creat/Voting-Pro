@@ -1168,6 +1168,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         selectedReadyMadeTemplate = 'tagra_muqabla';
                         _templateANameEdited = false;
                         _templateBNameEdited = false;
+                        _templatePhotoScales[true] = 1.0;
+                        _templatePhotoScales[false] = 1.0;
+                        _templatePhotoOffsets[true] = Offset.zero;
+                        _templatePhotoOffsets[false] = Offset.zero;
+                        _selectedTemplatePhotoSideA = null;
                         canvasRatio = 1447 / 1087;
                         background = dark;
                         frameWidth = 0;
@@ -1307,6 +1312,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       borderRadius: BorderRadius.circular(14),
                       onTap: () {
                         setState(() {
+                          // Switching from the dedicated editable template back
+                          // to a classic 4:3 template must restore the classic
+                          // editor canvas instead of leaving the old artwork active.
+                          selectedReadyMadeTemplate = null;
+                          _templatePhotoScales[true] = 1.0;
+                          _templatePhotoScales[false] = 1.0;
+                          _templatePhotoOffsets[true] = Offset.zero;
+                          _templatePhotoOffsets[false] = Offset.zero;
+                          _selectedTemplatePhotoSideA = null;
                           canvasRatio = 4 / 3;
                           background = template.base;
                           frameColor = template.accent;
