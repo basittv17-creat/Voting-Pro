@@ -2642,6 +2642,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           controller: controller,
           autofocus: true,
           maxLength: 28,
+          textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+              ? TextDirection.rtl
+              : TextDirection.ltr,
+          textAlign: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+              ? TextAlign.right
+              : TextAlign.left,
           textCapitalization: TextCapitalization.characters,
           decoration: const InputDecoration(
             labelText: 'Enter your text',
