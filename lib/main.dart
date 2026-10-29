@@ -2694,6 +2694,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final label = sideA ? selectedASideLabel : selectedBSideLabel;
     final showDelete = sideA ? showASideLabelDelete : showBSideLabelDelete;
     final labelText = sideA ? aSideLabelText : bSideLabelText;
+    final isUrduLabelText = RegExp(r'[\u0600-\u06FF]').hasMatch(labelText);
     return GestureDetector(
       onTap: () {
         if (file == null) {
@@ -2785,11 +2786,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           child: Text(
                             labelText,
                             maxLines: 1,
-                            textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(labelText)
+                            softWrap: false,
+                            textAlign: TextAlign.center,
+                            textDirection: isUrduLabelText
                                 ? TextDirection.rtl
                                 : TextDirection.ltr,
                             style: TextStyle(
-                              fontFamily: RegExp(r'[\u0600-\u06FF]').hasMatch(labelText)
+                              fontFamily: isUrduLabelText
                                   ? 'NotoNastaliqUrdu'
                                   : 'OswaldLocal',
                               color: label.contains('Style_4')
