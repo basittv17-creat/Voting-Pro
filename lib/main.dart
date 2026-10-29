@@ -2145,8 +2145,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
-  void deleteSelectedText() {
-    final index = selectedTextIndex;
+  void deleteSelectedText({int? targetIndex}) {
+    final index = targetIndex ?? selectedTextIndex;
     if (index == null ||
         index < 0 ||
         index >= overlays.length ||
@@ -2172,7 +2172,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textGlowStrengths.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
+      final oldStickerIds = Set<int>.from(stickerOverlayIds);
       textOverlayIds.clear();
+      stickerOverlayIds.clear();
 
       for (var i = 0; i < overlays.length; i++) {
         final sourceIndex = i < index ? i : i + 1;
@@ -2194,8 +2196,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
+        if (oldStickerIds.contains(sourceIndex)) {
+          stickerOverlayIds.add(i);
+        }
       }
 
+      if (selectedStickerIndex != null) {
+        if (selectedStickerIndex == index) {
+          selectedStickerIndex = null;
+        } else if (selectedStickerIndex! > index) {
+          selectedStickerIndex = selectedStickerIndex! - 1;
+        }
+      }
       selectedTextIndex = null;
     });
   }
@@ -3191,7 +3203,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 }),
                 onDoubleTap: () {
                   if (isText) {
-                    deleteSelectedText();
+                    deleteSelectedText(targetIndex: index);
                   }
                 },
                 onScaleStart: (details) {
