@@ -2778,9 +2778,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   Positioned.fill(
                     child: Align(
                       alignment: Alignment.center,
+                      // Give long names a wider safe area, then scale them down
+                      // as needed so they remain inside the original label artwork.
                       child: FractionallySizedBox(
-                        widthFactor: 0.68,
-                        heightFactor: 0.86,
+                        widthFactor: 0.78,
+                        heightFactor: 0.90,
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
