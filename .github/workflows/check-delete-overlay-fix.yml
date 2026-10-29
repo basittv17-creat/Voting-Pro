@@ -394,7 +394,7 @@ jobs:
           from pathlib import Path
           source = Path("lib/main.dart").read_text()
           start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
-          end = source.find("\\n  void readyMadeTemplatesTool()", start)
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
           if start < 0 or end < 0:
               raise SystemExit("::error::Ready-made template artwork function not found.")
           artwork = source[start:end]
@@ -408,7 +408,7 @@ jobs:
               if item not in artwork:
                   raise SystemExit(f"::error::B-side template name editing missing: {item}")
           start = source.find("Future<void> editSideLabelText(bool sideA) async {")
-          end = source.find("\\n  Widget photoSlot(bool sideA)", start)
+          end = source.find("\n  Widget photoSlot(bool sideA)", start)
           editor = source[start:end]
           for item in ["bSideLabelText = result;", "if (selectedReadyMadeTemplate != null) _templateBNameEdited = true;"]:
               if item not in editor:
