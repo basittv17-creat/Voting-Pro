@@ -798,7 +798,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   Future<Uint8List?> capturePosterWithoutControls() async {
     if (!mounted) return null;
-    setState(() => isExportingPoster = true);
+    setState(() {
+      // Clear all edit/delete/resize handles before capturing, including when
+      // the poster is shared rather than saved through the Save button.
+      _clearCanvasSelection();
+      isExportingPoster = true;
+    });
     try {
       await WidgetsBinding.instance.endOfFrame;
       return await shot.capture(pixelRatio: 2.5);
