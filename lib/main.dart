@@ -2227,7 +2227,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           selectedStickerIndex = selectedStickerIndex! - 1;
         }
       }
-      selectedTextIndex = null;
+      if (selectedTextIndex != null) {
+        if (selectedTextIndex == index) {
+          selectedTextIndex = null;
+        } else if (selectedTextIndex! > index) {
+          selectedTextIndex = selectedTextIndex! - 1;
+        }
+      }
     });
   }
 
@@ -2282,7 +2288,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
 
-      selectedStickerIndex = null;
+      if (selectedStickerIndex != null) {
+        if (selectedStickerIndex == index) {
+          selectedStickerIndex = null;
+        } else if (selectedStickerIndex! > index) {
+          selectedStickerIndex = selectedStickerIndex! - 1;
+        }
+      }
       if (selectedTextIndex != null) {
         if (selectedTextIndex == index) {
           selectedTextIndex = null;
