@@ -298,6 +298,39 @@ jobs:
           print("A-side template photo tap, selection, zoom and position logic is present and isolated from B-side transforms.")
           PY
 
+      - name: Verify B-side photo replacement in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          checks = [
+              "final File? photo = preview ? null : (sideA ? a : b);",
+              "onTap: () => pick(false),",
+              "_selectCanvasObject(templatePhotoSideA: false);",
+              "if (_selectedTemplatePhotoSideA != false) return;",
+              "_templatePhotoScales[false] =",
+              "_templatePhotoOffsets[false] =",
+              ".clamp(0.8, 8.0)",
+              "onTap: () => pick(true),",
+          ]
+          for item in checks:
+              if item not in artwork:
+                  print(f"::error::B-side template photo behavior missing: {item}")
+                  raise SystemExit(1)
+          b_start = artwork.find("onTap: () => pick(false),")
+          b_region = artwork[b_start:]
+          if "pick(true)" in b_region or "_templatePhotoScales[true]" in b_region or "_templatePhotoOffsets[true]" in b_region:
+              raise SystemExit("::error::B-side photo interaction unexpectedly changes A-side transforms.")
+          print("B-side template photo tap, selection, zoom and position logic is present and isolated from A-side transforms.")
+          PY
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
