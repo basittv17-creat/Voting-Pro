@@ -331,6 +331,46 @@ jobs:
           print("B-side template photo tap, selection, zoom and position logic is present and isolated from A-side transforms.")
           PY
 
+      - name: Verify A-side name editing in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          required = [
+              "onTap: () => editSideLabelText(true),",
+              "_readyTemplateName(aSideLabelText, sideA: true, availableWidth: w * 0.315)",
+              "if (!preview && _templateANameEdited)",
+              "'assets/templates/Tagra_Muqabla_A_NamePlate.png'",
+          ]
+          for item in required:
+              if item not in artwork:
+                  print(f"::error::A-side template name editing missing: {item}")
+                  raise SystemExit(1)
+          start = source.find("Future<void> editSideLabelText(bool sideA) async {")
+          end = source.find("\n  Widget photoSlot(bool sideA)", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Side name editor function not found.")
+          editor = source[start:end]
+          for item in [
+              "if (sideA) {",
+              "aSideLabelText = result;",
+              "if (selectedReadyMadeTemplate != null) _templateANameEdited = true;",
+          ]:
+              if item not in editor:
+                  print(f"::error::A-side name update logic missing: {item}")
+                  raise SystemExit(1)
+          if "bSideLabelText = result;" not in editor or "_templateBNameEdited = true;" not in editor:
+              raise SystemExit("::error::Shared name editor no longer contains the separate B-side update path.")
+          print("A-side template name tap, editing, displayed text and name-plate logic are present.")
+          PY
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
