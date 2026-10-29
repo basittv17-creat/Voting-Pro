@@ -2942,7 +2942,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                        if (isVsSelected)
+                        if (!isExportingPoster && isVsSelected)
                           Positioned(
                             right: 0,
                             top: 0,
@@ -2982,7 +2982,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           if (selectedReadyMadeTemplate == null) ...letterOverlays.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
-            final selected = selectedLetterOverlayIndex == index;
+            final selected = !isExportingPoster && selectedLetterOverlayIndex == index;
             return Positioned(
               left: item.position.dx,
               top: item.position.dy,
@@ -3238,7 +3238,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final index = entry.key;
             final isText = textOverlayIds.contains(index);
             final isSticker = stickerOverlayIds.contains(index);
-            final isSelectedSticker = isSticker && selectedStickerIndex == index;
+            final isSelectedSticker = !isExportingPoster && isSticker && selectedStickerIndex == index;
             final position = textPositions[index] ??
                 Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
             final scale = textScales[index] ?? 1.0;
@@ -3299,7 +3299,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 220),
                         padding: const EdgeInsets.all(5),
-                        decoration: (isText && selectedTextIndex == index) || isSelectedSticker
+                        decoration: (!isExportingPoster && isText && selectedTextIndex == index) || isSelectedSticker
                             ? BoxDecoration(
                                 border: Border.all(color: gold, width: 2),
                                 borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
@@ -3368,7 +3368,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      if (isText && selectedTextIndex == index)
+                      if (!isExportingPoster && isText && selectedTextIndex == index)
                         Positioned(
                           right: -15,
                           top: -15,
@@ -3386,7 +3386,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      if (isText && selectedTextIndex == index)
+                      if (!isExportingPoster && isText && selectedTextIndex == index)
                         Positioned(
                           left: -15,
                           top: -15,
@@ -3409,7 +3409,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      if (isText && selectedTextIndex == index)
+                      if (!isExportingPoster && isText && selectedTextIndex == index)
                         Positioned(
                           right: -13,
                           bottom: -13,
