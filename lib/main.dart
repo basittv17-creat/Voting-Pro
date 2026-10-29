@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
         Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
+          PageRouteBuilder<void>(
             pageBuilder: (_, __, ___) => const Editor(),
             transitionDuration: const Duration(milliseconds: 350),
             transitionsBuilder: (_, animation, __, child) =>
@@ -541,7 +541,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
         tagraStickerOverlays
           ..clear()
-          ..addAll((data['tagraStickerOverlays'] as List? ?? const []).whereType<Map>().map((item) {
+          ..addAll((data['tagraStickerOverlays'] as List? ?? const []).whereType<Map<dynamic, dynamic>>().map((item) {
             final overlay = _TagraStickerOverlay(asset: item['asset'] as String);
             overlay.position = _offsetFromJson(item['position']);
             overlay.scale = (item['scale'] as num?)?.toDouble() ?? 1.0;
