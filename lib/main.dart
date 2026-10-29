@@ -2768,7 +2768,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   else { showBSideLabelDelete = true; }
                 }),
                 child: Stack(fit: StackFit.expand, children: [
-                  Image.asset(label, fit: BoxFit.contain),
+                  // Keep the selected label artwork unchanged while only its name text updates.
+                  Image.asset(
+                    label,
+                    fit: BoxFit.contain,
+                    gaplessPlayback: true,
+                  ),
                   Positioned.fill(
                     child: Align(
                       alignment: Alignment.center,
