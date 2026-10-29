@@ -110,6 +110,33 @@ jobs:
           done
           echo "All twelve Tagra Muqabla sticker assets exist and are referenced."
 
+      - name: Verify VS styles, scaling, movement, and delete behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          for style in "Royal Gold" "Fire" "Blue Neon" "Green Neon" "Electric" "Diamond" "Rainbow" "Luxury" "Golden Glow" "Black & Gold"; do
+            if ! grep -Fq "'$style'" lib/main.dart; then
+              echo "::error::VS style is missing from lib/main.dart: $style"
+              exit 1
+            fi
+          done
+          for required in \
+            "vsStyle = style.\$1;" \
+            "_selectCanvasObject(isVs: true)" \
+            "if (!isVsSelected) return;" \
+            "vsOffset += details.focalPointDelta;" \
+            "(vsStartScale * details.scale).clamp(0.5, 3.0).toDouble()" \
+            "showVs = false;" \
+            "vsOffset = Offset.zero;" \
+            "vsScale = 1.0;" \
+            "_selectCanvasObject();"; do
+            if ! grep -Fq "$required" lib/main.dart; then
+              echo "::error::Expected VS interaction logic is missing: $required"
+              exit 1
+            fi
+          done
+          echo "All ten VS styles and expected select/move/scale/delete logic are present."
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
