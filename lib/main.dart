@@ -2638,22 +2638,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(sideA ? 'Edit A Side Name' : 'Edit B Side Name'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 28,
-          textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
-              ? TextDirection.rtl
-              : TextDirection.ltr,
-          textAlign: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
-              ? TextAlign.right
-              : TextAlign.left,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(
-            labelText: 'Enter your text',
-            hintText: 'Type name here',
+        content: StatefulBuilder(
+          builder: (context, setDialogState) => TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 28,
+            textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+                ? TextDirection.rtl
+                : TextDirection.ltr,
+            textAlign: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+                ? TextAlign.right
+                : TextAlign.left,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: sideA ? 'Enter A Side name' : 'Enter B Side name',
+              hintText: sideA ? 'Type A Side name' : 'Type B Side name',
+            ),
+            onChanged: (_) => setDialogState(() {}),
+            onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
           ),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
         ),
         actions: [
           TextButton(
