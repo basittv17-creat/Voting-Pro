@@ -1,0 +1,37 @@
+name: Check Delete Overlay Fix
+
+on:
+  push:
+    branches:
+      - fix/delete-overlay-selection
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android and Web platform folders
+        run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Build Web
+        run: flutter build web --release
