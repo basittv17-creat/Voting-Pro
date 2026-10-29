@@ -171,6 +171,58 @@ jobs:
           print("A/B photo replacement is side-specific; only the replaced side's crop/zoom is reset.")
           PY
 
+      - name: Verify poster export includes content and excludes editing controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Future<Uint8List?> capturePosterWithoutControls() async {")
+          end = source.find("\n  // Clear selection state only", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Poster capture function not found.")
+          capture = source[start:end]
+          required_capture = [
+              "_clearCanvasSelection();",
+              "isExportingPoster = true;",
+              "await WidgetsBinding.instance.endOfFrame;",
+              "shot.capture(pixelRatio: 2.5)",
+              "isExportingPoster = false",
+          ]
+          for item in required_capture:
+              if item not in capture:
+                  print(f"::error::Poster capture is missing required behavior: {item}")
+                  raise SystemExit(1)
+          selection_start = source.find("void _clearCanvasSelection() {")
+          selection_end = source.find("\n  Future<void> save()", selection_start)
+          if selection_start < 0 or selection_end < 0:
+              raise SystemExit("::error::Canvas selection clearing function not found.")
+          selection = source[selection_start:selection_end]
+          for item in [
+              "selectedTextIndex = null;",
+              "selectedStickerIndex = null;",
+              "selectedTagraStickerIndex = null;",
+              "selectedLetterOverlayIndex = null;",
+              "isVsSelected = false;",
+              "_selectedPhotoSideA = null;",
+              "_selectedTemplatePhotoSideA = null;",
+              "showASideLabelDelete = false;",
+              "showBSideLabelDelete = false;",
+          ]:
+              if item not in selection:
+                  print(f"::error::Export selection cleanup is missing: {item}")
+                  raise SystemExit(1)
+          for method in ["Future<void> save()", "Future<void> share()"]:
+              start = source.find(method)
+              if start < 0:
+                  raise SystemExit(f"::error::Export action not found: {method}")
+              segment = source[start:source.find("\n  Future<void> ", start + 1) if source.find("\n  Future<void> ", start + 1) >= 0 else len(source)]
+              if "capturePosterWithoutControls()" not in segment:
+                  raise SystemExit(f"::error::{method} does not use the shared poster capture function.")
+          print("Poster capture clears selection controls, waits for the frame, captures the canvas, and is used by save/share.")
+          PY
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
