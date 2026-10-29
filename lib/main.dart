@@ -2264,6 +2264,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       }
 
       selectedStickerIndex = null;
+      if (selectedTextIndex != null) {
+        if (selectedTextIndex == index) {
+          selectedTextIndex = null;
+        } else if (selectedTextIndex! > index) {
+          selectedTextIndex = selectedTextIndex! - 1;
+        }
+      }
     });
   }
 
