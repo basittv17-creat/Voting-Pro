@@ -782,6 +782,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           } else {
             b = newImageFile;
           }
+
+          // A replacement photo starts with its own default crop/zoom.
+          // Keep the opposite side's photo and transform untouched.
+          _photoScales[sideA] = 1.0;
+          _photoOffsets[sideA] = Offset.zero;
+          _photoStartScales[sideA] = 1.0;
+          _selectCanvasObject(photoSideA: sideA);
         });
       }
     } catch (e) {
