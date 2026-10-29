@@ -263,6 +263,41 @@ jobs:
           print("All five classic ready-made templates are listed and have selectable 4:3 configuration.")
           PY
 
+      - name: Verify A-side photo replacement in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          checks = [
+              "final File? photo = preview ? null : (sideA ? a : b);",
+              "'template-photo-${sideA ? \"A\" : \"B\"}-${photo.path}'",
+              "onTap: () => pick(true),",
+              "_selectCanvasObject(templatePhotoSideA: true);",
+              "if (_selectedTemplatePhotoSideA != true) return;",
+              "_templatePhotoScales[true] =",
+              "_templatePhotoOffsets[true] =",
+              ".clamp(0.8, 8.0)",
+              "onTap: () => pick(false),",
+          ]
+          for item in checks:
+              if item not in artwork:
+                  print(f"::error::A-side template photo behavior missing: {item}")
+                  raise SystemExit(1)
+          a_start = artwork.find("onTap: () => pick(true),")
+          b_start = artwork.find("onTap: () => pick(false),")
+          a_region = artwork[a_start:b_start]
+          if "pick(false)" in a_region or "_templatePhotoScales[false]" in a_region or "_templatePhotoOffsets[false]" in a_region:
+              raise SystemExit("::error::A-side photo interaction unexpectedly changes B-side transforms.")
+          print("A-side template photo tap, selection, zoom and position logic is present and isolated from B-side transforms.")
+          PY
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
