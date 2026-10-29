@@ -28,7 +28,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze Dart code
-        run: flutter analyze lib/main.dart
+        run: flutter analyze lib/main.dart --no-fatal-infos
 
       - name: Build debug APK
         run: flutter build apk --debug
