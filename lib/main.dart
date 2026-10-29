@@ -1040,10 +1040,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => pick(true),
                     onScaleStart: (_) {
+                      _selectCanvasObject(templatePhotoSideA: true);
                       _templatePhotoStartScales[true] =
                           _templatePhotoScales[true] ?? 1.0;
                     },
                     onScaleUpdate: (details) {
+                      if (_selectedTemplatePhotoSideA != true) return;
                       setState(() {
                         _templatePhotoScales[true] =
                             ((_templatePhotoStartScales[true] ?? 1.0) *
@@ -1068,10 +1070,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => pick(false),
                     onScaleStart: (_) {
+                      _selectCanvasObject(templatePhotoSideA: false);
                       _templatePhotoStartScales[false] =
                           _templatePhotoScales[false] ?? 1.0;
                     },
                     onScaleUpdate: (details) {
+                      if (_selectedTemplatePhotoSideA != false) return;
                       setState(() {
                         _templatePhotoScales[false] =
                             ((_templatePhotoStartScales[false] ?? 1.0) *
@@ -2560,6 +2564,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   // Exactly one canvas object is active at a time. This prevents overlapping
   // GestureDetectors from leaving multiple objects selected or moving together.
   bool? _selectedPhotoSideA;
+  bool? _selectedTemplatePhotoSideA;
 
   void _selectCanvasObject({
     int? tagraIndex,
@@ -2568,6 +2573,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     int? stickerIndex,
     bool isVs = false,
     bool? photoSideA,
+    bool? templatePhotoSideA,
   }) {
     // Centralized exclusive selection: passing one target clears every other
     // movable object's selection. Label asset paths are content, not selection.
@@ -2577,6 +2583,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     selectedStickerIndex = stickerIndex;
     isVsSelected = isVs;
     _selectedPhotoSideA = photoSideA;
+    _selectedTemplatePhotoSideA = templatePhotoSideA;
 
     // Close stale label-delete handles when the user selects another object.
     showASideLabelDelete = false;
