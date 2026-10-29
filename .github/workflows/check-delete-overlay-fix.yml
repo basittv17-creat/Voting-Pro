@@ -21,6 +21,30 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify all five A/B label styles are present and referenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          for side in a_side b_side; do
+            if [ "$side" = "a_side" ]; then
+              prefix="A_Side"
+            else
+              prefix="B_Side"
+            fi
+            for style in 1 2 3 4 5; do
+              asset="assets/label_bars/$side/${prefix}_Style_${style}.png"
+              if [ ! -s "$asset" ]; then
+                echo "::error::Missing label style asset: $asset"
+                exit 1
+              fi
+              if ! grep -Fq "$asset" lib/main.dart; then
+                echo "::error::Label style is not referenced in lib/main.dart: $asset"
+                exit 1
+              fi
+            done
+          done
+          echo "All five A-side and all five B-side label styles exist and are referenced."
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
