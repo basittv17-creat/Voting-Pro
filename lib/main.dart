@@ -2386,7 +2386,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     setState(() {
       tagraStickerOverlays.removeAt(index);
-      selectedTagraStickerIndex = null;
+      _selectCanvasObject();
     });
   }
 
@@ -2446,7 +2446,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (index == null || index < 0 || index >= letterOverlays.length) return;
     setState(() {
       letterOverlays.removeAt(index);
-      selectedLetterOverlayIndex = null;
+      _selectCanvasObject();
     });
   }
 
@@ -2938,10 +2938,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                               behavior: HitTestBehavior.opaque,
                               onTap: () => setState(() {
                                 showVs = false;
-                                isVsSelected = false;
                                 vsOffset = Offset.zero;
                                 vsScale = 1.0;
                                 vsStartScale = 1.0;
+                                _selectCanvasObject();
                               }),
                               child: Container(
                                 width: 24,
