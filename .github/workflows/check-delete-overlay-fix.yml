@@ -79,6 +79,37 @@ jobs:
           done
           echo "All ten B-side letter styles exist and are referenced."
 
+      - name: Verify all twelve Tagra Muqabla stickers are present and referenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          stickers=(
+            "Tagra_Muqabla_01_Royal_Gold.png"
+            "Tagra_Muqabla_02_Comic_Burst.png"
+            "Tagra_Muqabla_03_Green_Crown.png"
+            "Tagra_Muqabla_04_Fire.png"
+            "Tagra_Muqabla_05_Blue_Megaphone.png"
+            "Tagra_Muqabla_06_Red_Brush.png"
+            "Tagra_Muqabla_07_Gold_Trophy.png"
+            "Tagra_Muqabla_08_Pakistan_Flag.png"
+            "Tagra_Muqabla_09_Purple_Neon.png"
+            "Tagra_Muqabla_10_Ice_Blue.png"
+            "Tagra_Muqabla_11_Royal_Ribbon.png"
+            "Tagra_Muqabla_12_Pink_Neon.png"
+          )
+          for sticker in "${stickers[@]}"; do
+            asset="assets/tagra_muqabla_stickers/$sticker"
+            if [ ! -s "$asset" ]; then
+              echo "::error::Missing Tagra Muqabla sticker asset: $asset"
+              exit 1
+            fi
+            if ! grep -Fq "$asset" lib/main.dart; then
+              echo "::error::Tagra Muqabla sticker is not referenced in lib/main.dart: $asset"
+              exit 1
+            fi
+          done
+          echo "All twelve Tagra Muqabla sticker assets exist and are referenced."
+
       - name: Generate Android and Web platform folders
         run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
 
