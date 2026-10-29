@@ -385,3 +385,136 @@ jobs:
 
       - name: Build Web
         run: flutter build web --release
+
+      - name: Verify B-side name editing in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          required = [
+              "onTap: () => editSideLabelText(false),",
+              "_readyTemplateName(bSideLabelText, sideA: false, availableWidth: w * 0.315)",
+              "if (!preview && _templateBNameEdited)",
+              "'assets/templates/Tagra_Muqabla_B_NamePlate.png'",
+          ]
+          for item in required:
+              if item not in artwork:
+                  raise SystemExit(f"::error::B-side template name editing missing: {item}")
+          start = source.find("Future<void> editSideLabelText(bool sideA) async {")
+          end = source.find("\\n  Widget photoSlot(bool sideA)", start)
+          editor = source[start:end]
+          for item in ["bSideLabelText = result;", "if (selectedReadyMadeTemplate != null) _templateBNameEdited = true;"]:
+              if item not in editor:
+                  raise SystemExit(f"::error::B-side name update logic missing: {item}")
+          print("B-side template name editing and separate state are present.")
+          PY
+
+      - name: Verify text tools, styling, glow, and independent selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "Future<void> addText() async",
+              "textFonts[index]",
+              "textColors[index]",
+              "textGlowColors",
+              "textGlowStrengths",
+              "showGlowPanel",
+              "selectedTextIndex",
+              "selectedStickerIndex",
+              "void _selectCanvasObject(",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Text/sticker editing feature missing: {item}")
+          print("Text creation, font/color/glow state and selection state are present.")
+          PY
+
+      - name: Verify project autosave and restore hooks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "SharedPreferences.getInstance()",
+              "Future<void> _saveProject()",
+              "Future<void> _restoreProject()",
+              "_scheduleProjectSave()",
+              "WidgetsBinding.instance.addObserver(this)",
+              "AppLifecycleState.paused",
+              "_persistProjectImage",
+              "side_a.img",
+              "side_b.img",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Project persistence hook missing: {item}")
+          print("Autosave, app lifecycle save, image persistence and restore hooks are present.")
+          PY
+
+      - name: Verify poster save/share and 4:3 canvas settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "Future<void> save()",
+              "Gal.putImageBytes(",
+              "Future<void> share()",
+              "Share.shareXFiles(",
+              "capturePosterWithoutControls()",
+              "canvasRatio = 4 / 3;",
+              "showSnackBar",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Save/share/canvas behavior missing: {item}")
+          print("Gallery save, share, shared poster capture, 4:3 canvas and user messages are present.")
+          PY
+
+      - name: Report sign-in feature availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eq 'FirebaseAuth|signInWith|GoogleSignIn|class .*SignIn' lib/main.dart; then
+            echo "Sign-in-related code was found; this workflow does not perform live authentication."
+          else
+            echo "::notice::No sign-in/authentication implementation was found in lib/main.dart; sign-in is not available to test."
+          fi
+
+      - name: Verify mobile controls and panel state hooks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "showTextTools",
+              "showStickerTools",
+              "showCanvasTools",
+              "showVotingStickerTools",
+              "showAStyleGallery",
+              "showBStyleGallery",
+              "showTagraStickerGallery",
+              "showGlowPanel",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Editor panel state missing: {item}")
+          print("Expected editor tool/gallery panel state hooks are present.")
+          PY
