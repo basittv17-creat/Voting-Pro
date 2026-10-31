@@ -631,7 +631,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       await prefs.remove(_projectSaveKey);
       final dir = await _projectDirectory();
       if (await dir.exists()) await dir.delete(recursive: true);
-    } catch (_) {}
+    } catch (_) {
+      // The next editor still starts from its default in-memory state.
+      // Do not restore the old project if clearing its files fails.
+    }
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const Editor()),
@@ -782,6 +785,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           } else {
             b = newImageFile;
           }
+
+          // A replacement photo starts with its own default crop/zoom.
+          // Keep the opposite side's photo and transform untouched.
+          _photoScales[sideA] = 1.0;
+          _photoOffsets[sideA] = Offset.zero;
+          _photoStartScales[sideA] = 1.0;
+          _selectCanvasObject(photoSideA: sideA);
         });
       }
     } catch (e) {
@@ -791,7 +801,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   Future<Uint8List?> capturePosterWithoutControls() async {
     if (!mounted) return null;
-    setState(() => isExportingPoster = true);
+    setState(() {
+      // Clear all edit/delete/resize handles before capturing, including when
+      // the poster is shared rather than saved through the Save button.
+      _clearCanvasSelection();
+      isExportingPoster = true;
+    });
     try {
       await WidgetsBinding.instance.endOfFrame;
       return await shot.capture(pixelRatio: 2.5);
@@ -812,6 +827,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     selectedLetterOverlayIndex = null;
     isVsSelected = false;
     _selectedPhotoSideA = null;
+    _selectedTemplatePhotoSideA = null;
     showASideLabelDelete = false;
     showBSideLabelDelete = false;
   }
@@ -1040,10 +1056,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => pick(true),
                     onScaleStart: (_) {
+                      _selectCanvasObject(templatePhotoSideA: true);
                       _templatePhotoStartScales[true] =
                           _templatePhotoScales[true] ?? 1.0;
                     },
                     onScaleUpdate: (details) {
+                      if (_selectedTemplatePhotoSideA != true) return;
                       setState(() {
                         _templatePhotoScales[true] =
                             ((_templatePhotoStartScales[true] ?? 1.0) *
@@ -1068,10 +1086,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => pick(false),
                     onScaleStart: (_) {
+                      _selectCanvasObject(templatePhotoSideA: false);
                       _templatePhotoStartScales[false] =
                           _templatePhotoScales[false] ?? 1.0;
                     },
                     onScaleUpdate: (details) {
+                      if (_selectedTemplatePhotoSideA != false) return;
                       setState(() {
                         _templatePhotoScales[false] =
                             ((_templatePhotoStartScales[false] ?? 1.0) *
@@ -1164,6 +1184,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         selectedReadyMadeTemplate = 'tagra_muqabla';
                         _templateANameEdited = false;
                         _templateBNameEdited = false;
+                        _templatePhotoScales[true] = 1.0;
+                        _templatePhotoScales[false] = 1.0;
+                        _templatePhotoOffsets[true] = Offset.zero;
+                        _templatePhotoOffsets[false] = Offset.zero;
+                        _selectedTemplatePhotoSideA = null;
                         canvasRatio = 1447 / 1087;
                         background = dark;
                         frameWidth = 0;
@@ -1303,6 +1328,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       borderRadius: BorderRadius.circular(14),
                       onTap: () {
                         setState(() {
+                          // Switching from the dedicated editable template back
+                          // to a classic 4:3 template must restore the classic
+                          // editor canvas instead of leaving the old artwork active.
+                          selectedReadyMadeTemplate = null;
+                          // Reset template-only edit/gesture state when moving
+                          // from the Tagra Muqabla artwork to a classic template.
+                          _templateANameEdited = false;
+                          _templateBNameEdited = false;
+                          _templatePhotoScales[true] = 1.0;
+                          _templatePhotoScales[false] = 1.0;
+                          _templatePhotoOffsets[true] = Offset.zero;
+                          _templatePhotoOffsets[false] = Offset.zero;
+                          _selectedTemplatePhotoSideA = null;
+                          _clearCanvasSelection();
                           canvasRatio = 4 / 3;
                           background = template.base;
                           frameColor = template.accent;
@@ -2145,8 +2184,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
-  void deleteSelectedText() {
-    final index = selectedTextIndex;
+  void deleteSelectedText({int? targetIndex}) {
+    final index = targetIndex ?? selectedTextIndex;
     if (index == null ||
         index < 0 ||
         index >= overlays.length ||
@@ -2172,7 +2211,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textGlowStrengths.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
+      final oldStickerIds = Set<int>.from(stickerOverlayIds);
       textOverlayIds.clear();
+      stickerOverlayIds.clear();
 
       for (var i = 0; i < overlays.length; i++) {
         final sourceIndex = i < index ? i : i + 1;
@@ -2194,9 +2235,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
+        if (oldStickerIds.contains(sourceIndex)) {
+          stickerOverlayIds.add(i);
+        }
       }
 
-      selectedTextIndex = null;
+      if (selectedStickerIndex != null) {
+        if (selectedStickerIndex == index) {
+          selectedStickerIndex = null;
+        } else if (selectedStickerIndex! > index) {
+          selectedStickerIndex = selectedStickerIndex! - 1;
+        }
+      }
+      if (selectedTextIndex != null) {
+        if (selectedTextIndex == index) {
+          selectedTextIndex = null;
+        } else if (selectedTextIndex! > index) {
+          selectedTextIndex = selectedTextIndex! - 1;
+        }
+      }
     });
   }
 
@@ -2251,7 +2308,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
 
-      selectedStickerIndex = null;
+      if (selectedStickerIndex != null) {
+        if (selectedStickerIndex == index) {
+          selectedStickerIndex = null;
+        } else if (selectedStickerIndex! > index) {
+          selectedStickerIndex = selectedStickerIndex! - 1;
+        }
+      }
+      if (selectedTextIndex != null) {
+        if (selectedTextIndex == index) {
+          selectedTextIndex = null;
+        } else if (selectedTextIndex! > index) {
+          selectedTextIndex = selectedTextIndex! - 1;
+        }
+      }
     });
   }
 
@@ -2336,7 +2406,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     setState(() {
       tagraStickerOverlays.removeAt(index);
-      selectedTagraStickerIndex = null;
+      _selectCanvasObject();
     });
   }
 
@@ -2396,7 +2466,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (index == null || index < 0 || index >= letterOverlays.length) return;
     setState(() {
       letterOverlays.removeAt(index);
-      selectedLetterOverlayIndex = null;
+      _selectCanvasObject();
     });
   }
 
@@ -2541,6 +2611,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   // Exactly one canvas object is active at a time. This prevents overlapping
   // GestureDetectors from leaving multiple objects selected or moving together.
   bool? _selectedPhotoSideA;
+  bool? _selectedTemplatePhotoSideA;
 
   void _selectCanvasObject({
     int? tagraIndex,
@@ -2549,6 +2620,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     int? stickerIndex,
     bool isVs = false,
     bool? photoSideA,
+    bool? templatePhotoSideA,
   }) {
     // Centralized exclusive selection: passing one target clears every other
     // movable object's selection. Label asset paths are content, not selection.
@@ -2558,6 +2630,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     selectedStickerIndex = stickerIndex;
     isVsSelected = isVs;
     _selectedPhotoSideA = photoSideA;
+    _selectedTemplatePhotoSideA = templatePhotoSideA;
 
     // Close stale label-delete handles when the user selects another object.
     showASideLabelDelete = false;
@@ -2573,16 +2646,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(sideA ? 'Edit A Side Name' : 'Edit B Side Name'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 28,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(
-            labelText: 'Enter your text',
-            hintText: 'Type name here',
+        content: StatefulBuilder(
+          builder: (context, setDialogState) => TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 28,
+            textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+                ? TextDirection.rtl
+                : TextDirection.ltr,
+            textAlign: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+                ? TextAlign.right
+                : TextAlign.left,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: sideA ? 'Enter A Side name' : 'Enter B Side name',
+              hintText: sideA ? 'Type A Side name' : 'Type B Side name',
+            ),
+            onChanged: (_) => setDialogState(() {}),
+            onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
           ),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
         ),
         actions: [
           TextButton(
@@ -2620,6 +2702,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final label = sideA ? selectedASideLabel : selectedBSideLabel;
     final showDelete = sideA ? showASideLabelDelete : showBSideLabelDelete;
     final labelText = sideA ? aSideLabelText : bSideLabelText;
+    final isUrduLabelText = RegExp(r'[\u0600-\u06FF]').hasMatch(labelText);
     return GestureDetector(
       onTap: () {
         if (file == null) {
@@ -2694,23 +2777,32 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   else { showBSideLabelDelete = true; }
                 }),
                 child: Stack(fit: StackFit.expand, children: [
-                  Image.asset(label, fit: BoxFit.contain),
+                  // Keep the selected label artwork unchanged while only its name text updates.
+                  Image.asset(
+                    label,
+                    fit: BoxFit.contain,
+                    gaplessPlayback: true,
+                  ),
                   Positioned.fill(
                     child: Align(
                       alignment: Alignment.center,
+                      // Give long names a wider safe area, then scale them down
+                      // as needed so they remain inside the original label artwork.
                       child: FractionallySizedBox(
-                        widthFactor: 0.68,
-                        heightFactor: 0.86,
+                        widthFactor: 0.78,
+                        heightFactor: 0.90,
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             labelText,
                             maxLines: 1,
-                            textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(labelText)
+                            softWrap: false,
+                            textAlign: TextAlign.center,
+                            textDirection: isUrduLabelText
                                 ? TextDirection.rtl
                                 : TextDirection.ltr,
                             style: TextStyle(
-                              fontFamily: RegExp(r'[\u0600-\u06FF]').hasMatch(labelText)
+                              fontFamily: isUrduLabelText
                                   ? 'NotoNastaliqUrdu'
                                   : 'OswaldLocal',
                               color: label.contains('Style_4')
@@ -2877,7 +2969,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                        if (isVsSelected)
+                        if (!isExportingPoster && isVsSelected)
                           Positioned(
                             right: 0,
                             top: 0,
@@ -2885,10 +2977,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                               behavior: HitTestBehavior.opaque,
                               onTap: () => setState(() {
                                 showVs = false;
-                                isVsSelected = false;
                                 vsOffset = Offset.zero;
                                 vsScale = 1.0;
                                 vsStartScale = 1.0;
+                                _selectCanvasObject();
                               }),
                               child: Container(
                                 width: 24,
@@ -2917,7 +3009,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           if (selectedReadyMadeTemplate == null) ...letterOverlays.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
-            final selected = selectedLetterOverlayIndex == index;
+            final selected = !isExportingPoster && selectedLetterOverlayIndex == index;
             return Positioned(
               left: item.position.dx,
               top: item.position.dy,
@@ -3173,7 +3265,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final index = entry.key;
             final isText = textOverlayIds.contains(index);
             final isSticker = stickerOverlayIds.contains(index);
-            final isSelectedSticker = isSticker && selectedStickerIndex == index;
+            final isSelectedSticker = !isExportingPoster && isSticker && selectedStickerIndex == index;
             final position = textPositions[index] ??
                 Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
             final scale = textScales[index] ?? 1.0;
@@ -3191,7 +3283,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 }),
                 onDoubleTap: () {
                   if (isText) {
-                    deleteSelectedText();
+                    deleteSelectedText(targetIndex: index);
                   }
                 },
                 onScaleStart: (details) {
@@ -3234,7 +3326,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 220),
                         padding: const EdgeInsets.all(5),
-                        decoration: (isText && selectedTextIndex == index) || isSelectedSticker
+                        decoration: (!isExportingPoster && isText && selectedTextIndex == index) || isSelectedSticker
                             ? BoxDecoration(
                                 border: Border.all(color: gold, width: 2),
                                 borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
@@ -3303,7 +3395,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      if (isText && selectedTextIndex == index)
+                      if (!isExportingPoster && isText && selectedTextIndex == index)
                         Positioned(
                           right: -15,
                           top: -15,
@@ -3321,7 +3413,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      if (isText && selectedTextIndex == index)
+                      if (!isExportingPoster && isText && selectedTextIndex == index)
                         Positioned(
                           left: -15,
                           top: -15,
@@ -3344,7 +3436,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      if (isText && selectedTextIndex == index)
+                      if (!isExportingPoster && isText && selectedTextIndex == index)
                         Positioned(
                           right: -13,
                           bottom: -13,
@@ -3426,6 +3518,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tool('B', 'Change Photo B', () => pick(false)),
                 tool('🎨', 'Templates', readyMadeTemplatesTool),
                 tool('↩', 'Classic Editor', () => setState(() {
+                  _clearCanvasSelection();
                   selectedReadyMadeTemplate = null;
                   _templateANameEdited = false;
                   _templateBNameEdited = false;

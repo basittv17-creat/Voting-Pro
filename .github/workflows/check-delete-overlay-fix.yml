@@ -1,0 +1,520 @@
+name: Check Delete Overlay Fix
+
+on:
+  push:
+    branches:
+      - fix/delete-overlay-selection
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify all five A/B label styles are present and referenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          for side in a_side b_side; do
+            if [ "$side" = "a_side" ]; then
+              prefix="A_Side"
+            else
+              prefix="B_Side"
+            fi
+            for style in 1 2 3 4 5; do
+              asset="assets/label_bars/$side/${prefix}_Style_${style}.png"
+              if [ ! -s "$asset" ]; then
+                echo "::error::Missing label style asset: $asset"
+                exit 1
+              fi
+              if ! grep -Fq "$asset" lib/main.dart; then
+                echo "::error::Label style is not referenced in lib/main.dart: $asset"
+                exit 1
+              fi
+            done
+          done
+          echo "All five A-side and all five B-side label styles exist and are referenced."
+
+      - name: Verify all ten A-side letter styles are present and referenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          for style in $(seq -w 1 10); do
+            asset="assets/a_letter_styles/A_Style_${style}.png"
+            if [ ! -s "$asset" ]; then
+              echo "::error::Missing A-side letter style asset: $asset"
+              exit 1
+            fi
+            if ! grep -Fq "$asset" lib/main.dart; then
+              echo "::error::A-side letter style is not referenced in lib/main.dart: $asset"
+              exit 1
+            fi
+          done
+          echo "All ten A-side letter styles exist and are referenced."
+
+      - name: Verify all ten B-side letter styles are present and referenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          for style in $(seq -w 1 10); do
+            asset="assets/b_letter_styles/B_Style_${style}.png"
+            if [ ! -s "$asset" ]; then
+              echo "::error::Missing B-side letter style asset: $asset"
+              exit 1
+            fi
+            if ! grep -Fq "$asset" lib/main.dart; then
+              echo "::error::B-side letter style is not referenced in lib/main.dart: $asset"
+              exit 1
+            fi
+          done
+          echo "All ten B-side letter styles exist and are referenced."
+
+      - name: Verify all twelve Tagra Muqabla stickers are present and referenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          stickers=(
+            "Tagra_Muqabla_01_Royal_Gold.png"
+            "Tagra_Muqabla_02_Comic_Burst.png"
+            "Tagra_Muqabla_03_Green_Crown.png"
+            "Tagra_Muqabla_04_Fire.png"
+            "Tagra_Muqabla_05_Blue_Megaphone.png"
+            "Tagra_Muqabla_06_Red_Brush.png"
+            "Tagra_Muqabla_07_Gold_Trophy.png"
+            "Tagra_Muqabla_08_Pakistan_Flag.png"
+            "Tagra_Muqabla_09_Purple_Neon.png"
+            "Tagra_Muqabla_10_Ice_Blue.png"
+            "Tagra_Muqabla_11_Royal_Ribbon.png"
+            "Tagra_Muqabla_12_Pink_Neon.png"
+          )
+          for sticker in "${stickers[@]}"; do
+            asset="assets/tagra_muqabla_stickers/$sticker"
+            if [ ! -s "$asset" ]; then
+              echo "::error::Missing Tagra Muqabla sticker asset: $asset"
+              exit 1
+            fi
+            if ! grep -Fq "$asset" lib/main.dart; then
+              echo "::error::Tagra Muqabla sticker is not referenced in lib/main.dart: $asset"
+              exit 1
+            fi
+          done
+          echo "All twelve Tagra Muqabla sticker assets exist and are referenced."
+
+      - name: Verify VS styles, scaling, movement, and delete behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          for style in "Royal Gold" "Fire" "Blue Neon" "Green Neon" "Electric" "Diamond" "Rainbow" "Luxury" "Golden Glow" "Black & Gold"; do
+            if ! grep -Fq "'$style'" lib/main.dart; then
+              echo "::error::VS style is missing from lib/main.dart: $style"
+              exit 1
+            fi
+          done
+          for required in \
+            "vsStyle = style.\$1;" \
+            "_selectCanvasObject(isVs: true)" \
+            "if (!isVsSelected) return;" \
+            "vsOffset += details.focalPointDelta;" \
+            "(vsStartScale * details.scale).clamp(0.5, 3.0).toDouble()" \
+            "showVs = false;" \
+            "vsOffset = Offset.zero;" \
+            "vsScale = 1.0;" \
+            "_selectCanvasObject();"; do
+            if ! grep -Fq "$required" lib/main.dart; then
+              echo "::error::Expected VS interaction logic is missing: $required"
+              exit 1
+            fi
+          done
+          echo "All ten VS styles and expected select/move/scale/delete logic are present."
+
+      - name: Verify replacing one photo preserves the opposite photo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Future<void> pick(bool sideA) async {")
+          end = source.find("\n  Future<Uint8List?> capturePosterWithoutControls()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Could not locate the photo picker function.")
+          picker = source[start:end]
+          required = [
+              "if (sideA) {",
+              "a = newImageFile;",
+              "} else {",
+              "b = newImageFile;",
+              "_photoScales[sideA] = 1.0;",
+              "_photoOffsets[sideA] = Offset.zero;",
+              "_photoStartScales[sideA] = 1.0;",
+              "_selectCanvasObject(photoSideA: sideA);",
+          ]
+          missing = [item for item in required if item not in picker]
+          if missing:
+              for item in missing:
+                  print(f"::error::Photo replacement logic missing: {item}")
+              raise SystemExit(1)
+          a_assignment = picker.index("a = newImageFile;")
+          b_assignment = picker.index("b = newImageFile;")
+          if not (picker.index("if (sideA) {") < a_assignment < picker.index("} else {") < b_assignment):
+              raise SystemExit("::error::A/B photo assignments are not isolated by side.")
+          print("A/B photo replacement is side-specific; only the replaced side's crop/zoom is reset.")
+          PY
+
+      - name: Verify poster export includes content and excludes editing controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Future<Uint8List?> capturePosterWithoutControls() async {")
+          end = source.find("\n  // Clear selection state only", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Poster capture function not found.")
+          capture = source[start:end]
+          required_capture = [
+              "_clearCanvasSelection();",
+              "isExportingPoster = true;",
+              "await WidgetsBinding.instance.endOfFrame;",
+              "shot.capture(pixelRatio: 2.5)",
+              "isExportingPoster = false",
+          ]
+          for item in required_capture:
+              if item not in capture:
+                  print(f"::error::Poster capture is missing required behavior: {item}")
+                  raise SystemExit(1)
+          selection_start = source.find("void _clearCanvasSelection() {")
+          selection_end = source.find("\n  Future<void> save()", selection_start)
+          if selection_start < 0 or selection_end < 0:
+              raise SystemExit("::error::Canvas selection clearing function not found.")
+          selection = source[selection_start:selection_end]
+          for item in [
+              "selectedTextIndex = null;",
+              "selectedStickerIndex = null;",
+              "selectedTagraStickerIndex = null;",
+              "selectedLetterOverlayIndex = null;",
+              "isVsSelected = false;",
+              "_selectedPhotoSideA = null;",
+              "_selectedTemplatePhotoSideA = null;",
+              "showASideLabelDelete = false;",
+              "showBSideLabelDelete = false;",
+          ]:
+              if item not in selection:
+                  print(f"::error::Export selection cleanup is missing: {item}")
+                  raise SystemExit(1)
+          for method in ["Future<void> save()", "Future<void> share()"]:
+              start = source.find(method)
+              if start < 0:
+                  raise SystemExit(f"::error::Export action not found: {method}")
+              segment = source[start:source.find("\n  Future<void> ", start + 1) if source.find("\n  Future<void> ", start + 1) >= 0 else len(source)]
+              if "capturePosterWithoutControls()" not in segment:
+                  raise SystemExit(f"::error::{method} does not use the shared poster capture function.")
+          print("Poster capture clears selection controls, waits for the frame, captures the canvas, and is used by save/share.")
+          PY
+
+      - name: Verify five ready-made templates are available and selectable
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("void _legacyReadyMadeTemplatesTool() {")
+          end = source.find("\n  void ", start + 1)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template list was not found.")
+          section = source[start:end]
+          names = [
+              "Royal Blue & Pink",
+              "Classic Crown Battle",
+              "Neon Battle",
+              "Red & Gold Arena",
+              "Blue & Gold Classic",
+          ]
+          for name in names:
+              if f"name: '{name}'" not in section:
+                  print(f"::error::Ready-made template is missing: {name}")
+                  raise SystemExit(1)
+          required = [
+              "itemCount: templates.length",
+              "onTap: () {",
+              "selectedReadyMadeTemplate = null;",
+              "canvasRatio = 4 / 3;",
+              "selectedStylishFrame = template.frame;",
+              "selectedASideLabel = template.aLabel;",
+              "selectedBSideLabel = template.bLabel;",
+              "vsStyle = template.vs;",
+          ]
+          for item in required:
+              if item not in section:
+                  print(f"::error::Template selection behavior is missing: {item}")
+                  raise SystemExit(1)
+          print("All five classic ready-made templates are listed and have selectable 4:3 configuration.")
+          PY
+
+      - name: Verify A-side photo replacement in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          checks = [
+              "final File? photo = preview ? null : (sideA ? a : b);",
+              "'template-photo-${sideA ? \"A\" : \"B\"}-${photo.path}'",
+              "onTap: () => pick(true),",
+              "_selectCanvasObject(templatePhotoSideA: true);",
+              "if (_selectedTemplatePhotoSideA != true) return;",
+              "_templatePhotoScales[true] =",
+              "_templatePhotoOffsets[true] =",
+              ".clamp(0.8, 8.0)",
+              "onTap: () => pick(false),",
+          ]
+          for item in checks:
+              if item not in artwork:
+                  print(f"::error::A-side template photo behavior missing: {item}")
+                  raise SystemExit(1)
+          a_start = artwork.find("onTap: () => pick(true),")
+          b_start = artwork.find("onTap: () => pick(false),")
+          a_region = artwork[a_start:b_start]
+          if "pick(false)" in a_region or "_templatePhotoScales[false]" in a_region or "_templatePhotoOffsets[false]" in a_region:
+              raise SystemExit("::error::A-side photo interaction unexpectedly changes B-side transforms.")
+          print("A-side template photo tap, selection, zoom and position logic is present and isolated from B-side transforms.")
+          PY
+
+      - name: Verify B-side photo replacement in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          checks = [
+              "final File? photo = preview ? null : (sideA ? a : b);",
+              "onTap: () => pick(false),",
+              "_selectCanvasObject(templatePhotoSideA: false);",
+              "if (_selectedTemplatePhotoSideA != false) return;",
+              "_templatePhotoScales[false] =",
+              "_templatePhotoOffsets[false] =",
+              ".clamp(0.8, 8.0)",
+              "onTap: () => pick(true),",
+          ]
+          for item in checks:
+              if item not in artwork:
+                  print(f"::error::B-side template photo behavior missing: {item}")
+                  raise SystemExit(1)
+          b_start = artwork.find("onTap: () => pick(false),")
+          b_region = artwork[b_start:]
+          if "pick(true)" in b_region or "_templatePhotoScales[true]" in b_region or "_templatePhotoOffsets[true]" in b_region:
+              raise SystemExit("::error::B-side photo interaction unexpectedly changes A-side transforms.")
+          print("B-side template photo tap, selection, zoom and position logic is present and isolated from A-side transforms.")
+          PY
+
+      - name: Verify A-side name editing in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          required = [
+              "onTap: () => editSideLabelText(true),",
+              "_readyTemplateName(aSideLabelText, sideA: true, availableWidth: w * 0.315)",
+              "if (!preview && _templateANameEdited)",
+              "'assets/templates/Tagra_Muqabla_A_NamePlate.png'",
+          ]
+          for item in required:
+              if item not in artwork:
+                  print(f"::error::A-side template name editing missing: {item}")
+                  raise SystemExit(1)
+          start = source.find("Future<void> editSideLabelText(bool sideA) async {")
+          end = source.find("\n  Widget photoSlot(bool sideA)", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Side name editor function not found.")
+          editor = source[start:end]
+          for item in [
+              "if (sideA) {",
+              "aSideLabelText = result;",
+              "if (selectedReadyMadeTemplate != null) _templateANameEdited = true;",
+          ]:
+              if item not in editor:
+                  print(f"::error::A-side name update logic missing: {item}")
+                  raise SystemExit(1)
+          if "bSideLabelText = result;" not in editor or "_templateBNameEdited = true;" not in editor:
+              raise SystemExit("::error::Shared name editor no longer contains the separate B-side update path.")
+          print("A-side template name tap, editing, displayed text and name-plate logic are present.")
+          PY
+
+      - name: Generate Android and Web platform folders
+        run: flutter create . --platforms=android,web --project-name votingpro --org com.awasigogera
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        run: flutter analyze lib/main.dart --no-fatal-infos
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Build Web
+        run: flutter build web --release
+
+      - name: Verify B-side name editing in ready-made template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          start = source.find("Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {")
+          end = source.find("\n  void readyMadeTemplatesTool()", start)
+          if start < 0 or end < 0:
+              raise SystemExit("::error::Ready-made template artwork function not found.")
+          artwork = source[start:end]
+          required = [
+              "onTap: () => editSideLabelText(false),",
+              "_readyTemplateName(bSideLabelText, sideA: false, availableWidth: w * 0.315)",
+              "if (!preview && _templateBNameEdited)",
+              "'assets/templates/Tagra_Muqabla_B_NamePlate.png'",
+          ]
+          for item in required:
+              if item not in artwork:
+                  raise SystemExit(f"::error::B-side template name editing missing: {item}")
+          start = source.find("Future<void> editSideLabelText(bool sideA) async {")
+          end = source.find("\n  Widget photoSlot(bool sideA)", start)
+          editor = source[start:end]
+          for item in ["bSideLabelText = result;", "if (selectedReadyMadeTemplate != null) _templateBNameEdited = true;"]:
+              if item not in editor:
+                  raise SystemExit(f"::error::B-side name update logic missing: {item}")
+          print("B-side template name editing and separate state are present.")
+          PY
+
+      - name: Verify text tools, styling, glow, and independent selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "Future<void> addText() async",
+              "textFonts[index]",
+              "textColors[index]",
+              "textGlowColors",
+              "textGlowStrengths",
+              "showGlowPanel",
+              "selectedTextIndex",
+              "selectedStickerIndex",
+              "void _selectCanvasObject(",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Text/sticker editing feature missing: {item}")
+          print("Text creation, font/color/glow state and selection state are present.")
+          PY
+
+      - name: Verify project autosave and restore hooks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "SharedPreferences.getInstance()",
+              "Future<void> _saveProject()",
+              "Future<void> _restoreProject()",
+              "_scheduleProjectSave()",
+              "WidgetsBinding.instance.addObserver(this)",
+              "AppLifecycleState.paused",
+              "_persistProjectImage",
+              "side_a.img",
+              "side_b.img",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Project persistence hook missing: {item}")
+          print("Autosave, app lifecycle save, image persistence and restore hooks are present.")
+          PY
+
+      - name: Verify poster save/share and 4:3 canvas settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "Future<void> save()",
+              "Gal.putImageBytes(",
+              "Future<void> share()",
+              "Share.shareXFiles(",
+              "capturePosterWithoutControls()",
+              "canvasRatio = 4 / 3;",
+              "showSnackBar",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Save/share/canvas behavior missing: {item}")
+          print("Gallery save, share, shared poster capture, 4:3 canvas and user messages are present.")
+          PY
+
+      - name: Report sign-in feature availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eq 'FirebaseAuth|signInWith|GoogleSignIn|class .*SignIn' lib/main.dart; then
+            echo "Sign-in-related code was found; this workflow does not perform live authentication."
+          else
+            echo "::notice::No sign-in/authentication implementation was found in lib/main.dart; sign-in is not available to test."
+          fi
+
+      - name: Verify mobile controls and panel state hooks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("lib/main.dart").read_text()
+          required = [
+              "showTextTools",
+              "showStickerTools",
+              "showCanvasTools",
+              "showVotingStickerTools",
+              "showAStyleGallery",
+              "showBStyleGallery",
+              "showTagraStickerGallery",
+              "showGlowPanel",
+          ]
+          for item in required:
+              if item not in source:
+                  raise SystemExit(f"::error::Editor panel state missing: {item}")
+          print("Expected editor tool/gallery panel state hooks are present.")
+          PY
