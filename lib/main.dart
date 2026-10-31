@@ -919,6 +919,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {
+    if (selectedReadyMadeTemplate == 'royal_a_vs_b_battle') {
+      return _buildRoyalBattleArtwork(preview: preview);
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -1125,6 +1128,175 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
 
+  Widget _royalTemplateName(String value, {required double availableWidth}) {
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          value,
+          maxLines: 1,
+          softWrap: false,
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'NotoNastaliqUrdu',
+            fontSize: availableWidth * 0.25,
+            height: 1.0,
+            fontWeight: FontWeight.w900,
+            color: const Color(0xFFFFD51B),
+            shadows: const [
+              Shadow(color: Color(0xFF17100A), blurRadius: 2, offset: Offset(2, 3)),
+              Shadow(color: Color(0xFFFF9800), blurRadius: 7),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoyalBattleArtwork({bool preview = false}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+
+        Widget photoLayer(bool sideA) {
+          final File? photo = preview ? null : (sideA ? a : b);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Color(0xFF050505)),
+              if (photo != null)
+                ClipRect(
+                  child: Transform.translate(
+                    offset: _templatePhotoOffsets[sideA] ?? Offset.zero,
+                    child: Transform.scale(
+                      scale: _templatePhotoScales[sideA] ?? 1.0,
+                      child: Image.file(
+                        photo,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        gaplessPlayback: true,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                )
+              else if (!isExportingPoster)
+                Center(
+                  child: Icon(Icons.add_photo_alternate_outlined,
+                      color: Colors.white70, size: w * 0.045),
+                ),
+            ],
+          );
+        }
+
+        return ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Color(0xFF050505)),
+              // Exact transparent photo-window bounds measured from the 1448x1086 PNG.
+              Positioned(
+                left: w * (66 / 1448), top: h * (74 / 1086),
+                width: w * (548 / 1448), height: h * (774 / 1086),
+                child: photoLayer(true),
+              ),
+              Positioned(
+                left: w * (838 / 1448), top: h * (75 / 1086),
+                width: w * (545 / 1448), height: h * (772 / 1086),
+                child: photoLayer(false),
+              ),
+              Image.asset(
+                'assets/templates/Royal_A_vs_B_Battle_Template.png',
+                fit: BoxFit.fill, gaplessPlayback: true,
+                filterQuality: FilterQuality.high,
+              ),
+              // Removes only the printed instruction text inside the two original name strips.
+              Image.asset(
+                'assets/templates/Royal_Battle_NameStrip_CleanOverlay.png',
+                fit: BoxFit.fill, gaplessPlayback: true,
+              ),
+              if (!preview)
+                Positioned(
+                  left: w * 0.075, top: h * 0.805,
+                  width: w * 0.345, height: h * 0.105,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => editSideLabelText(true),
+                    child: _templateANameEdited
+                        ? _royalTemplateName(aSideLabelText, availableWidth: w * 0.345)
+                        : const SizedBox.expand(),
+                  ),
+                ),
+              if (!preview)
+                Positioned(
+                  left: w * 0.600, top: h * 0.805,
+                  width: w * 0.345, height: h * 0.105,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => editSideLabelText(false),
+                    child: _templateBNameEdited
+                        ? _royalTemplateName(bSideLabelText, availableWidth: w * 0.345)
+                        : const SizedBox.expand(),
+                  ),
+                ),
+              if (!preview)
+                Positioned(
+                  left: w * (66 / 1448), top: h * (74 / 1086),
+                  width: w * (548 / 1448), height: h * (774 / 1086),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => pick(true),
+                    onScaleStart: (_) {
+                      _selectCanvasObject(templatePhotoSideA: true);
+                      _templatePhotoStartScales[true] = _templatePhotoScales[true] ?? 1.0;
+                    },
+                    onScaleUpdate: (details) {
+                      if (_selectedTemplatePhotoSideA != true) return;
+                      setState(() {
+                        _templatePhotoScales[true] =
+                            ((_templatePhotoStartScales[true] ?? 1.0) * details.scale)
+                                .clamp(0.8, 8.0).toDouble();
+                        _templatePhotoOffsets[true] =
+                            (_templatePhotoOffsets[true] ?? Offset.zero) + details.focalPointDelta;
+                      });
+                    },
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              if (!preview)
+                Positioned(
+                  left: w * (838 / 1448), top: h * (75 / 1086),
+                  width: w * (545 / 1448), height: h * (772 / 1086),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => pick(false),
+                    onScaleStart: (_) {
+                      _selectCanvasObject(templatePhotoSideA: false);
+                      _templatePhotoStartScales[false] = _templatePhotoScales[false] ?? 1.0;
+                    },
+                    onScaleUpdate: (details) {
+                      if (_selectedTemplatePhotoSideA != false) return;
+                      setState(() {
+                        _templatePhotoScales[false] =
+                            ((_templatePhotoStartScales[false] ?? 1.0) * details.scale)
+                                .clamp(0.8, 8.0).toDouble();
+                        _templatePhotoOffsets[false] =
+                            (_templatePhotoOffsets[false] ?? Offset.zero) + details.focalPointDelta;
+                      });
+                    },
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void readyMadeTemplatesTool() {
     showModalBottomSheet<void>(
       context: context,
@@ -1185,6 +1357,50 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
+                    const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.workspace_premium),
+                    label: const Text('Royal A vs B Battle استعمال کریں'),
+                    onPressed: () {
+                      setState(() {
+                        selectedReadyMadeTemplate = 'royal_a_vs_b_battle';
+                        _templateANameEdited = false;
+                        _templateBNameEdited = false;
+                        _templatePhotoScales[true] = 1.0;
+                        _templatePhotoScales[false] = 1.0;
+                        _templatePhotoOffsets[true] = Offset.zero;
+                        _templatePhotoOffsets[false] = Offset.zero;
+                        _selectedTemplatePhotoSideA = null;
+                        canvasRatio = 4 / 3;
+                        background = dark;
+                        frameWidth = 0;
+                        selectedStylishFrame = null;
+                        selectedASideLabel = null;
+                        selectedBSideLabel = null;
+                        aSideLabelText = 'اسد';
+                        bSideLabelText = 'رقیہ';
+                        showASideLabelDelete = false;
+                        showBSideLabelDelete = false;
+                        isVsSelected = false;
+                        showTextTools = false;
+                        showStickerTools = false;
+                        showCanvasTools = false;
+                        showVotingStickerTools = false;
+                        showAStyleGallery = false;
+                        showBStyleGallery = false;
+                        showTagraStickerGallery = false;
+                        selectedTextIndex = null;
+                        selectedStickerIndex = null;
+                        selectedTagraStickerIndex = null;
+                        selectedLetterOverlayIndex = null;
+                      });
+                      Navigator.pop(sheetContext);
+                      msg('Royal A vs B Battle منتخب ہوگیا۔ A/B تصویر اور نیچے نام والی پٹی پر ٹیپ کرکے تبدیلی کریں۔');
+                    },
+                  ),
+                ),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
