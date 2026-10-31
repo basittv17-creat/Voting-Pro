@@ -167,6 +167,8 @@ class Editor extends StatefulWidget {
 class _EditorState extends State<Editor> with WidgetsBindingObserver {
   static const String _projectSaveKey = 'voting_pro_project_v1';
   Timer? _autoSaveTimer;
+  // Serialize disk writes so overlapping autosaves/lifecycle saves cannot race.
+  Future<void> _saveQueue = Future<void>.value();
   bool _isRestoringProject = true;
   bool _isRestartingProject = false;
 
@@ -390,7 +392,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       entry.key.toString(): entry.value.value,
   };
 
-  Future<void> _saveProject() async {
+  Future<void> _saveProject() {
+    if (_isRestoringProject || _isRestartingProject) {
+      return Future<void>.value();
+    }
+    final save = _saveQueue.then((_) => _saveProjectSnapshot());
+    _saveQueue = save.catchError((Object _) {});
+    return save;
+  }
+
+  Future<void> _saveProjectSnapshot() async {
     if (_isRestoringProject || _isRestartingProject) return;
     try {
       final prefs = await SharedPreferences.getInstance();
