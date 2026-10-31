@@ -1,0 +1,93 @@
+name: Security and Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-quality-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  flutter-quality:
+    name: Flutter analyze and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Check Dart formatting
+        run: dart format --output=none --set-exit-if-changed test
+
+      - name: Analyze Dart and Flutter code
+        run: flutter analyze --fatal-warnings --no-fatal-infos
+
+      - name: Run automated tests
+        run: flutter test --reporter expanded
+
+  dependency-security:
+    name: Dependency vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies and create lockfile
+        run: flutter pub get
+
+      - name: Scan dependencies with OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@7f58dd6750d78fc29a900ba64b1a0f946f62fba4 # v2.6.0
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
+
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository with history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  workflow-security:
+    name: GitHub Actions workflow security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Scan workflow configuration
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          persona: auditor
