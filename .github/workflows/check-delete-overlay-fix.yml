@@ -3,7 +3,13 @@ name: Check Delete Overlay Fix
 on:
   push:
     branches:
+      - main
       - fix/delete-overlay-selection
+      - fix/main-quality-and-autosave
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
