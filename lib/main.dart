@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
         Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
+          PageRouteBuilder<void>(
             pageBuilder: (_, __, ___) => const Editor(),
             transitionDuration: const Duration(milliseconds: 350),
             transitionsBuilder: (_, animation, __, child) =>
@@ -552,7 +552,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
         tagraStickerOverlays
           ..clear()
-          ..addAll((data['tagraStickerOverlays'] as List? ?? const []).whereType<Map>().map((item) {
+          ..addAll((data['tagraStickerOverlays'] as List? ?? const []).whereType<Map<Object?, Object?>>().map((item) {
             final overlay = _TagraStickerOverlay(asset: item['asset'] as String);
             overlay.position = _offsetFromJson(item['position']);
             overlay.scale = (item['scale'] as num?)?.toDouble() ?? 1.0;
@@ -560,7 +560,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           }));
         letterOverlays
           ..clear()
-          ..addAll((data['letterOverlays'] as List? ?? const []).whereType<Map>().map((item) {
+          ..addAll((data['letterOverlays'] as List? ?? const []).whereType<Map<Object?, Object?>>().map((item) {
             final overlay = _LetterStyleOverlay(asset: item['asset'] as String, sideA: item['sideA'] as bool? ?? true);
             overlay.position = _offsetFromJson(item['position'], const Offset(30, 30));
             overlay.scale = (item['scale'] as num?)?.toDouble() ?? 1.0;
