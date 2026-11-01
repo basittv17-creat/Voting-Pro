@@ -2742,7 +2742,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     // The panel follows the poster in the scroll layout. A small ratio-aware
     // gap keeps it close to landscape posters and gives portrait posters room.
-    final gap = canvasRatio > 1.05
+    final gap = canvasRatio >= 1.5
         ? 22.0
         : canvasRatio < 0.9
             ? 52.0
