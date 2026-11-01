@@ -3418,11 +3418,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             .clamp(0.2, 5.0)
                             .toDouble()
                         : oldScale;
-                    item.position += details.focalPointDelta +
-                        Offset(
-                          55.0 * (oldScale - nextScale),
-                          55.0 * (oldScale - nextScale),
-                        );
+                    item.position += details.focalPointDelta;
+                    if (item.sideA) {
+                      final centerAdjustment = 55.0 * (oldScale - nextScale);
+                      item.position += Offset(centerAdjustment, centerAdjustment);
+                    }
                     item.scale = nextScale;
                   });
                 },
@@ -3497,8 +3497,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 final nextScale = (letterResizeStartScale + dy * 0.01)
                                     .clamp(0.2, 5.0)
                                     .toDouble();
-                                final centerAdjustment = 55.0 * (oldScale - nextScale);
-                                item.position += Offset(centerAdjustment, centerAdjustment);
+                                if (item.sideA) {
+                                  final centerAdjustment = 55.0 * (oldScale - nextScale);
+                                  item.position += Offset(centerAdjustment, centerAdjustment);
+                                }
                                 item.scale = nextScale;
                               });
                             },
