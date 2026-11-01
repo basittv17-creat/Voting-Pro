@@ -229,44 +229,62 @@ jobs:
           print("Poster capture clears selection controls, waits for the frame, captures the canvas, and is used by save/share.")
           PY
 
-      - name: Verify five ready-made templates are available and selectable
+      - name: Verify ready-made template carousel and selection
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           source = Path("lib/main.dart").read_text()
-          start = source.find("void _legacyReadyMadeTemplatesTool() {")
-          end = source.find("\n  void ", start + 1)
-          if start < 0 or end < 0:
-              raise SystemExit("::error::Ready-made template list was not found.")
-          section = source[start:end]
+          options_start = source.find("_readyTemplateOptions = [")
+          options_end = source.find("\n  ];", options_start)
+          if options_start < 0 or options_end < 0:
+              raise SystemExit("::error::Ready-made template carousel options were not found.")
+          options = source[options_start:options_end]
           names = [
-              "Royal Blue & Pink",
-              "Classic Crown Battle",
+              "Royal Battle",
+              "Tagra Muqabla",
+              "Royal Blue",
+              "Gold Crown",
               "Neon Battle",
-              "Red & Gold Arena",
-              "Blue & Gold Classic",
+              "Red & Gold",
+              "Blue & Gold",
           ]
           for name in names:
-              if f"name: '{name}'" not in section:
+              if f"name: '{name}'" not in options:
                   print(f"::error::Ready-made template is missing: {name}")
                   raise SystemExit(1)
-          required = [
-              "itemCount: templates.length",
-              "onTap: () {",
+          selection_start = source.find("void _selectReadyMadeTemplate(String templateKey) {")
+          selection_end = source.find("\n  Widget _buildReadyTemplateThumbnail", selection_start)
+          if selection_start < 0 or selection_end < 0:
+              raise SystemExit("::error::Template selection handler was not found.")
+          selection = source[selection_start:selection_end]
+          for item in [
               "selectedReadyMadeTemplate = null;",
               "canvasRatio = 4 / 3;",
               "selectedStylishFrame = template.frame;",
               "selectedASideLabel = template.aLabel;",
               "selectedBSideLabel = template.bLabel;",
               "vsStyle = template.vs;",
-          ]
-          for item in required:
-              if item not in section:
+          ]:
+              if item not in selection:
                   print(f"::error::Template selection behavior is missing: {item}")
                   raise SystemExit(1)
-          print("All five classic ready-made templates are listed and have selectable 4:3 configuration.")
+          gallery_start = source.find("Widget _buildReadyMadeTemplatePicker() {")
+          gallery_end = source.find("\n  void _legacyReadyMadeTemplatesTool", gallery_start)
+          if gallery_start < 0:
+              raise SystemExit("::error::Inline template carousel UI was not found.")
+          gallery = source[gallery_start:gallery_end if gallery_end >= 0 else source.find("\n  void backgrounds()", gallery_start)]
+          for item in [
+              "ListView.separated(",
+              "scrollDirection: Axis.horizontal",
+              "onTap: () => _selectReadyMadeTemplate(template.key)",
+              "_buildReadyTemplateThumbnail(template)",
+          ]:
+              if item not in gallery:
+                  print(f"::error::Template carousel behavior is missing: {item}")
+                  raise SystemExit(1)
+          print("All seven ready-made templates have visual carousel previews and selection handlers.")
           PY
 
       - name: Verify A-side photo replacement in ready-made template
