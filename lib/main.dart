@@ -2734,6 +2734,28 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     setState(() => item.position += delta);
   }
 
+  Widget _buildLetterStyleDeselectButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 42,
+        height: 42,
+        child: Material(
+          color: Colors.red,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => setState(_clearCanvasSelection),
+            child: const Tooltip(
+              message: 'Deselect Style',
+              child: Icon(Icons.close, color: Colors.white, size: 25),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAStyleControlPanel() {
     final index = selectedLetterOverlayIndex!;
     final item = letterOverlays[index];
@@ -2788,6 +2810,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _buildLetterStyleDeselectButton(),
+              const SizedBox(height: 2),
               Row(
                 children: [
                   IconButton(
@@ -2939,6 +2963,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _buildLetterStyleDeselectButton(),
+              const SizedBox(height: 2),
               Row(
                 children: [
                   IconButton(
