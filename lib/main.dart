@@ -3412,11 +3412,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 onScaleUpdate: (details) {
                   if (selectedLetterOverlayIndex != index) return;
                   setState(() {
-                    item.position += details.focalPointDelta;
-                    if (details.pointerCount >= 2) {
-                      item.scale =
-                          (letterGestureStartScale * details.scale).clamp(0.2, 5.0).toDouble();
-                    }
+                    final oldScale = item.scale;
+                    final nextScale = details.pointerCount >= 2
+                        ? (letterGestureStartScale * details.scale)
+                            .clamp(0.2, 5.0)
+                            .toDouble()
+                        : oldScale;
+                    item.position += details.focalPointDelta +
+                        Offset(
+                          55.0 * (oldScale - nextScale),
+                          55.0 * (oldScale - nextScale),
+                        );
+                    item.scale = nextScale;
                   });
                 },
                 child: Transform.scale(
@@ -3486,8 +3493,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                               if (selectedLetterOverlayIndex != index) return;
                               setState(() {
                                 final dy = details.globalPosition.dy - letterResizeStartY;
-                                item.scale =
-                                    (letterResizeStartScale + dy * 0.01).clamp(0.2, 5.0).toDouble();
+                                final oldScale = item.scale;
+                                final nextScale = (letterResizeStartScale + dy * 0.01)
+                                    .clamp(0.2, 5.0)
+                                    .toDouble();
+                                final centerAdjustment = 55.0 * (oldScale - nextScale);
+                                item.position += Offset(centerAdjustment, centerAdjustment);
+                                item.scale = nextScale;
                               });
                             },
                             child: Container(
