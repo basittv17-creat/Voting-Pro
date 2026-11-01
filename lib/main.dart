@@ -195,6 +195,90 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   bool showBStyleGallery = false;
   bool showTagraStickerGallery = false;
 
+  bool showReadyMadeTemplateGallery = false;
+
+  static const List<({
+    String key,
+    String name,
+    Color base,
+    Color accent,
+    String frame,
+    String aLabel,
+    String bLabel,
+    String vs,
+  })> _readyTemplateOptions = [
+    (
+      key: 'royal_a_vs_b_battle',
+      name: 'Royal Battle',
+      base: Color(0xFF071B42),
+      accent: Color(0xFFFFD84D),
+      frame: '',
+      aLabel: '',
+      bLabel: '',
+      vs: '',
+    ),
+    (
+      key: 'tagra_muqabla',
+      name: 'Tagra Muqabla',
+      base: Color(0xFF08152B),
+      accent: Color(0xFFFF4F9A),
+      frame: '',
+      aLabel: '',
+      bLabel: '',
+      vs: '',
+    ),
+    (
+      key: 'royal_blue_pink',
+      name: 'Royal Blue',
+      base: Color(0xFF102C67),
+      accent: Color(0xFFFF4F9A),
+      frame: 'assets/stylish_frames/01_royal_gold_frame.png',
+      aLabel: 'assets/label_bars/a_side/A_Side_Style_1.png',
+      bLabel: 'assets/label_bars/b_side/B_Side_Style_2.png',
+      vs: 'Royal Gold',
+    ),
+    (
+      key: 'classic_crown',
+      name: 'Gold Crown',
+      base: Color(0xFF111827),
+      accent: Color(0xFFFFD700),
+      frame: 'assets/stylish_frames/03_luxury_gold_frame.png',
+      aLabel: 'assets/label_bars/a_side/A_Side_Style_2.png',
+      bLabel: 'assets/label_bars/b_side/B_Side_Style_1.png',
+      vs: 'Luxury',
+    ),
+    (
+      key: 'neon_battle',
+      name: 'Neon Battle',
+      base: Color(0xFF090B2B),
+      accent: Color(0xFFE040FB),
+      frame: 'assets/stylish_frames/08_blue_light_frame.png',
+      aLabel: 'assets/label_bars/a_side/A_Side_Style_4.png',
+      bLabel: 'assets/label_bars/b_side/B_Side_Style_4.png',
+      vs: 'Electric',
+    ),
+    (
+      key: 'red_gold_arena',
+      name: 'Red & Gold',
+      base: Color(0xFF7F101B),
+      accent: Color(0xFFFFD700),
+      frame: 'assets/stylish_frames/05_red_glow_frame.png',
+      aLabel: 'assets/label_bars/a_side/A_Side_Style_3.png',
+      bLabel: 'assets/label_bars/b_side/B_Side_Style_5.png',
+      vs: 'Fire',
+    ),
+    (
+      key: 'blue_gold_classic',
+      name: 'Blue & Gold',
+      base: Color(0xFF102C67),
+      accent: Color(0xFFFFD700),
+      frame: 'assets/stylish_frames/02_elegant_gold_frame.png',
+      aLabel: 'assets/label_bars/a_side/A_Side_Style_5.png',
+      bLabel: 'assets/label_bars/b_side/B_Side_Style_3.png',
+      vs: 'Golden Glow',
+    ),
+  ];
+
   final List<_TagraStickerOverlay> tagraStickerOverlays = [];
   int? selectedTagraStickerIndex;
   Offset tagraGestureStartPosition = Offset.zero;
@@ -1297,156 +1381,265 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
+
   void readyMadeTemplatesTool() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF080E19),
-      builder: (sheetContext) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(sheetContext).size.height * 0.88,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
+    setState(() {
+      showReadyMadeTemplateGallery = !showReadyMadeTemplateGallery;
+    });
+  }
+
+  void _selectReadyMadeTemplate(String templateKey) {
+    final template = _readyTemplateOptions.firstWhere(
+      (item) => item.key == templateKey,
+    );
+
+    setState(() {
+      showReadyMadeTemplateGallery = false;
+      _templateANameEdited = false;
+      _templateBNameEdited = false;
+      _templatePhotoScales[true] = 1.0;
+      _templatePhotoScales[false] = 1.0;
+      _templatePhotoOffsets[true] = Offset.zero;
+      _templatePhotoOffsets[false] = Offset.zero;
+      _selectedTemplatePhotoSideA = null;
+      _clearCanvasSelection();
+      showASideLabelDelete = false;
+      showBSideLabelDelete = false;
+      isVsSelected = false;
+      showTextTools = false;
+      showStickerTools = false;
+      showCanvasTools = false;
+      showVotingStickerTools = false;
+      showAStyleGallery = false;
+      showBStyleGallery = false;
+      showTagraStickerGallery = false;
+
+      if (templateKey == 'royal_a_vs_b_battle' ||
+          templateKey == 'tagra_muqabla') {
+        selectedReadyMadeTemplate = templateKey;
+        canvasRatio = templateKey == 'royal_a_vs_b_battle' ? 4 / 3 : 1447 / 1087;
+        background = dark;
+        frameWidth = 0;
+        selectedStylishFrame = null;
+        selectedASideLabel = null;
+        selectedBSideLabel = null;
+        aSideLabelText = 'اسد';
+        bSideLabelText = 'رقیہ';
+        selectedTextIndex = null;
+        selectedStickerIndex = null;
+        selectedTagraStickerIndex = null;
+        selectedLetterOverlayIndex = null;
+      } else {
+        selectedReadyMadeTemplate = null;
+        canvasRatio = 4 / 3;
+        background = template.base;
+        frameColor = template.accent;
+        frameWidth = 4;
+        selectedStylishFrame = template.frame;
+        selectedASideLabel = template.aLabel;
+        selectedBSideLabel = template.bLabel;
+        vsStyle = template.vs;
+        showVs = true;
+        vsOffset = Offset.zero;
+        vsScale = 1.0;
+        vsStartScale = 1.0;
+      }
+    });
+
+    msg('${template.name} ٹیمپلیٹ منتخب ہوگیا۔');
+  }
+
+  Widget _buildReadyTemplateThumbnail(
+    ({String key, String name, Color base, Color accent, String frame,
+      String aLabel, String bLabel, String vs}) template,
+  ) {
+    final isRoyal = template.key == 'royal_a_vs_b_battle';
+    final isTagra = template.key == 'tagra_muqabla';
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [template.base, template.accent.withOpacity(0.72)],
+              ),
+            ),
+          ),
+          if (isRoyal)
+            Image.asset(
+              'assets/templates/Royal_A_vs_B_Battle_Template.png',
+              fit: BoxFit.fill,
+              filterQuality: FilterQuality.medium,
+            )
+          else if (isTagra)
+            Image.asset(
+              'assets/templates/Tagra_Muqabla_Template.png',
+              fit: BoxFit.fill,
+              filterQuality: FilterQuality.medium,
+            )
+          else ...[
+            Positioned(
+              left: 5, top: 12, width: 38, height: 42,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.34),
+                  border: Border.all(color: template.accent, width: 1.2),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(Icons.person, color: Colors.white70, size: 24),
+              ),
+            ),
+            Positioned(
+              right: 5, top: 12, width: 38, height: 42,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.34),
+                  border: Border.all(color: template.accent, width: 1.2),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(Icons.person, color: Colors.white70, size: 24),
+              ),
+            ),
+            Center(
+              child: Text(
+                'VS',
+                style: TextStyle(
+                  color: template.accent,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  shadows: const [Shadow(color: Colors.black, blurRadius: 5)],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 2, right: 2, bottom: 7, height: 22,
+              child: Row(
+                children: [
+                  Expanded(child: Image.asset(template.aLabel, fit: BoxFit.contain)),
+                  const SizedBox(width: 4),
+                  Expanded(child: Image.asset(template.bLabel, fit: BoxFit.contain)),
+                ],
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Image.asset(template.frame, fit: BoxFit.fill),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadyMadeTemplatePicker() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111A2B),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFFFD84D), width: 1.4),
+          boxShadow: const [
+            BoxShadow(color: Color(0x55FFD84D), blurRadius: 16, spreadRadius: 1),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Ready-made Voting Templates',
-                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
-                      ),
+                const Icon(Icons.palette, color: Color(0xFFFFD84D), size: 22),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Ready-made Templates',
+                    style: TextStyle(
+                      color: Color(0xFFFFD84D),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
                     ),
-                    TextButton.icon(
-                      icon: const Icon(Icons.history),
-                      label: const Text('پرانے Templates'),
-                      onPressed: () {
-                        Navigator.pop(sheetContext);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) _legacyReadyMadeTemplatesTool();
-                        });
-                      },
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 6),
                 const Text(
-                  'تگڑا مقابلہ — اصل پوسٹر کا ڈیزائن برقرار رہے گا۔',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  'ٹیمپلیٹس منتخب کریں',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 520),
-                      child: AspectRatio(
-                        aspectRatio: 1447 / 1087,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: _buildReadyMadeTemplateArtwork(preview: true),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'صرف A/B کی تصاویر اور نیچے کے نام تبدیل کیے جا سکتے ہیں۔',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                const SizedBox(height: 10),
-                    const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.workspace_premium),
-                    label: const Text('Royal A vs B Battle استعمال کریں'),
-                    onPressed: () {
-                      setState(() {
-                        selectedReadyMadeTemplate = 'royal_a_vs_b_battle';
-                        _templateANameEdited = false;
-                        _templateBNameEdited = false;
-                        _templatePhotoScales[true] = 1.0;
-                        _templatePhotoScales[false] = 1.0;
-                        _templatePhotoOffsets[true] = Offset.zero;
-                        _templatePhotoOffsets[false] = Offset.zero;
-                        _selectedTemplatePhotoSideA = null;
-                        canvasRatio = 4 / 3;
-                        background = dark;
-                        frameWidth = 0;
-                        selectedStylishFrame = null;
-                        selectedASideLabel = null;
-                        selectedBSideLabel = null;
-                        aSideLabelText = 'اسد';
-                        bSideLabelText = 'رقیہ';
-                        showASideLabelDelete = false;
-                        showBSideLabelDelete = false;
-                        isVsSelected = false;
-                        showTextTools = false;
-                        showStickerTools = false;
-                        showCanvasTools = false;
-                        showVotingStickerTools = false;
-                        showAStyleGallery = false;
-                        showBStyleGallery = false;
-                        showTagraStickerGallery = false;
-                        selectedTextIndex = null;
-                        selectedStickerIndex = null;
-                        selectedTagraStickerIndex = null;
-                        selectedLetterOverlayIndex = null;
-                      });
-                      Navigator.pop(sheetContext);
-                      msg('Royal A vs B Battle منتخب ہوگیا۔ A/B تصویر اور نیچے نام والی پٹی پر ٹیپ کرکے تبدیلی کریں۔');
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('یہ ٹیمپلیٹ استعمال کریں'),
-                    onPressed: () {
-                      setState(() {
-                        selectedReadyMadeTemplate = 'tagra_muqabla';
-                        _templateANameEdited = false;
-                        _templateBNameEdited = false;
-                        _templatePhotoScales[true] = 1.0;
-                        _templatePhotoScales[false] = 1.0;
-                        _templatePhotoOffsets[true] = Offset.zero;
-                        _templatePhotoOffsets[false] = Offset.zero;
-                        _selectedTemplatePhotoSideA = null;
-                        canvasRatio = 1447 / 1087;
-                        background = dark;
-                        frameWidth = 0;
-                        selectedStylishFrame = null;
-                        selectedASideLabel = null;
-                        selectedBSideLabel = null;
-                        aSideLabelText = 'اسد';
-                        bSideLabelText = 'رقیہ';
-                        showASideLabelDelete = false;
-                        showBSideLabelDelete = false;
-                        isVsSelected = false;
-                        showTextTools = false;
-                        showStickerTools = false;
-                        showCanvasTools = false;
-                        showVotingStickerTools = false;
-                        showAStyleGallery = false;
-                        showBStyleGallery = false;
-                        showTagraStickerGallery = false;
-                        selectedTextIndex = null;
-                        selectedStickerIndex = null;
-                        selectedTagraStickerIndex = null;
-                        selectedLetterOverlayIndex = null;
-                      });
-                      Navigator.pop(sheetContext);
-                      msg('تگڑا مقابلہ ٹیمپلیٹ منتخب ہوگیا۔ تصویر بدلنے کے لیے A/B حصے پر، اور نام بدلنے کے لیے نام پر ٹیپ کریں۔');
-                    },
-                  ),
+                IconButton(
+                  tooltip: 'Close templates',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => setState(() => showReadyMadeTemplateGallery = false),
+                  icon: const Icon(Icons.close, color: Colors.white70),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 116,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _readyTemplateOptions.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 9),
+                itemBuilder: (context, index) {
+                  final template = _readyTemplateOptions[index];
+                  final isSelected =
+                      (selectedReadyMadeTemplate ?? '') == template.key ||
+                      (selectedReadyMadeTemplate == null &&
+                          template.key == 'blue_gold_classic' &&
+                          selectedStylishFrame == template.frame);
+                  return SizedBox(
+                    width: 104,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _selectReadyMadeTemplate(template.key),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFFFFD84D)
+                                      : Colors.white38,
+                                  width: isSelected ? 2.5 : 1,
+                                ),
+                                boxShadow: isSelected
+                                    ? const [BoxShadow(color: Color(0xAAFFD84D), blurRadius: 10)]
+                                    : null,
+                              ),
+                              child: _buildReadyTemplateThumbnail(template),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            template.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isSelected ? const Color(0xFFFFD84D) : Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -3734,6 +3927,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     ]))),
     if (showGlowPanel && showTextTools && selectedTextIndex != null)
       _buildInlineGlowPanel(),
+    if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
     Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
       color: const Color(0xFF101827),
