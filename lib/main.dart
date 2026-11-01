@@ -2701,6 +2701,159 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
+  bool get _hasSelectedAStyle {
+    final index = selectedLetterOverlayIndex;
+    return index != null &&
+        index >= 0 &&
+        index < letterOverlays.length &&
+        letterOverlays[index].sideA;
+  }
+
+  void _setSelectedAStyleScale(double nextScale) {
+    final index = selectedLetterOverlayIndex;
+    if (index == null || index < 0 || index >= letterOverlays.length) return;
+    final item = letterOverlays[index];
+    if (!item.sideA) return;
+
+    final clampedScale = nextScale.clamp(0.2, 5.0).toDouble();
+    if ((clampedScale - item.scale).abs() < 0.0001) return;
+
+    setState(() {
+      // Keep the visual centre fixed while the top-left anchored Transform scales.
+      final sizeDelta = 110.0 * (item.scale - clampedScale) / 2;
+      item.position += Offset(sizeDelta, sizeDelta);
+      item.scale = clampedScale;
+    });
+  }
+
+  void _moveSelectedAStyle(Offset delta) {
+    final index = selectedLetterOverlayIndex;
+    if (index == null || index < 0 || index >= letterOverlays.length) return;
+    final item = letterOverlays[index];
+    if (!item.sideA) return;
+    setState(() => item.position += delta);
+  }
+
+  Widget _buildAStyleControlPanel() {
+    final index = selectedLetterOverlayIndex!;
+    final item = letterOverlays[index];
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final panelWidth = (screenWidth - 40).clamp(260.0, 360.0).toDouble();
+
+    // The panel follows the poster in the scroll layout. A small ratio-aware
+    // gap keeps it close to landscape posters and gives portrait posters room.
+    final gap = canvasRatio > 1.05
+        ? 22.0
+        : canvasRatio < 0.9
+            ? 52.0
+            : 36.0;
+
+    Widget directionButton(IconData icon, Offset delta, String label) {
+      return SizedBox(
+        width: 48,
+        height: 44,
+        child: Material(
+          color: const Color(0xFF252B3A),
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => _moveSelectedAStyle(delta),
+            child: Tooltip(
+              message: label,
+              child: Icon(icon, color: const Color(0xFFD6B5FF), size: 23),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(top: gap, bottom: 16),
+      child: Center(
+        child: Container(
+          width: panelWidth,
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF151D2C),
+            border: Border.all(color: gold, width: 1.5),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x55000000),
+                blurRadius: 14,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'چھوٹا کریں',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _setSelectedAStyleScale(item.scale - 0.1),
+                    icon: const Icon(Icons.remove, color: Colors.white, size: 22),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: const Color(0xFFD0A5FF),
+                        inactiveTrackColor: Colors.white24,
+                        thumbColor: Colors.white,
+                        overlayColor: const Color(0x33D0A5FF),
+                        trackHeight: 5,
+                      ),
+                      child: Slider(
+                        min: 0.2,
+                        max: 5.0,
+                        value: item.scale.clamp(0.2, 5.0).toDouble(),
+                        onChanged: _setSelectedAStyleScale,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'بڑا کریں',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _setSelectedAStyleScale(item.scale + 0.1),
+                    icon: const Icon(Icons.add, color: Colors.white, size: 22),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  directionButton(Icons.arrow_upward, const Offset(0, -8), 'اوپر'),
+                  directionButton(Icons.arrow_back, const Offset(-8, 0), 'بائیں'),
+                  directionButton(Icons.arrow_downward, const Offset(0, 8), 'نیچے'),
+                  directionButton(Icons.arrow_forward, const Offset(8, 0), 'دائیں'),
+                  SizedBox(
+                    width: 48,
+                    height: 44,
+                    child: Material(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: deleteSelectedLetterOverlay,
+                        child: const Tooltip(
+                          message: 'Delete A Style',
+                          child: Icon(Icons.delete_outline, color: Colors.white, size: 23),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget letterStyleTool(String asset, String title, VoidCallback tap) {
     return Container(
       width: 112,
@@ -3734,6 +3887,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             Positioned.fill(child: _buildReadyMadeTemplateArtwork()),
         ]),
       ))),
+      if (!isExportingPoster && _hasSelectedAStyle)
+        _buildAStyleControlPanel(),
 
     ]))),
     if (showGlowPanel && showTextTools && selectedTextIndex != null)
