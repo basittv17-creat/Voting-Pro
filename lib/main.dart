@@ -2,7 +2,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
+import 'widgets/advanced_text_overlay.dart';
 
 void main() => runApp(const PosterApp());
 const mint = Color(0xFF79F0D6), gold = Color(0xFFFFD84D), dark = Color(0xFF080E19);
@@ -392,6 +395,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Set<int> strikeTextOverlayIds = {};
   final Map<int, double> textOpacities = {};
   final Map<int, double> textLineHeights = {};
+  final Map<int, double> textOutlineWidths = {};
+  final Map<int, Color> textOutlineColors = {};
+  final Map<int, double> textCurves = {};
+  final Set<int> gradientTextOverlayIds = {};
+  final Map<int, String> customFontPaths = {};
+  final Set<String> _loadedCustomFontFamilies = {};
+  final List<Map<String, Object>> _textUndoHistory = [];
+  final List<Map<String, Object>> _textRedoHistory = [];
   final Map<int, double> textGlowStrengths = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
@@ -525,6 +536,26 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     return save;
   }
 
+  Future<void> _loadSavedCustomFonts(Map<String, dynamic> data) async {
+    final storedFonts = data['textFonts'];
+    final storedPaths = data['customFontPaths'];
+    if (storedFonts is! Map || storedPaths is! Map) return;
+    for (final entry in storedPaths.entries) {
+      final family = storedFonts[entry.key];
+      if (family is! String || entry.value is! String ||
+          _loadedCustomFontFamilies.contains(family)) continue;
+      try {
+        final path = entry.value as String;
+        final dir = await _projectDirectory();
+        if (!path.startsWith('${dir.path}/custom_font_')) continue;
+        final file = File(path);
+        if (!await file.exists() || await file.length() > 5 * 1024 * 1024) continue;
+        await ui.loadFontFromList(await file.readAsBytes(), fontFamily: family);
+        _loadedCustomFontFamilies.add(family);
+      } catch (_) {}
+    }
+  }
+
   Future<void> _saveProjectSnapshot() async {
     if (_isRestoringProject || _isRestartingProject) return;
     try {
@@ -553,6 +584,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'strikeTextOverlayIds': strikeTextOverlayIds.toList(),
         'textOpacities': _doubleMapJson(textOpacities),
         'textLineHeights': _doubleMapJson(textLineHeights),
+        'textOutlineWidths': _doubleMapJson(textOutlineWidths),
+        'textOutlineColors': _colorMapJson(textOutlineColors),
+        'textCurves': _doubleMapJson(textCurves),
+        'gradientTextOverlayIds': gradientTextOverlayIds.toList(),
+        'customFontPaths': _stringMapJson(customFontPaths),
         'textColors': _colorMapJson(textColors),
         'textGlowColors': _colorMapJson(textGlowColors),
         'textGlowStrengths': _doubleMapJson(textGlowStrengths),
@@ -609,6 +645,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final imageA = imageAPath == null ? null : File(imageAPath);
       final imageB = imageBPath == null ? null : File(imageBPath);
 
+      await _loadSavedCustomFonts(data);
+      if (!mounted) return;
       setState(() {
         a = imageA != null && imageA.existsSync() ? imageA : null;
         b = imageB != null && imageB.existsSync() ? imageB : null;
@@ -703,6 +741,51 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           }
         }
 
+        textOutlineWidths.clear();
+        final savedStrokeWidths = data['textOutlineWidths'];
+        if (savedStrokeWidths is Map) {
+          for (final entry in savedStrokeWidths.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textOutlineWidths[index] = (entry.value as num).toDouble().clamp(0.0, 8.0).toDouble();
+            }
+          }
+        }
+        textOutlineColors.clear();
+        final savedStrokeColors = data['textOutlineColors'];
+        if (savedStrokeColors is Map) {
+          for (final entry in savedStrokeColors.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textOutlineColors[index] = Color((entry.value as num).toInt());
+            }
+          }
+        }
+        textCurves.clear();
+        final savedCurves = data['textCurves'];
+        if (savedCurves is Map) {
+          for (final entry in savedCurves.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textCurves[index] = (entry.value as num).toDouble().clamp(-1.0, 1.0).toDouble();
+            }
+          }
+        }
+        gradientTextOverlayIds
+          ..clear()
+          ..addAll((data['gradientTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        customFontPaths.clear();
+        final savedCustomFonts = data['customFontPaths'];
+        if (savedCustomFonts is Map) {
+          for (final entry in savedCustomFonts.entries) {
+            final index = int.tryParse(entry.key.toString());
+            final family = textFonts[index];
+            if (index != null && entry.value is String &&
+                family != null && _loadedCustomFontFamilies.contains(family)) {
+              customFontPaths[index] = entry.value as String;
+            }
+          }
+        }
         textColors.clear();
         final colors = data['textColors'];
         if (colors is Map) {
