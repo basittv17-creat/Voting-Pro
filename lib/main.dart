@@ -228,6 +228,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       vs: '',
     ),
     (
+      key: 'neon_vs_duel',
+      name: 'Neon VS Duel',
+      base: Color(0xFF080E19),
+      accent: Color(0xFFFF4FCB),
+      frame: '',
+      aLabel: '',
+      bLabel: '',
+      vs: '',
+    ),
+    (
       key: 'royal_blue_pink',
       name: 'Royal Blue',
       base: Color(0xFF102C67),
@@ -1006,6 +1016,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (selectedReadyMadeTemplate == 'royal_a_vs_b_battle') {
       return _buildRoyalBattleArtwork(preview: preview);
     }
+    if (selectedReadyMadeTemplate == 'neon_vs_duel') {
+      return _buildNeonVsDuelArtwork(preview: preview);
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -1382,6 +1395,123 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
 
+
+  Widget _buildNeonVsDuelArtwork({bool preview = false}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Color(0xFF080E19)),
+        Center(
+          // Preserve the source 4:3 artwork ratio on every canvas size.
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: 1448,
+              height: 1086,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const ColoredBox(color: Color(0xFF080E19)),
+                  Positioned(left: 64, top: 105, width: 591, height: 639,
+                    child: _neonDuelPhotoLayer(true, preview: preview)),
+                  Positioned(left: 752, top: 105, width: 590, height: 639,
+                    child: _neonDuelPhotoLayer(false, preview: preview)),
+                  const Positioned(left: 250, top: 770, width: 188, height: 132,
+                    child: DecoratedBox(decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [Color(0xFF07356E), Color(0xFF041B3D)])))),
+                  const Positioned(left: 1000, top: 770, width: 188, height: 132,
+                    child: DecoratedBox(decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [Color(0xFF710B45), Color(0xFF350024)])))),
+                  Image.asset('assets/templates/Neon_VS_Duel_Template.png',
+                    fit: BoxFit.fill, filterQuality: FilterQuality.high, gaplessPlayback: true),
+                  if (!preview)
+                    Positioned(left: 245, top: 765, width: 190, height: 135,
+                      child: GestureDetector(behavior: HitTestBehavior.opaque,
+                        onTap: () => editSideLabelText(true),
+                        child: _templateANameEdited
+                          ? _neonDuelName(aSideLabelText, sideA: true)
+                          : const SizedBox.expand())),
+                  if (!preview)
+                    Positioned(left: 990, top: 765, width: 190, height: 135,
+                      child: GestureDetector(behavior: HitTestBehavior.opaque,
+                        onTap: () => editSideLabelText(false),
+                        child: _templateBNameEdited
+                          ? _neonDuelName(bSideLabelText, sideA: false)
+                          : const SizedBox.expand())),
+                  if (!preview)
+                    Positioned(left: 64, top: 105, width: 591, height: 639,
+                      child: _neonDuelPhotoGesture(true)),
+                  if (!preview)
+                    Positioned(left: 752, top: 105, width: 590, height: 639,
+                      child: _neonDuelPhotoGesture(false)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _neonDuelPhotoLayer(bool sideA, {required bool preview}) {
+    final photo = preview ? null : (sideA ? a : b);
+    return ClipRect(child: Stack(fit: StackFit.expand, children: [
+      const ColoredBox(color: Color(0xFF17191F)),
+      if (photo != null)
+        Transform.translate(
+          offset: _templatePhotoOffsets[sideA] ?? Offset.zero,
+          child: Transform.scale(
+            scale: _templatePhotoScales[sideA] ?? 1.0,
+            child: Image.file(photo,
+              key: ValueKey('neon-photo-' + (sideA ? 'A-' : 'B-') + photo.path),
+              fit: BoxFit.contain, width: double.infinity, height: double.infinity,
+              filterQuality: FilterQuality.high, gaplessPlayback: true),
+          ),
+        )
+      else if (!isExportingPoster && !preview)
+        const Center(child: Icon(Icons.add_photo_alternate_outlined,
+          color: Colors.white70, size: 72)),
+    ]));
+  }
+
+  Widget _neonDuelPhotoGesture(bool sideA) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => pick(sideA),
+      onScaleStart: (_) {
+        _selectCanvasObject(templatePhotoSideA: sideA);
+        _templatePhotoStartScales[sideA] = _templatePhotoScales[sideA] ?? 1.0;
+      },
+      onScaleUpdate: (details) {
+        if (_selectedTemplatePhotoSideA != sideA) return;
+        setState(() {
+          _templatePhotoScales[sideA] =
+            ((_templatePhotoStartScales[sideA] ?? 1.0) * details.scale).clamp(0.8, 8.0).toDouble();
+          _templatePhotoOffsets[sideA] =
+            (_templatePhotoOffsets[sideA] ?? Offset.zero) + details.focalPointDelta;
+        });
+      },
+      child: const SizedBox.expand(),
+    );
+  }
+
+  Widget _neonDuelName(String value, {required bool sideA}) {
+    return Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text(
+      value, maxLines: 1, softWrap: false, textDirection: TextDirection.rtl,
+      textAlign: TextAlign.center,
+      style: TextStyle(fontFamily: 'NotoNastaliqUrdu', fontSize: 38.95,
+        height: 1, fontWeight: FontWeight.w900, color: Colors.white,
+        shadows: sideA
+          ? const [Shadow(color: Color(0xFF061A3B), blurRadius: 3, offset: Offset(2, 3)),
+              Shadow(color: Color(0xFF69DFFF), blurRadius: 7)]
+          : const [Shadow(color: Color(0xFF390027), blurRadius: 3, offset: Offset(2, 3)),
+              Shadow(color: Color(0xFFFF3BCB), blurRadius: 7)],
+      ),
+    )));
+  }
+
   void readyMadeTemplatesTool() {
     setState(() {
       showReadyMadeTemplateGallery = !showReadyMadeTemplateGallery;
@@ -1415,16 +1545,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       showTagraStickerGallery = false;
 
       if (templateKey == 'royal_a_vs_b_battle' ||
-          templateKey == 'tagra_muqabla') {
+          templateKey == 'tagra_muqabla' ||
+          templateKey == 'neon_vs_duel') {
         selectedReadyMadeTemplate = templateKey;
-        canvasRatio = templateKey == 'royal_a_vs_b_battle' ? 4 / 3 : 1447 / 1087;
+        canvasRatio = templateKey == 'tagra_muqabla' ? 1447 / 1087 : 4 / 3;
         background = dark;
         frameWidth = 0;
         selectedStylishFrame = null;
         selectedASideLabel = null;
         selectedBSideLabel = null;
-        aSideLabelText = 'اسد';
-        bSideLabelText = 'رقیہ';
+        aSideLabelText = templateKey == 'neon_vs_duel' ? 'علی' : 'اسد';
+        bSideLabelText = templateKey == 'neon_vs_duel' ? 'ولی' : 'رقیہ';
+        if (templateKey == 'neon_vs_duel') {
+          _templateANameEdited = true;
+          _templateBNameEdited = true;
+        }
         selectedTextIndex = null;
         selectedStickerIndex = null;
         selectedTagraStickerIndex = null;
@@ -1455,6 +1590,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   ) {
     final isRoyal = template.key == 'royal_a_vs_b_battle';
     final isTagra = template.key == 'tagra_muqabla';
+    final isNeonDuel = template.key == 'neon_vs_duel';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -1470,7 +1606,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             ),
           ),
-          if (isRoyal)
+          if (isNeonDuel)
+            Image.asset('assets/templates/Neon_VS_Duel_Template.png', fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium)
+          else if (isRoyal)
             Image.asset(
               'assets/templates/Royal_A_vs_B_Battle_Template.png',
               fit: BoxFit.fill,
