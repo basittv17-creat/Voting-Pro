@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
+import 'widgets/neon_purple_vs_template.dart';
 
 void main() => runApp(const PosterApp());
 const mint = Color(0xFF79F0D6), gold = Color(0xFFFFD84D), dark = Color(0xFF080E19);
@@ -232,6 +233,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       name: 'Neon VS Duel',
       base: Color(0xFF080E19),
       accent: Color(0xFFFF4FCB),
+      frame: '',
+      aLabel: '',
+      bLabel: '',
+      vs: '',
+    ),
+    (
+      key: 'neon_purple_showdown',
+      name: 'Neon Purple VS',
+      base: Color(0xFF080E19),
+      accent: Color(0xFFB44CFF),
       frame: '',
       aLabel: '',
       bLabel: '',
@@ -1016,6 +1027,30 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (selectedReadyMadeTemplate == 'royal_a_vs_b_battle') {
       return _buildRoyalBattleArtwork(preview: preview);
     }
+    if (selectedReadyMadeTemplate == 'neon_purple_showdown') {
+      return NeonPurpleVsTemplate(
+        photoA: a,
+        photoB: b,
+        nameA: aSideLabelText,
+        nameB: bSideLabelText,
+        preview: preview,
+        isExporting: isExportingPoster,
+        initialScaleA: _templatePhotoScales[true] ?? 1.0,
+        initialScaleB: _templatePhotoScales[false] ?? 1.0,
+        initialOffsetA: _templatePhotoOffsets[true] ?? Offset.zero,
+        initialOffsetB: _templatePhotoOffsets[false] ?? Offset.zero,
+        onPickPhoto: (sideA) => pick(sideA),
+        onEditName: (sideA) => editSideLabelText(sideA),
+        onPhotoSelected: (sideA) =>
+            _selectCanvasObject(templatePhotoSideA: sideA),
+        onPhotoTransform: (sideA, scale, offset) {
+          setState(() {
+            _templatePhotoScales[sideA] = scale;
+            _templatePhotoOffsets[sideA] = offset;
+          });
+        },
+      );
+    }
     if (selectedReadyMadeTemplate == 'neon_vs_duel') {
       return _buildNeonVsDuelArtwork(preview: preview);
     }
@@ -1546,7 +1581,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
       if (templateKey == 'royal_a_vs_b_battle' ||
           templateKey == 'tagra_muqabla' ||
-          templateKey == 'neon_vs_duel') {
+          templateKey == 'neon_vs_duel' ||
+          templateKey == 'neon_purple_showdown') {
         selectedReadyMadeTemplate = templateKey;
         canvasRatio = templateKey == 'tagra_muqabla' ? 1447 / 1087 : 4 / 3;
         background = dark;
@@ -1554,8 +1590,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         selectedStylishFrame = null;
         selectedASideLabel = null;
         selectedBSideLabel = null;
-        aSideLabelText = templateKey == 'neon_vs_duel' ? 'علی' : 'اسد';
-        bSideLabelText = templateKey == 'neon_vs_duel' ? 'ولی' : 'رقیہ';
+        aSideLabelText = templateKey == 'neon_vs_duel' ? 'علی' : templateKey == 'neon_purple_showdown' ? 'رائے اویس' : 'اسد';
+        bSideLabelText = templateKey == 'neon_vs_duel' ? 'ولی' : templateKey == 'neon_purple_showdown' ? 'شہزاد بھٹی برانڈ' : 'رقیہ';
         if (templateKey == 'neon_vs_duel') {
           _templateANameEdited = true;
           _templateBNameEdited = true;
@@ -1591,6 +1627,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final isRoyal = template.key == 'royal_a_vs_b_battle';
     final isTagra = template.key == 'tagra_muqabla';
     final isNeonDuel = template.key == 'neon_vs_duel';
+    final isNeonPurple = template.key == 'neon_purple_showdown';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -1606,7 +1643,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             ),
           ),
-          if (isNeonDuel)
+          if (isNeonPurple)
+            Image.asset('assets/templates/Neon_Purple_VS_Template.png',
+              fit: BoxFit.contain, filterQuality: FilterQuality.medium)
+          else if (isNeonDuel)
             Image.asset('assets/templates/Neon_VS_Duel_Template.png', fit: BoxFit.contain,
               filterQuality: FilterQuality.medium)
           else if (isRoyal)
