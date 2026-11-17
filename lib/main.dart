@@ -384,6 +384,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<int, String> textFonts = {};
   final Map<int, Color> textColors = {};
   final Map<int, Color> textGlowColors = {};
+  final Map<int, String> textAlignments = {};
+  final Map<int, double> textLetterSpacings = {};
+  final Set<int> boldTextOverlayIds = {};
   final Map<int, double> textGlowStrengths = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
@@ -537,6 +540,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'textPositions': _offsetMapJson(textPositions),
         'textScales': _doubleMapJson(textScales),
         'textFonts': _stringMapJson(textFonts),
+        'textAlignments': _stringMapJson(textAlignments),
+        'textLetterSpacings': _doubleMapJson(textLetterSpacings),
+        'boldTextOverlayIds': boldTextOverlayIds.toList(),
         'textColors': _colorMapJson(textColors),
         'textGlowColors': _colorMapJson(textGlowColors),
         'textGlowStrengths': _doubleMapJson(textGlowStrengths),
@@ -633,6 +639,30 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             if (index != null && entry.value is String) textFonts[index] = entry.value as String;
           }
         }
+        textAlignments.clear();
+        final savedAlignments = data['textAlignments'];
+        if (savedAlignments is Map) {
+          for (final entry in savedAlignments.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && (entry.value == 'left' || entry.value == 'center' || entry.value == 'right')) {
+              textAlignments[index] = entry.value as String;
+            }
+          }
+        }
+        textLetterSpacings.clear();
+        final savedSpacings = data['textLetterSpacings'];
+        if (savedSpacings is Map) {
+          for (final entry in savedSpacings.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textLetterSpacings[index] = (entry.value as num).toDouble().clamp(-1.0, 8.0).toDouble();
+            }
+          }
+        }
+        boldTextOverlayIds
+          ..clear()
+          ..addAll((data['boldTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+
         textColors.clear();
         final colors = data['textColors'];
         if (colors is Map) {
@@ -2010,10 +2040,73 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     ));
   }
 
+  bool _hasArabicScript(String value) => RegExp(r'[\u0600-\u06FF]').hasMatch(value);
+
+  TextAlign _overlayTextAlign(int index) {
+    switch (textAlignments[index]) {
+      case 'left':
+        return TextAlign.left;
+      case 'right':
+        return TextAlign.right;
+      default:
+        return TextAlign.center;
+    }
+  }
+
+  void cycleSelectedTextAlignment() {
+    final index = selectedTextIndex;
+    if (index == null || !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+    setState(() {
+      textAlignments[index] = switch (textAlignments[index]) {
+        'left' => 'center',
+        'center' => 'right',
+        _ => 'left',
+      };
+    });
+  }
+
+  void toggleSelectedTextBold() {
+    final index = selectedTextIndex;
+    if (index == null || !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+    setState(() {
+      if (!boldTextOverlayIds.add(index)) boldTextOverlayIds.remove(index);
+    });
+  }
+
+  void adjustSelectedTextSpacing(double delta) {
+    final index = selectedTextIndex;
+    if (index == null || !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+    setState(() {
+      textLetterSpacings[index] =
+          ((textLetterSpacings[index] ?? 0.0) + delta).clamp(-1.0, 8.0).toDouble();
+    });
+  }
+
   Future<void> addText() async {
     final controller = TextEditingController();
     final value = await showDialog<String>(context: context, builder: (c) => AlertDialog(
-      title: const Text('متن شامل کریں'), content: TextField(controller: controller, maxLines: 3),
+      title: const Text('متن شامل کریں'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        keyboardType: TextInputType.multiline,
+        textCapitalization: TextCapitalization.sentences,
+        minLines: 2,
+        maxLines: 6,
+        decoration: const InputDecoration(
+          hintText: 'اردو یا English میں ٹیکسٹ لکھیں',
+          border: OutlineInputBorder(),
+        ),
+      ),
       actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: const Text('Add'))],
     ));
     controller.dispose();
@@ -2055,7 +2148,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         content: TextField(
           controller: controller,
           autofocus: true,
-          maxLines: 4,
+          keyboardType: TextInputType.multiline,
+          textCapitalization: TextCapitalization.sentences,
+          minLines: 2,
+          maxLines: 6,
           decoration: const InputDecoration(
             hintText: 'اپنا ٹیکسٹ یہاں تبدیل کریں',
             border: OutlineInputBorder(),
@@ -2562,14 +2658,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final fonts = isUrdu
         ? <(String, String)>[
             ('NotoNastaliqUrdu', 'اردو نستعلیق'),
-            ('NotoNastaliqUrdu', 'عربی خطاطی'),
-            ('NotoNastaliqUrdu', 'ماڈرن اردو'),
           ]
         : <(String, String)>[
             ('RobotoLocal', 'Modern'),
             ('OswaldLocal', 'Bold'),
             ('PlayfairDisplayLocal', 'Elegant'),
-            ('RobotoLocal', 'Clean'),
             ('PacificoLocal', 'Handwriting'),
           ];
 
@@ -2654,6 +2747,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldColors = Map<int, Color>.from(textColors);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
+      final oldAlignments = Map<int, String>.from(textAlignments);
+      final oldSpacings = Map<int, double>.from(textLetterSpacings);
+      final oldBoldIds = Set<int>.from(boldTextOverlayIds);
 
       textPositions.clear();
       textScales.clear();
@@ -2661,6 +2757,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textColors.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
+      textAlignments.clear();
+      textLetterSpacings.clear();
+      boldTextOverlayIds.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
@@ -2684,6 +2783,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldGlowStrengths.containsKey(sourceIndex)) {
           textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
         }
+        if (oldAlignments.containsKey(sourceIndex)) textAlignments[i] = oldAlignments[sourceIndex]!;
+        if (oldSpacings.containsKey(sourceIndex)) textLetterSpacings[i] = oldSpacings[sourceIndex]!;
+        if (oldBoldIds.contains(sourceIndex)) boldTextOverlayIds.add(i);
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
@@ -2728,6 +2830,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldColors = Map<int, Color>.from(textColors);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
+      final oldAlignments = Map<int, String>.from(textAlignments);
+      final oldSpacings = Map<int, double>.from(textLetterSpacings);
+      final oldBoldIds = Set<int>.from(boldTextOverlayIds);
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
 
@@ -2737,6 +2842,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textColors.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
+      textAlignments.clear();
+      textLetterSpacings.clear();
+      boldTextOverlayIds.clear();
       textOverlayIds.clear();
       stickerOverlayIds.clear();
 
@@ -2756,6 +2864,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldGlowStrengths.containsKey(sourceIndex)) {
           textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
         }
+        if (oldAlignments.containsKey(sourceIndex)) textAlignments[i] = oldAlignments[sourceIndex]!;
+        if (oldSpacings.containsKey(sourceIndex)) textLetterSpacings[i] = oldSpacings[sourceIndex]!;
+        if (oldBoldIds.contains(sourceIndex)) boldTextOverlayIds.add(i);
         if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
@@ -4075,7 +4186,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 }),
                 onDoubleTap: () {
                   if (isText) {
-                    deleteSelectedText(targetIndex: index);
+                    setState(() => _selectCanvasObject(textIndex: index));
+                    editSelectedText();
                   }
                 },
                 onScaleStart: (details) {
@@ -4126,12 +4238,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             : null,
                         child: Text(
                           entry.value,
+                          textAlign: _overlayTextAlign(index),
+                          textDirection: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
                           style: TextStyle(
                             fontFamily: textFonts[index] ??
                                 (RegExp(r'[\u0600-\u06FF]').hasMatch(entry.value)
                                     ? 'NotoNastaliqUrdu'
                                     : 'RobotoLocal'),
                             fontSize: 28,
+                            fontWeight: boldTextOverlayIds.contains(index) ? FontWeight.w900 : FontWeight.normal,
+                            letterSpacing: textLetterSpacings[index] ?? 0.0,
                             color: textColors[index] ?? Colors.white,
                             shadows: _textGlowShadows(index),
                           ),
@@ -4389,6 +4505,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('+', 'Add Text', addText),
                       tool('✎', 'Edit Text', editSelectedText),
                       tool('Aa', 'Font', chooseTextFont),
+                      tool('B', 'Bold On/Off', toggleSelectedTextBold),
+                      tool('≡', 'Align Left / Center / Right', cycleSelectedTextAlignment),
+                      tool('↔+', 'Letter Spacing +', () => adjustSelectedTextSpacing(0.5)),
+                      tool('↔−', 'Letter Spacing −', () => adjustSelectedTextSpacing(-0.5)),
                       tool('🎨', 'Color', chooseTextColor),
                       tool(
                         '✨',
