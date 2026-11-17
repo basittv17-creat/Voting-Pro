@@ -918,6 +918,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           _photoScales[sideA] = 1.0;
           _photoOffsets[sideA] = Offset.zero;
           _photoStartScales[sideA] = 1.0;
+          _templatePhotoScales[sideA] = 1.0;
+          _templatePhotoOffsets[sideA] = Offset.zero;
+          _templatePhotoStartScales[sideA] = 1.0;
           _selectCanvasObject(photoSideA: sideA);
         });
       }
@@ -1624,7 +1627,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (templateKey == 'royal_a_vs_b_battle' ||
           templateKey == 'tagra_muqabla' ||
           templateKey == 'neon_vs_duel' ||
-          templateKey == 'neon_purple_showdown') {
+          templateKey == 'neon_purple_showdown' ||
+          templateKey == 'metallic_vs_battle') {
         selectedReadyMadeTemplate = templateKey;
         canvasRatio = templateKey == 'tagra_muqabla' ? 1447 / 1087 : 4 / 3;
         background = dark;
@@ -1670,6 +1674,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final isTagra = template.key == 'tagra_muqabla';
     final isNeonDuel = template.key == 'neon_vs_duel';
     final isNeonPurple = template.key == 'neon_purple_showdown';
+    final isMetallic = template.key == 'metallic_vs_battle';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -1685,7 +1690,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             ),
           ),
-          if (isNeonPurple)
+          if (isMetallic)
+            Image.asset('assets/templates/Metallic_VS_Battle_Template.png',
+              fit: BoxFit.contain, filterQuality: FilterQuality.medium)
+          else if (isNeonPurple)
             Image.asset('assets/templates/Neon_Purple_VS_Template.png',
               fit: BoxFit.contain, filterQuality: FilterQuality.medium)
           else if (isNeonDuel)
