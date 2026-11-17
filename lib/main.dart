@@ -662,7 +662,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final index = int.tryParse(entry.key.toString());
             if (index != null && entry.value is num) {
               textGlowStrengths[index] =
-                  (entry.value as num).toDouble().clamp(0.0, 100.0).toDouble();
+                  (entry.value as num).toDouble().clamp(0.0, 200.0).toDouble();
             }
           }
         }
@@ -754,6 +754,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     _isRestartingProject = true;
     _autoSaveTimer?.cancel();
     try {
+      // Drain any already-running save before removing the project snapshot.
+      await _saveQueue;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_projectSaveKey);
       final dir = await _projectDirectory();
@@ -984,6 +986,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Future<void> share() async {
+    if (busy) return;
+    setState(() {
+      _clearCanvasSelection();
+      busy = true;
+    });
     try {
       final bytes = await capturePosterWithoutControls();
       if (bytes == null) {
@@ -999,6 +1006,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       );
     } catch (e) {
       msg('شیئر نہیں ہو سکا: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -1051,14 +1060,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         initialOffsetA: _templatePhotoOffsets[true] ?? Offset.zero,
         initialOffsetB: _templatePhotoOffsets[false] ?? Offset.zero,
         onPickPhoto: (sideA) => pick(sideA),
-        onEditName: (sideA) async {
-          if (sideA && aSideLabelText == 'A SIDE') {
-            setState(() => aSideLabelText = '');
-          } else if (!sideA && bSideLabelText == 'B SIDE') {
-            setState(() => bSideLabelText = '');
-          }
-          await editSideLabelText(sideA);
-        },
+        onEditName: (sideA) => editSideLabelText(sideA),
         onPhotoSelected: (sideA) =>
             _selectCanvasObject(templatePhotoSideA: sideA),
         onPhotoTransform: (sideA, scale, offset) {
@@ -3843,8 +3845,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          top: -12,
+                          right: 0,
+                          top: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
@@ -3853,7 +3855,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                               }
                               setState(() {
                                 letterOverlays.removeAt(index);
-                                selectedLetterOverlayIndex = null;
+                                _selectCanvasObject();
                               });
                             },
                             child: Container(
@@ -3874,8 +3876,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          bottom: -12,
+                          right: 0,
+                          bottom: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
@@ -3939,12 +3941,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 onScaleUpdate: (details) {
                   if (selectedTagraStickerIndex != index) return;
                   setState(() {
-                    item.position += details.focalPointDelta;
-                    if (details.pointerCount >= 2) {
-                      item.scale = (tagraGestureStartScale * details.scale)
-                          .clamp(0.2, 5.0)
-                          .toDouble();
-                    }
+                    final oldScale = item.scale;
+                    final nextScale = details.pointerCount >= 2
+                        ? (tagraGestureStartScale * details.scale)
+                            .clamp(0.2, 5.0).toDouble()
+                        : oldScale;
+                    // Keep the sticker's centre steady while pinch-zooming.
+                    item.position += details.focalPointDelta +
+                        Offset(70.0 * (oldScale - nextScale),
+                            70.0 * (oldScale - nextScale));
+                    item.scale = nextScale;
                   });
                 },
                 child: Transform.scale(
@@ -3980,8 +3986,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          top: -12,
+                          right: 0,
+                          top: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: deleteSelectedTagraSticker,
@@ -4003,8 +4009,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          bottom: -12,
+                          right: 0,
+                          bottom: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
@@ -4020,10 +4026,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 final delta =
                                     details.globalPosition.dy -
                                     tagraResizeStartY;
-                                item.scale =
+                                final nextScale =
                                     (tagraGestureStartScale + delta * 0.01)
-                                        .clamp(0.2, 5.0)
-                                        .toDouble();
+                                        .clamp(0.2, 5.0).toDouble();
+                                final centerDelta = 70.0 * (item.scale - nextScale);
+                                item.position += Offset(centerDelta, centerDelta);
+                                item.scale = nextScale;
                               });
                             },
                             child: Container(
@@ -4421,7 +4429,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tool('▱', 'Canvas', canvasTool),
                 tool('👑', 'Voting Sticker', () => setState(() { showVotingStickerTools = true; showTextTools = false; showStickerTools = false; showCanvasTools = false; })),
                 tool('▦', 'Background', backgrounds),
-                tool('↗', 'Share Poster', share),
+                tool('↗', 'Share Poster', () { if (!busy) share(); }),
                 tool('✨', 'Stylish Frames', stylishFramesTool),
                 tool('⚔️', 'VS Styles', vsStylesTool),
                 tool('🏆', 'تگڑا مقابلہ اسٹیکرز', openTagraStickerGallery),
