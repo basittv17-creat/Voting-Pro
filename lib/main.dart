@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
+import 'widgets/metallic_vs_battle_template.dart';
 
 void main() => runApp(const PosterApp());
 const mint = Color(0xFF79F0D6), gold = Color(0xFFFFD84D), dark = Color(0xFF080E19);
@@ -249,6 +250,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       vs: '',
     ),
     (
+      key: 'metallic_vs_battle',
+      name: 'Metallic VS Battle',
+      base: Color(0xFF080808),
+      accent: Color(0xFFFF3025),
+      frame: '',
+      aLabel: '',
+      bLabel: '',
+      vs: '',
+    ),
       key: 'royal_blue_pink',
       name: 'Royal Blue',
       base: Color(0xFF102C67),
@@ -1026,6 +1036,37 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {
     if (selectedReadyMadeTemplate == 'royal_a_vs_b_battle') {
       return _buildRoyalBattleArtwork(preview: preview);
+    }
+    if (selectedReadyMadeTemplate == 'metallic_vs_battle') {
+      return MetallicVsBattleTemplate(
+        photoA: a,
+        photoB: b,
+        nameA: aSideLabelText,
+        nameB: bSideLabelText,
+        preview: preview,
+        isExporting: isExportingPoster,
+        initialScaleA: _templatePhotoScales[true] ?? 1.0,
+        initialScaleB: _templatePhotoScales[false] ?? 1.0,
+        initialOffsetA: _templatePhotoOffsets[true] ?? Offset.zero,
+        initialOffsetB: _templatePhotoOffsets[false] ?? Offset.zero,
+        onPickPhoto: (sideA) => pick(sideA),
+        onEditName: (sideA) async {
+          if (sideA && aSideLabelText == 'A SIDE') {
+            setState(() => aSideLabelText = '');
+          } else if (!sideA && bSideLabelText == 'B SIDE') {
+            setState(() => bSideLabelText = '');
+          }
+          await editSideLabelText(sideA);
+        },
+        onPhotoSelected: (sideA) =>
+            _selectCanvasObject(templatePhotoSideA: sideA),
+        onPhotoTransform: (sideA, scale, offset) {
+          setState(() {
+            _templatePhotoScales[sideA] = scale;
+            _templatePhotoOffsets[sideA] = offset;
+          });
+        },
+      );
     }
     if (selectedReadyMadeTemplate == 'neon_purple_showdown') {
       return NeonPurpleVsTemplate(
