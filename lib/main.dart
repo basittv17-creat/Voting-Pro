@@ -542,8 +542,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (storedFonts is! Map || storedPaths is! Map) return;
     for (final entry in storedPaths.entries) {
       final family = storedFonts[entry.key];
-      if (family is! String || entry.value is! String ||
-          _loadedCustomFontFamilies.contains(family)) continue;
+      if (family is! String || !family.startsWith('VotingCustomFont') ||
+          entry.value is! String || _loadedCustomFontFamilies.contains(family)) continue;
       try {
         final path = entry.value as String;
         final dir = await _projectDirectory();
@@ -815,7 +815,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final index = int.tryParse(entry.key.toString());
             if (index != null && entry.value is num) {
               textGlowStrengths[index] =
-                  (entry.value as num).toDouble().clamp(0.0, 100.0).toDouble();
+                  (entry.value as num).toDouble().clamp(0.0, 200.0).toDouble();
             }
           }
         }
@@ -2379,6 +2379,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         textColors[index] = const Color(0xFFFFD700);
                         textGlowStrengths[index] = 0;
                         if (!_hasArabicScript(overlays[index])) {
+                          customFontPaths.remove(index);
                           textFonts[index] = 'PlayfairDisplayLocal';
                         }
                       }
@@ -2783,6 +2784,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               for (final color in palette)
                 GestureDetector(
                   onTap: () {
+                    _rememberTextEdit();
                     setState(() => textGlowColors[index] = color);
                   },
                   child: Container(
@@ -2834,6 +2836,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   divisions: 200,
                   activeColor: const Color(0xFF00E5FF),
                   inactiveColor: Colors.white24,
+                  onChangeStart: (_) => _rememberTextEdit(),
                   onChanged: (value) {
                     setState(() => textGlowStrengths[index] = value);
                   },
@@ -2843,6 +2846,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tooltip: 'Reset Glow',
                 visualDensity: VisualDensity.compact,
                 onPressed: () {
+                  _rememberTextEdit();
                   setState(() => textGlowStrengths[index] = 0.0);
                 },
                 icon: const Icon(
@@ -2907,6 +2911,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       var saturation = hsv.saturation;
       var value = hsv.value;
 
+      _rememberTextEdit();
       await showDialog<void>(
         context: sheetContext,
         builder: (dialogContext) => StatefulBuilder(
@@ -3045,8 +3050,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     ),
                     IconButton(
                       tooltip: 'Reset to white',
-                      onPressed: () => setState(
-                          () => textColors[index] = Colors.white),
+                      onPressed: () {
+                        _rememberTextEdit();
+                        setState(() => textColors[index] = Colors.white);
+                      },
                       icon: const Icon(Icons.refresh, color: Colors.white),
                     ),
                   ],
@@ -3060,7 +3067,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       children: palette.map((color) {
                         final selected = (textColors[index] ?? Colors.white) == color;
                         return GestureDetector(
-                          onTap: () => setState(() => textColors[index] = color),
+                          onTap: () {
+                            _rememberTextEdit();
+                            setState(() => textColors[index] = color);
+                          },
                           child: Container(
                             width: 36,
                             height: 36,
@@ -3161,7 +3171,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ? const Color(0xFF087B65)
                       : const Color(0xFF263247),
                   onPressed: () {
-                    setState(() => textFonts[index] = font.$1);
+                    _rememberTextEdit();
+                    setState(() {
+                      customFontPaths.remove(index);
+                      textFonts[index] = font.$1;
+                    });
                     Navigator.pop(sheetContext);
                   },
                 )).toList(),
