@@ -2182,6 +2182,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       msg('پہلے ٹیکسٹ منتخب کریں');
       return;
     }
+    _rememberTextEdit();
     setState(() {
       textAlignments[index] = switch (textAlignments[index]) {
         'left' => 'center',
@@ -2197,6 +2198,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       msg('پہلے ٹیکسٹ منتخب کریں');
       return;
     }
+    _rememberTextEdit();
     setState(() {
       if (!boldTextOverlayIds.add(index)) boldTextOverlayIds.remove(index);
     });
@@ -2208,6 +2210,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       msg('پہلے ٹیکسٹ منتخب کریں');
       return;
     }
+    _rememberTextEdit();
     setState(() {
       textLetterSpacings[index] =
           ((textLetterSpacings[index] ?? 0.0) + delta).clamp(-1.0, 8.0).toDouble();
@@ -2227,6 +2230,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void toggleTextItalic() {
     final index = _activeTextIndex;
     if (index == null) return;
+    _rememberTextEdit();
     setState(() {
       if (!italicTextOverlayIds.add(index)) italicTextOverlayIds.remove(index);
     });
@@ -2235,6 +2239,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void toggleTextUnderline() {
     final index = _activeTextIndex;
     if (index == null) return;
+    _rememberTextEdit();
     setState(() {
       if (!underlineTextOverlayIds.add(index)) underlineTextOverlayIds.remove(index);
     });
@@ -2243,6 +2248,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void toggleTextStrikethrough() {
     final index = _activeTextIndex;
     if (index == null) return;
+    _rememberTextEdit();
     setState(() {
       if (!strikeTextOverlayIds.add(index)) strikeTextOverlayIds.remove(index);
     });
@@ -2251,6 +2257,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void adjustTextOpacity(double delta) {
     final index = _activeTextIndex;
     if (index == null) return;
+    _rememberTextEdit();
     setState(() {
       textOpacities[index] =
           ((textOpacities[index] ?? 1.0) + delta).clamp(0.1, 1.0).toDouble();
@@ -2260,6 +2267,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void adjustTextLineHeight(double delta) {
     final index = _activeTextIndex;
     if (index == null) return;
+    _rememberTextEdit();
     setState(() {
       textLineHeights[index] =
           ((textLineHeights[index] ?? 1.2) + delta).clamp(0.8, 2.5).toDouble();
@@ -2269,6 +2277,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void resetSelectedTextStyle() {
     final index = _activeTextIndex;
     if (index == null) return;
+    _rememberTextEdit();
     setState(() {
       textFonts.remove(index);
       textColors.remove(index);
@@ -2278,6 +2287,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textLetterSpacings.remove(index);
       textOpacities.remove(index);
       textLineHeights.remove(index);
+      textOutlineWidths.remove(index);
+      textOutlineColors.remove(index);
+      textCurves.remove(index);
+      gradientTextOverlayIds.remove(index);
+      customFontPaths.remove(index);
       boldTextOverlayIds.remove(index);
       italicTextOverlayIds.remove(index);
       underlineTextOverlayIds.remove(index);
@@ -2289,6 +2303,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void duplicateSelectedText() {
     final index = _activeTextIndex;
     if (index == null) return;
+    _rememberTextEdit();
     setState(() {
       final next = overlays.length;
       overlays.add(overlays[index]);
@@ -2305,6 +2320,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (textLetterSpacings.containsKey(index)) textLetterSpacings[next] = textLetterSpacings[index]!;
       if (textOpacities.containsKey(index)) textOpacities[next] = textOpacities[index]!;
       if (textLineHeights.containsKey(index)) textLineHeights[next] = textLineHeights[index]!;
+      if (textOutlineWidths.containsKey(index)) textOutlineWidths[next] = textOutlineWidths[index]!;
+      if (textOutlineColors.containsKey(index)) textOutlineColors[next] = textOutlineColors[index]!;
+      if (textCurves.containsKey(index)) textCurves[next] = textCurves[index]!;
+      if (gradientTextOverlayIds.contains(index)) gradientTextOverlayIds.add(next);
+      if (customFontPaths.containsKey(index)) customFontPaths[next] = customFontPaths[index]!;
       if (boldTextOverlayIds.contains(index)) boldTextOverlayIds.add(next);
       if (italicTextOverlayIds.contains(index)) italicTextOverlayIds.add(next);
       if (underlineTextOverlayIds.contains(index)) underlineTextOverlayIds.add(next);
@@ -2551,6 +2571,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     ));
     controller.dispose();
     if (value != null && value.isNotEmpty && mounted) {
+      _rememberTextEdit();
       setState(() {
         overlays.add(value);
         final index = overlays.length - 1;
@@ -2617,6 +2638,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     controller.dispose();
 
     if (value != null && value.isNotEmpty && mounted) {
+      _rememberTextEdit();
       setState(() {
         overlays[index] = value;
         selectedTextIndex = index;
@@ -3155,6 +3177,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void zoomSelectedText(double factor) {
     final index = selectedTextIndex;
     if (index == null || index < 0 || index >= overlays.length || !textOverlayIds.contains(index)) return;
+    _rememberTextEdit();
     setState(() {
       textScales[index] = ((textScales[index] ?? 1.0) * factor)
           .clamp(0.4, 4.0).toDouble();
@@ -3178,6 +3201,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
 
+    _rememberTextEdit();
     setState(() {
       overlays.removeAt(index);
 
@@ -3195,6 +3219,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldStrikeIds = Set<int>.from(strikeTextOverlayIds);
       final oldOpacities = Map<int, double>.from(textOpacities);
       final oldLineHeights = Map<int, double>.from(textLineHeights);
+      final oldOutlineWidths = Map<int, double>.from(textOutlineWidths);
+      final oldOutlineColors = Map<int, Color>.from(textOutlineColors);
+      final oldCurves = Map<int, double>.from(textCurves);
+      final oldGradients = Set<int>.from(gradientTextOverlayIds);
+      final oldCustomPaths = Map<int, String>.from(customFontPaths);
 
       textPositions.clear();
       textScales.clear();
@@ -3210,6 +3239,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       strikeTextOverlayIds.clear();
       textOpacities.clear();
       textLineHeights.clear();
+      textOutlineWidths.clear();
+      textOutlineColors.clear();
+      textCurves.clear();
+      gradientTextOverlayIds.clear();
+      customFontPaths.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
@@ -3241,6 +3275,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldStrikeIds.contains(sourceIndex)) strikeTextOverlayIds.add(i);
         if (oldOpacities.containsKey(sourceIndex)) textOpacities[i] = oldOpacities[sourceIndex]!;
         if (oldLineHeights.containsKey(sourceIndex)) textLineHeights[i] = oldLineHeights[sourceIndex]!;
+        if (oldOutlineWidths.containsKey(sourceIndex)) textOutlineWidths[i] = oldOutlineWidths[sourceIndex]!;
+        if (oldOutlineColors.containsKey(sourceIndex)) textOutlineColors[i] = oldOutlineColors[sourceIndex]!;
+        if (oldCurves.containsKey(sourceIndex)) textCurves[i] = oldCurves[sourceIndex]!;
+        if (oldGradients.contains(sourceIndex)) gradientTextOverlayIds.add(i);
+        if (oldCustomPaths.containsKey(sourceIndex)) customFontPaths[i] = oldCustomPaths[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
@@ -3293,6 +3332,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldStrikeIds = Set<int>.from(strikeTextOverlayIds);
       final oldOpacities = Map<int, double>.from(textOpacities);
       final oldLineHeights = Map<int, double>.from(textLineHeights);
+      final oldOutlineWidths = Map<int, double>.from(textOutlineWidths);
+      final oldOutlineColors = Map<int, Color>.from(textOutlineColors);
+      final oldCurves = Map<int, double>.from(textCurves);
+      final oldGradients = Set<int>.from(gradientTextOverlayIds);
+      final oldCustomPaths = Map<int, String>.from(customFontPaths);
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
 
@@ -3310,6 +3354,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       strikeTextOverlayIds.clear();
       textOpacities.clear();
       textLineHeights.clear();
+      textOutlineWidths.clear();
+      textOutlineColors.clear();
+      textCurves.clear();
+      gradientTextOverlayIds.clear();
+      customFontPaths.clear();
       textOverlayIds.clear();
       stickerOverlayIds.clear();
 
@@ -3337,6 +3386,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldStrikeIds.contains(sourceIndex)) strikeTextOverlayIds.add(i);
         if (oldOpacities.containsKey(sourceIndex)) textOpacities[i] = oldOpacities[sourceIndex]!;
         if (oldLineHeights.containsKey(sourceIndex)) textLineHeights[i] = oldLineHeights[sourceIndex]!;
+        if (oldOutlineWidths.containsKey(sourceIndex)) textOutlineWidths[i] = oldOutlineWidths[sourceIndex]!;
+        if (oldOutlineColors.containsKey(sourceIndex)) textOutlineColors[i] = oldOutlineColors[sourceIndex]!;
+        if (oldCurves.containsKey(sourceIndex)) textCurves[i] = oldCurves[sourceIndex]!;
+        if (oldGradients.contains(sourceIndex)) gradientTextOverlayIds.add(i);
+        if (oldCustomPaths.containsKey(sourceIndex)) customFontPaths[i] = oldCustomPaths[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
@@ -4661,6 +4715,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   }
                 },
                 onScaleStart: (details) {
+                  if (isText) _rememberTextEdit();
                   setState(() {
                     if (isText) {
                       _selectCanvasObject(textIndex: index);
@@ -4829,6 +4884,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
+                              _rememberTextEdit();
                               setState(() {
                                 _selectCanvasObject(textIndex: index);
                                 textGestureStartScale = textScales[index] ?? 1.0;
