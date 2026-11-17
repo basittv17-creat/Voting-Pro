@@ -387,6 +387,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<int, String> textAlignments = {};
   final Map<int, double> textLetterSpacings = {};
   final Set<int> boldTextOverlayIds = {};
+  final Set<int> italicTextOverlayIds = {};
+  final Set<int> underlineTextOverlayIds = {};
+  final Set<int> strikeTextOverlayIds = {};
+  final Map<int, double> textOpacities = {};
+  final Map<int, double> textLineHeights = {};
   final Map<int, double> textGlowStrengths = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
@@ -543,6 +548,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'textAlignments': _stringMapJson(textAlignments),
         'textLetterSpacings': _doubleMapJson(textLetterSpacings),
         'boldTextOverlayIds': boldTextOverlayIds.toList(),
+        'italicTextOverlayIds': italicTextOverlayIds.toList(),
+        'underlineTextOverlayIds': underlineTextOverlayIds.toList(),
+        'strikeTextOverlayIds': strikeTextOverlayIds.toList(),
+        'textOpacities': _doubleMapJson(textOpacities),
+        'textLineHeights': _doubleMapJson(textLineHeights),
         'textColors': _colorMapJson(textColors),
         'textGlowColors': _colorMapJson(textGlowColors),
         'textGlowStrengths': _doubleMapJson(textGlowStrengths),
@@ -662,6 +672,36 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         boldTextOverlayIds
           ..clear()
           ..addAll((data['boldTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+
+        italicTextOverlayIds
+          ..clear()
+          ..addAll((data['italicTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        underlineTextOverlayIds
+          ..clear()
+          ..addAll((data['underlineTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        strikeTextOverlayIds
+          ..clear()
+          ..addAll((data['strikeTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        textOpacities.clear();
+        final storedOpacities = data['textOpacities'];
+        if (storedOpacities is Map) {
+          for (final entry in storedOpacities.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textOpacities[index] = (entry.value as num).toDouble().clamp(0.1, 1.0).toDouble();
+            }
+          }
+        }
+        textLineHeights.clear();
+        final storedLineHeights = data['textLineHeights'];
+        if (storedLineHeights is Map) {
+          for (final entry in storedLineHeights.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textLineHeights[index] = (entry.value as num).toDouble().clamp(0.8, 2.5).toDouble();
+            }
+          }
+        }
 
         textColors.clear();
         final colors = data['textColors'];
@@ -2091,6 +2131,165 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
+  int? get _activeTextIndex {
+    final index = selectedTextIndex;
+    if (index == null || index < 0 || index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return null;
+    }
+    return index;
+  }
+
+  void toggleTextItalic() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    setState(() {
+      if (!italicTextOverlayIds.add(index)) italicTextOverlayIds.remove(index);
+    });
+  }
+
+  void toggleTextUnderline() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    setState(() {
+      if (!underlineTextOverlayIds.add(index)) underlineTextOverlayIds.remove(index);
+    });
+  }
+
+  void toggleTextStrikethrough() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    setState(() {
+      if (!strikeTextOverlayIds.add(index)) strikeTextOverlayIds.remove(index);
+    });
+  }
+
+  void adjustTextOpacity(double delta) {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    setState(() {
+      textOpacities[index] =
+          ((textOpacities[index] ?? 1.0) + delta).clamp(0.1, 1.0).toDouble();
+    });
+  }
+
+  void adjustTextLineHeight(double delta) {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    setState(() {
+      textLineHeights[index] =
+          ((textLineHeights[index] ?? 1.2) + delta).clamp(0.8, 2.5).toDouble();
+    });
+  }
+
+  void resetSelectedTextStyle() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    setState(() {
+      textFonts.remove(index);
+      textColors.remove(index);
+      textGlowColors.remove(index);
+      textGlowStrengths.remove(index);
+      textAlignments.remove(index);
+      textLetterSpacings.remove(index);
+      textOpacities.remove(index);
+      textLineHeights.remove(index);
+      boldTextOverlayIds.remove(index);
+      italicTextOverlayIds.remove(index);
+      underlineTextOverlayIds.remove(index);
+      strikeTextOverlayIds.remove(index);
+      textScales[index] = 1.0;
+    });
+  }
+
+  void duplicateSelectedText() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    setState(() {
+      final next = overlays.length;
+      overlays.add(overlays[index]);
+      textOverlayIds.add(next);
+      textPositions[next] = (textPositions[index] ??
+          Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0)) +
+          const Offset(24, 24);
+      textScales[next] = textScales[index] ?? 1.0;
+      if (textFonts.containsKey(index)) textFonts[next] = textFonts[index]!;
+      if (textColors.containsKey(index)) textColors[next] = textColors[index]!;
+      if (textGlowColors.containsKey(index)) textGlowColors[next] = textGlowColors[index]!;
+      if (textGlowStrengths.containsKey(index)) textGlowStrengths[next] = textGlowStrengths[index]!;
+      if (textAlignments.containsKey(index)) textAlignments[next] = textAlignments[index]!;
+      if (textLetterSpacings.containsKey(index)) textLetterSpacings[next] = textLetterSpacings[index]!;
+      if (textOpacities.containsKey(index)) textOpacities[next] = textOpacities[index]!;
+      if (textLineHeights.containsKey(index)) textLineHeights[next] = textLineHeights[index]!;
+      if (boldTextOverlayIds.contains(index)) boldTextOverlayIds.add(next);
+      if (italicTextOverlayIds.contains(index)) italicTextOverlayIds.add(next);
+      if (underlineTextOverlayIds.contains(index)) underlineTextOverlayIds.add(next);
+      if (strikeTextOverlayIds.contains(index)) strikeTextOverlayIds.add(next);
+      _selectCanvasObject(textIndex: next);
+    });
+  }
+
+  void chooseTextPreset() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF101827),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            runSpacing: 10,
+            spacing: 10,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text('Typography Presets',
+                  style: TextStyle(fontSize: 20, color: Colors.white,
+                    fontWeight: FontWeight.bold)),
+              ),
+              for (final preset in const <String>['Headline', 'Caption', 'Neon', 'Elegant'])
+                ActionChip(
+                  label: Text(preset, style: const TextStyle(color: Colors.white)),
+                  backgroundColor: const Color(0xFF263247),
+                  onPressed: () {
+                    setState(() {
+                      if (preset == 'Headline') {
+                        boldTextOverlayIds.add(index);
+                        textScales[index] = 1.5;
+                        textLetterSpacings[index] = 1.2;
+                        textGlowStrengths[index] = 0;
+                      } else if (preset == 'Caption') {
+                        boldTextOverlayIds.remove(index);
+                        textScales[index] = 0.75;
+                        textLetterSpacings[index] = 0;
+                        textGlowStrengths[index] = 0;
+                      } else if (preset == 'Neon') {
+                        boldTextOverlayIds.add(index);
+                        textColors[index] = const Color(0xFF00E5FF);
+                        textGlowColors[index] = const Color(0xFF00E5FF);
+                        textGlowStrengths[index] = 110;
+                      } else {
+                        boldTextOverlayIds.remove(index);
+                        italicTextOverlayIds.add(index);
+                        textColors[index] = const Color(0xFFFFD700);
+                        textGlowStrengths[index] = 0;
+                        if (!_hasArabicScript(overlays[index])) {
+                          textFonts[index] = 'PlayfairDisplayLocal';
+                        }
+                      }
+                    });
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> addText() async {
     final controller = TextEditingController();
     final value = await showDialog<String>(context: context, builder: (c) => AlertDialog(
@@ -2750,6 +2949,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldAlignments = Map<int, String>.from(textAlignments);
       final oldSpacings = Map<int, double>.from(textLetterSpacings);
       final oldBoldIds = Set<int>.from(boldTextOverlayIds);
+      final oldItalicIds = Set<int>.from(italicTextOverlayIds);
+      final oldUnderlineIds = Set<int>.from(underlineTextOverlayIds);
+      final oldStrikeIds = Set<int>.from(strikeTextOverlayIds);
+      final oldOpacities = Map<int, double>.from(textOpacities);
+      final oldLineHeights = Map<int, double>.from(textLineHeights);
 
       textPositions.clear();
       textScales.clear();
@@ -2760,6 +2964,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textAlignments.clear();
       textLetterSpacings.clear();
       boldTextOverlayIds.clear();
+      italicTextOverlayIds.clear();
+      underlineTextOverlayIds.clear();
+      strikeTextOverlayIds.clear();
+      textOpacities.clear();
+      textLineHeights.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
@@ -2786,6 +2995,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldAlignments.containsKey(sourceIndex)) textAlignments[i] = oldAlignments[sourceIndex]!;
         if (oldSpacings.containsKey(sourceIndex)) textLetterSpacings[i] = oldSpacings[sourceIndex]!;
         if (oldBoldIds.contains(sourceIndex)) boldTextOverlayIds.add(i);
+        if (oldItalicIds.contains(sourceIndex)) italicTextOverlayIds.add(i);
+        if (oldUnderlineIds.contains(sourceIndex)) underlineTextOverlayIds.add(i);
+        if (oldStrikeIds.contains(sourceIndex)) strikeTextOverlayIds.add(i);
+        if (oldOpacities.containsKey(sourceIndex)) textOpacities[i] = oldOpacities[sourceIndex]!;
+        if (oldLineHeights.containsKey(sourceIndex)) textLineHeights[i] = oldLineHeights[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
@@ -2833,6 +3047,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldAlignments = Map<int, String>.from(textAlignments);
       final oldSpacings = Map<int, double>.from(textLetterSpacings);
       final oldBoldIds = Set<int>.from(boldTextOverlayIds);
+      final oldItalicIds = Set<int>.from(italicTextOverlayIds);
+      final oldUnderlineIds = Set<int>.from(underlineTextOverlayIds);
+      final oldStrikeIds = Set<int>.from(strikeTextOverlayIds);
+      final oldOpacities = Map<int, double>.from(textOpacities);
+      final oldLineHeights = Map<int, double>.from(textLineHeights);
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
 
@@ -2845,6 +3064,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textAlignments.clear();
       textLetterSpacings.clear();
       boldTextOverlayIds.clear();
+      italicTextOverlayIds.clear();
+      underlineTextOverlayIds.clear();
+      strikeTextOverlayIds.clear();
+      textOpacities.clear();
+      textLineHeights.clear();
       textOverlayIds.clear();
       stickerOverlayIds.clear();
 
@@ -2867,6 +3091,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldAlignments.containsKey(sourceIndex)) textAlignments[i] = oldAlignments[sourceIndex]!;
         if (oldSpacings.containsKey(sourceIndex)) textLetterSpacings[i] = oldSpacings[sourceIndex]!;
         if (oldBoldIds.contains(sourceIndex)) boldTextOverlayIds.add(i);
+        if (oldItalicIds.contains(sourceIndex)) italicTextOverlayIds.add(i);
+        if (oldUnderlineIds.contains(sourceIndex)) underlineTextOverlayIds.add(i);
+        if (oldStrikeIds.contains(sourceIndex)) strikeTextOverlayIds.add(i);
+        if (oldOpacities.containsKey(sourceIndex)) textOpacities[i] = oldOpacities[sourceIndex]!;
+        if (oldLineHeights.containsKey(sourceIndex)) textLineHeights[i] = oldLineHeights[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
@@ -4247,8 +4476,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                     : 'RobotoLocal'),
                             fontSize: 28,
                             fontWeight: boldTextOverlayIds.contains(index) ? FontWeight.w900 : FontWeight.normal,
+                            fontStyle: italicTextOverlayIds.contains(index) ? FontStyle.italic : FontStyle.normal,
+                            decoration: TextDecoration.combine([
+                              if (underlineTextOverlayIds.contains(index)) TextDecoration.underline,
+                              if (strikeTextOverlayIds.contains(index)) TextDecoration.lineThrough,
+                            ]),
+                            decorationColor: textColors[index] ?? Colors.white,
+                            height: textLineHeights[index] ?? 1.2,
                             letterSpacing: textLetterSpacings[index] ?? 0.0,
-                            color: textColors[index] ?? Colors.white,
+                            color: (textColors[index] ?? Colors.white)
+                                .withOpacity(textOpacities[index] ?? 1.0),
                             shadows: _textGlowShadows(index),
                           ),
                         ),
@@ -4506,9 +4743,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('✎', 'Edit Text', editSelectedText),
                       tool('Aa', 'Font', chooseTextFont),
                       tool('B', 'Bold On/Off', toggleSelectedTextBold),
+                      tool('I', 'Italic On/Off', toggleTextItalic),
+                      tool('U̲', 'Underline On/Off', toggleTextUnderline),
+                      tool('S̶', 'Strikethrough On/Off', toggleTextStrikethrough),
+                      tool('▤', 'Text Presets', chooseTextPreset),
+                      tool('⧉', 'Duplicate Text', duplicateSelectedText),
                       tool('≡', 'Align Left / Center / Right', cycleSelectedTextAlignment),
                       tool('↔+', 'Letter Spacing +', () => adjustSelectedTextSpacing(0.5)),
                       tool('↔−', 'Letter Spacing −', () => adjustSelectedTextSpacing(-0.5)),
+                      tool('↕+', 'Line Height +', () => adjustTextLineHeight(0.1)),
+                      tool('↕−', 'Line Height −', () => adjustTextLineHeight(-0.1)),
+                      tool('◉+', 'Opacity +', () => adjustTextOpacity(0.1)),
+                      tool('◉−', 'Opacity −', () => adjustTextOpacity(-0.1)),
+                      tool('↺', 'Reset Text Style', resetSelectedTextStyle),
                       tool('🎨', 'Color', chooseTextColor),
                       tool(
                         '✨',
