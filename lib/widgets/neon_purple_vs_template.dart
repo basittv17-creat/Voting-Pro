@@ -89,7 +89,7 @@ class _NeonPurpleVsTemplateState extends State<NeonPurpleVsTemplate> {
         onScaleUpdate: widget.preview || widget.isExporting ? null : (details) {
           setState(() {
             final nextScale = (_startScale * details.scale).clamp(0.65, 7.0).toDouble();
-            final nextOffset = _startOffset + details.focalPointDelta;
+            final nextOffset = (sideA ? _offsetA : _offsetB) + details.focalPointDelta;
             if (sideA) {
               _scaleA = nextScale;
               _offsetA = nextOffset;
