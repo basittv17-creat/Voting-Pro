@@ -4761,10 +4761,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
                               )
                             : null,
-                        child: Text(
-                          entry.value,
-                          textAlign: _overlayTextAlign(index),
-                          textDirection: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
+                        child: AdvancedTextOverlay(
+                          text: entry.value,
+                          alignment: _overlayTextAlign(index),
+                          direction: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
+                          gradient: gradientTextOverlayIds.contains(index),
+                          outlineWidth: textOutlineWidths[index] ?? 0.0,
+                          outlineColor: textOutlineColors[index] ?? Colors.black,
+                          curve: textCurves[index] ?? 0.0,
                           style: TextStyle(
                             fontFamily: textFonts[index] ??
                                 (RegExp(r'[\u0600-\u06FF]').hasMatch(entry.value)
@@ -5039,6 +5043,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('+', 'Add Text', addText),
                       tool('✎', 'Edit Text', editSelectedText),
                       tool('Aa', 'Font', chooseTextFont),
+                      tool('⇧', 'Import TTF/OTF Font', importSelectedTextFont),
+                      tool('↶', 'Undo Text', undoTextEdit),
+                      tool('↷', 'Redo Text', redoTextEdit),
+                      tool('◠', 'Curve Up (English)', () => adjustSelectedTextCurve(0.2)),
+                      tool('◡', 'Curve Down (English)', () => adjustSelectedTextCurve(-0.2)),
+                      tool('🌈', 'Gradient Fill', toggleSelectedTextGradient),
+                      tool('▣+', 'Outline Width +', () => adjustSelectedTextOutline(0.5)),
+                      tool('▣−', 'Outline Width −', () => adjustSelectedTextOutline(-0.5)),
+                      tool('▣', 'Outline Color', cycleTextOutlineColor),
                       tool('B', 'Bold On/Off', toggleSelectedTextBold),
                       tool('I', 'Italic On/Off', toggleTextItalic),
                       tool('U̲', 'Underline On/Off', toggleTextUnderline),
