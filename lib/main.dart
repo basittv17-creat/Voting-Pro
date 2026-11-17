@@ -259,6 +259,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       bLabel: '',
       vs: '',
     ),
+    (
       key: 'royal_blue_pink',
       name: 'Royal Blue',
       base: Color(0xFF102C67),
