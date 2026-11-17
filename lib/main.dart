@@ -1038,7 +1038,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         key: ValueKey<String>(
                           'template-photo-${sideA ? "A" : "B"}-${photo.path}',
                         ),
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain,
                         width: double.infinity,
                         height: double.infinity,
                         gaplessPlayback: true,
@@ -1258,7 +1258,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       scale: _templatePhotoScales[sideA] ?? 1.0,
                       child: Image.file(
                         photo,
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain,
                         width: double.infinity,
                         height: double.infinity,
                         gaplessPlayback: true,
@@ -3309,7 +3309,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       key: ValueKey<String>(
                         'editor-photo-${sideA ? "A" : "B"}-${file.path}',
                       ),
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       width: double.infinity,
                       height: double.infinity,
                       gaplessPlayback: true,
