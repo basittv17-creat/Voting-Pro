@@ -2157,7 +2157,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
       padding: const EdgeInsets.all(18),
       child: Wrap(spacing: 12, runSpacing: 12, children: emojis.map((e) => InkWell(
-        onTap: () { setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
+        onTap: () { _textUndoHistory.clear(); _textRedoHistory.clear(); setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
         child: Container(width: 52, height: 52, alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
       )).toList()),
     ));
@@ -3315,6 +3315,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
 
+    _textUndoHistory.clear();
+    _textRedoHistory.clear();
     setState(() {
       overlays.removeAt(index);
 
