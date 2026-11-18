@@ -1007,12 +1007,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
   }
 
+  static const String _votingProPlayStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.awasigogera.votingpro';
+
   Future<void> _shareVotingProApp() async {
     try {
-      // The project URL is public; do not imply a Play Store release exists.
       await Share.share(
         'Voting Pro — Poster Maker\n'
-        'https://github.com/basittv17-creat/Voting-Pro',
+        'Download Voting Pro from Google Play:\n'
+        _votingProPlayStoreUrl,
         subject: 'Voting Pro',
       );
     } catch (error) {
@@ -1379,7 +1382,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       await file.writeAsBytes(bytes, flush: true);
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png')],
-        text: 'Voting Pro Poster',
+        text: 'Made with Voting Pro — Poster Maker\n'
+            'Download the app from Google Play:\n'
+            '$_votingProPlayStoreUrl',
       );
     } catch (e) {
       msg('شیئر نہیں ہو سکا: $e');
