@@ -1216,7 +1216,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   Future<void> pick(bool sideA) async {
     try {
-      final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 95);
+      final x = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 90,
+        maxWidth: 2400,
+        maxHeight: 2400,
+      );
       if (x != null && mounted) {
         final sourceFile = File(x.path);
         final projectDir = await _projectDirectory();
@@ -1244,6 +1249,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           _templatePhotoScales[sideA] = 1.0;
           _templatePhotoOffsets[sideA] = Offset.zero;
           _templatePhotoStartScales[sideA] = 1.0;
+          // Explicitly choosing a photo overrides the sticky text lock.
+          _clearCanvasSelection();
           _selectCanvasObject(photoSideA: sideA);
         });
       }
@@ -1354,7 +1361,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         return;
       }
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/voting_pro_poster.png');
+      final file = File(
+        '${dir.path}/voting_pro_poster_${DateTime.now().microsecondsSinceEpoch}.png',
+      );
       await file.writeAsBytes(bytes, flush: true);
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png')],
@@ -2367,7 +2376,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
       padding: const EdgeInsets.all(18),
       child: Wrap(spacing: 12, runSpacing: 12, children: emojis.map((e) => InkWell(
-        onTap: () { _textUndoHistory.clear(); _textRedoHistory.clear(); setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
+        onTap: () { _textUndoHistory.clear(); _textRedoHistory.clear(); setState(() { _clearCanvasSelection(); overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
         child: Container(width: 52, height: 52, alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
       )).toList()),
     ));
@@ -3786,6 +3795,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               _templatePhotoScales[sideA] = 1.0;
               _templatePhotoOffsets[sideA] = Offset.zero;
               _templatePhotoStartScales[sideA] = 1.0;
+              // Applying a photo cutout explicitly changes editing target.
+              _clearCanvasSelection();
+              _selectCanvasObject(photoSideA: sideA);
             });
           },
         ),
@@ -3804,6 +3816,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void openStickerTools() {
     setState(() {
       showStickerTools = !showStickerTools;
+      if (showStickerTools) _clearCanvasSelection();
       showTextTools = false;
       showCanvasTools = false;
     });
@@ -3813,6 +3826,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void openTagraStickerGallery() {
     setState(() {
       final previousTagraIndex = selectedTagraStickerIndex;
+      _clearCanvasSelection();
       showTagraStickerGallery = true;
       showAStyleGallery = false;
       showBStyleGallery = false;
@@ -3860,6 +3874,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       tagraStickerOverlays
         ..clear()
         ..add(replacement);
+      _clearCanvasSelection();
       _selectCanvasObject(tagraIndex: 0);
     });
   }
@@ -3880,6 +3895,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void openLetterStyleGallery(bool sideA) {
     setState(() {
+      _clearCanvasSelection();
       showAStyleGallery = sideA;
       showBStyleGallery = !sideA;
       showTextTools = false;
@@ -3925,6 +3941,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         index = letterOverlays.length - 1;
       }
 
+      _clearCanvasSelection();
       _selectCanvasObject(letterIndex: index);
     });
   }
