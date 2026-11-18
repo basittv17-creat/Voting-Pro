@@ -2478,8 +2478,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             runSpacing: 10,
             spacing: 10,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
                 child: Text(AppLanguage.tr('Typography Presets'),
                   style: TextStyle(fontSize: 20, color: Colors.white,
                     fontWeight: FontWeight.bold)),
@@ -3814,7 +3814,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             fontWeight: FontWeight.w800, letterSpacing: 1)),
                     ),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(AppLanguage.tr('Drag • Pinch • Adjust'), maxLines: 1,
                           textDirection: AppLanguage.direction,
                           overflow: TextOverflow.ellipsis,
