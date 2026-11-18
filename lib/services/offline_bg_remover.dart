@@ -21,6 +21,10 @@ class OfflineBgRemover {
   ) =>
       compute(_composeImage, <Object>[sourcePng, alpha]);
 
+  /// MediaPipe's selfie segmentation graph uses the [0,1] float range.
+  static double normalizeMediaPipeChannel(double channel) =>
+      (channel / 255.0).clamp(0.0, 1.0).toDouble();
+
   /// Predict a person mask with the model bundled inside the installed APK.
   /// Other subjects can still be cut out using the manual Erase/Restore tools.
   static Future<Uint8List> autoMask(
@@ -46,14 +50,15 @@ class OfflineBgRemover {
       final small = img.copyResize(
         image, width: w, height: h, interpolation: img.Interpolation.linear,
       );
-      // The bundled MediaPipe float model uses RGB normalized to [-1, 1].
+      // MediaPipe ImageToTensorCalculator feeds the model RGB in [0, 1].
+      // Feeding [-1, 1] here corrupts the person-mask predictions.
       final input = <List<List<List<double>>>>[
         List.generate(h, (y) => List.generate(w, (x) {
           final px = small.getPixel(x, y);
           return <double>[
-            px.r.toDouble() / 127.5 - 1,
-            px.g.toDouble() / 127.5 - 1,
-            px.b.toDouble() / 127.5 - 1,
+            normalizeMediaPipeChannel(px.r.toDouble()),
+            normalizeMediaPipeChannel(px.g.toDouble()),
+            normalizeMediaPipeChannel(px.b.toDouble()),
           ];
         })),
       ];
