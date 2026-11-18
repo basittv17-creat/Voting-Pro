@@ -149,6 +149,8 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     setState(() {
       _previewPng = bytes;
       _brushCursor = null;
+      // Always show the updated result after editing, not stale Compare view.
+      _compare = false;
     });
   }
 
@@ -235,10 +237,18 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   }
 
   void _beginStroke(Offset local) {
-    if (_busy || !_manual || _mask == null) return;
+    if (_busy || !_manual || _mask == null ||
+        _toImagePoint(local) == null) return;
     _recordUndo();
     _lastPoint = null;
     _paintAt(local);
+  }
+
+  Future<void> _tapBrush(Offset local) async {
+    if (_busy || !_manual || _mask == null ||
+        _toImagePoint(local) == null) return;
+    _beginStroke(local);
+    await _endStroke();
   }
 
   Future<void> _endStroke() async {
@@ -405,6 +415,12 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                                           : null,
                                       onPanEnd: _manual
                                           ? (_) => _endStroke()
+                                          : null,
+                                      onPanCancel: _manual
+                                          ? () => _endStroke()
+                                          : null,
+                                      onTapUp: _manual
+                                          ? (d) => _tapBrush(d.localPosition)
                                           : null,
                                       child: Stack(children: [
                                         Positioned(
