@@ -4407,6 +4407,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     bool? photoSideA,
     bool? templatePhotoSideA,
   }) {
+    // Selected text is the editing target until another text is tapped or deleted.
+    if (_textOwnsCanvasGestures && textIndex == null) return;
     // Centralized exclusive selection: passing one target clears every other
     // movable object's selection. Label asset paths are content, not selection.
     selectedTagraStickerIndex = tagraIndex;
@@ -4691,12 +4693,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ]),
     ])),
     Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Column(children: [
-      // Tapping outside the selected text releases the text gesture lock.
-      // Child text gestures win when the user touches the text itself.
+      // Empty canvas touches must not deselect an active text overlay.
+      // Only another text selection or Delete changes the active text.
       GestureDetector(
         behavior: HitTestBehavior.deferToChild,
         onTap: () {
-          if (selectedTextIndex != null ||
+          if (selectedTextIndex == null &&
               selectedLetterOverlayIndex != null) {
             setState(_clearCanvasSelection);
           }
@@ -5153,6 +5155,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   }
                 },
                 onScaleStart: (details) {
+                  // Gesture start cannot steal selection from another text.
+                  if (_textOwnsCanvasGestures && selectedTextIndex != index) return;
                   if (isText) {
                     _rememberTextEdit();
                   } else {
@@ -5171,6 +5175,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   });
                 },
                 onScaleUpdate: (details) {
+                  if (_textOwnsCanvasGestures && selectedTextIndex != index) return;
                   if (isText ? selectedTextIndex != index : selectedStickerIndex != index) return;
                   setState(() {
                     if (isText) {
@@ -5298,7 +5303,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           top: -15,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: deleteSelectedText,
+                            onTap: () => deleteSelectedText(targetIndex: index),
                             child: Container(
                               width: 30,
                               height: 30,
