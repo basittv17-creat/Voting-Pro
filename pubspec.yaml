@@ -8,6 +8,8 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.2.1
+  image: ^4.5.4
+  flutter_litert: ^4.2.0
   image_picker: ^1.1.2
   file_picker: ^10.3.10
   screenshot: ^3.0.0
@@ -25,6 +27,7 @@ flutter:
   assets:
     - assets/stylish_frames/
     - assets/templates/
+    - assets/models/selfie_segmenter.tflite
     - assets/label_bars/a_side/
     - assets/label_bars/b_side/
     - assets/voting_stickers/
