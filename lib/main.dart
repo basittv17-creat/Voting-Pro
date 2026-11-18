@@ -2486,7 +2486,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
               for (final preset in const <String>['Headline', 'Caption', 'Neon', 'Elegant'])
                 ActionChip(
-                  label: Text(preset, style: const TextStyle(color: Colors.white)),
+                  label: Text(AppLanguage.tr(preset), style: const TextStyle(color: Colors.white)),
                   backgroundColor: const Color(0xFF263247),
                   onPressed: () {
                     setState(() {
@@ -2695,9 +2695,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         textCapitalization: TextCapitalization.sentences,
         minLines: 2,
         maxLines: 6,
-        decoration: const InputDecoration(
-          hintText: 'اردو یا English میں ٹیکسٹ لکھیں',
-          border: OutlineInputBorder(),
+        textDirection: AppLanguage.direction,
+        decoration: InputDecoration(
+          hintText: AppLanguage.tr('اردو یا English میں ٹیکسٹ لکھیں'),
+          border: const OutlineInputBorder(),
         ),
       ),
       actions: [TextButton(onPressed: () => Navigator.pop(c), child: Text(AppLanguage.tr('Cancel'))), FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: Text(AppLanguage.tr('Add')))],
@@ -2746,9 +2747,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           textCapitalization: TextCapitalization.sentences,
           minLines: 2,
           maxLines: 6,
-          decoration: const InputDecoration(
-            hintText: 'اپنا ٹیکسٹ یہاں تبدیل کریں',
-            border: OutlineInputBorder(),
+          textDirection: _hasArabicScript(controller.text)
+              ? TextDirection.rtl : AppLanguage.direction,
+          decoration: InputDecoration(
+            hintText: AppLanguage.tr('اپنا ٹیکسٹ یہاں تبدیل کریں'),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -3181,7 +3184,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Reset to white',
+                      tooltip: AppLanguage.tr('Reset to white'),
                       onPressed: () {
                         _rememberTextEdit();
                         setState(() => textColors[index] = Colors.white);
