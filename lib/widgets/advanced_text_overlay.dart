@@ -2,8 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Renderer shared by classic text overlays, canvas preview and poster export.
-/// Curve mode is restricted to single-line Latin text: splitting Arabic/Urdu
-/// into glyphs would break contextual joining and must use the normal layout.
+/// Curved text supports Latin characters and shaped Urdu/Arabic word runs.
+/// Keeping RTL words intact preserves joining, ligatures and diacritics.
 class AdvancedTextOverlay extends StatelessWidget {
   const AdvancedTextOverlay({
     super.key,
@@ -32,17 +32,18 @@ class AdvancedTextOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canCurve = curve.abs() > 0.01 &&
-        !text.contains('\n') &&
-        !RegExp(r'[\u0600-\u06FF]').hasMatch(text);
+    final canCurve = curve.abs() > 0.01 && !text.contains('\n');
     if (canCurve) {
-      final chars = text.runes.map(String.fromCharCode).toList();
+      final chars = RegExp(r'[\u0600-\u06FF]').hasMatch(text)
+          ? text.split(RegExp(r'(?<=\s)|(?=\s)'))
+              .where((part) => part.isNotEmpty).toList()
+          : text.runes.map(String.fromCharCode).toList();
       double width = 0;
       double lineHeight = 0;
       for (final char in chars) {
         final painter = TextPainter(
           text: TextSpan(text: char, style: style),
-          textDirection: TextDirection.ltr,
+          textDirection: direction,
         )..layout();
         width += painter.width;
         lineHeight = math.max(lineHeight, painter.height);
@@ -59,6 +60,7 @@ class AdvancedTextOverlay extends StatelessWidget {
           outlineWidth: outlineWidth,
           outlineColor: outlineColor,
           gradient: gradient,
+          direction: direction,
         ),
       );
     }
@@ -107,6 +109,7 @@ class _CurvedTextPainter extends CustomPainter {
     required this.outlineWidth,
     required this.outlineColor,
     required this.gradient,
+    required this.direction,
   });
 
   final String text;
@@ -115,17 +118,24 @@ class _CurvedTextPainter extends CustomPainter {
   final double outlineWidth;
   final Color outlineColor;
   final bool gradient;
+  final TextDirection direction;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final characters = text.runes.map(String.fromCharCode).toList();
+    final logicalRuns = RegExp(r'[\u0600-\u06FF]').hasMatch(text)
+        ? text.split(RegExp(r'(?<=\s)|(?=\s)'))
+            .where((part) => part.isNotEmpty).toList()
+        : text.runes.map(String.fromCharCode).toList();
+    // RTL is painted right-to-left while each word stays joined.
+    final characters = direction == TextDirection.rtl
+        ? logicalRuns.reversed.toList() : logicalRuns;
     final painters = <TextPainter>[];
     var totalWidth = 0.0;
     var tallest = 0.0;
     for (final char in characters) {
       final painter = TextPainter(
         text: TextSpan(text: char, style: style),
-        textDirection: TextDirection.ltr,
+        textDirection: direction,
       )..layout();
       painters.add(painter);
       totalWidth += painter.width;
@@ -163,7 +173,7 @@ class _CurvedTextPainter extends CustomPainter {
         );
         final stroke = TextPainter(
           text: TextSpan(text: characters[i], style: strokeStyle),
-          textDirection: TextDirection.ltr,
+          textDirection: direction,
         )..layout();
         stroke.paint(canvas, origin);
         stroke.dispose();
@@ -177,7 +187,7 @@ class _CurvedTextPainter extends CustomPainter {
         );
         final fill = TextPainter(
           text: TextSpan(text: characters[i], style: fillStyle),
-          textDirection: TextDirection.ltr,
+          textDirection: direction,
         )..layout();
         fill.paint(canvas, origin);
         fill.dispose();
@@ -192,5 +202,5 @@ class _CurvedTextPainter extends CustomPainter {
   bool shouldRepaint(covariant _CurvedTextPainter old) =>
       text != old.text || style != old.style || curve != old.curve ||
       outlineWidth != old.outlineWidth || outlineColor != old.outlineColor ||
-      gradient != old.gradient;
+      gradient != old.gradient || direction != old.direction;
 }
