@@ -2457,7 +2457,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     bool enabled = textBgColors.containsKey(index);
     Color color = textBgColors[index] ?? const Color(0xFF151A30);
     double opacity = textBgOpacities[index] ?? 0.8;
-    double padding = textBgPaddings[index] ?? 5;
+    double padding = textBgPaddings[index] ?? 0;
     double radius = textBgRadii[index] ?? 8;
     double border = textBgBorders[index] ?? 0;
     double shadow = textBgShadows[index] ?? 0;
@@ -2518,7 +2518,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                     ]),
                     control('Opacity', opacity, 1, (v) => opacity = v),
-                    control('Padding', padding, 24, (v) => padding = v),
+                    control('Glyph edge thickness', padding, 24, (v) => padding = v),
                     control('Corners', radius, 36, (v) => radius = v),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -2528,7 +2528,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     ),
                     control('Border width', border, 6, (v) => border = v),
                     control('Shadow blur', shadow, 24, (v) => shadow = v),
-                    const Text('Background follows the text, not the poster width.'),
+                    const Text('Background follows only the shapes of letters, not the line box.'),
                   ],
                 ),
               ),
@@ -5166,30 +5166,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
                               )
                             : null,
-                        child: Container(
-                          padding: isText && textBgColors.containsKey(index)
-                              ? EdgeInsets.all(textBgPaddings[index] ?? 5) : EdgeInsets.zero,
-                          decoration: isText && textBgColors.containsKey(index)
-                              ? BoxDecoration(
-                                  color: textBgGradients.contains(index) ? null
-                                    : textBgColors[index]!.withOpacity(textBgOpacities[index] ?? 0.8),
-                                  gradient: textBgGradients.contains(index)
-                                    ? LinearGradient(colors: [
-                                        textBgColors[index]!.withOpacity(textBgOpacities[index] ?? 0.8),
-                                        Color.lerp(textBgColors[index]!, Colors.purpleAccent, 0.55)!
-                                          .withOpacity(textBgOpacities[index] ?? 0.8),
-                                      ]) : null,
-                                  borderRadius: BorderRadius.circular(textBgRadii[index] ?? 8),
-                                  border: (textBgBorders[index] ?? 0) > 0
-                                    ? Border.all(color: Colors.white70, width: textBgBorders[index]!)
-                                    : null,
-                                  boxShadow: (textBgShadows[index] ?? 0) > 0
-                                    ? [BoxShadow(color: Colors.black.withOpacity(0.4),
-                                        blurRadius: textBgShadows[index]!,
-                                        offset: const Offset(0, 3))] : null,
-                                ) : null,
-                          child: AdvancedTextOverlay(
+                        child: AdvancedTextOverlay(
                           text: entry.value,
+                          backgroundColor: isText ? textBgColors[index] : null,
+                          backgroundOpacity: textBgOpacities[index] ?? 0.8,
+                          backgroundExpansion: textBgPaddings[index] ?? 0,
+                          backgroundGradient: textBgGradients.contains(index),
+                          backgroundShadowBlur: textBgShadows[index] ?? 0,
                           alignment: _overlayTextAlign(index),
                           direction: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
                           gradient: gradientTextOverlayIds.contains(index),
@@ -5215,7 +5198,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 .withOpacity(textOpacities[index] ?? 1.0),
                             shadows: _textGlowShadows(index),
                           ),
-                        ),
                         ),
                       ),
                       if (isSticker && isSelectedSticker)
