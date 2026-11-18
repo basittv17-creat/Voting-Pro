@@ -186,9 +186,11 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       _sourcePng!, Uint8List.fromList(_mask!),
     );
     if (!mounted) return;
+    final hasUnsavedEdits = _mask!.any((pixel) => pixel != 255);
     setState(() {
       _previewPng = bytes;
       _brushCursor.value = null;
+      _hasUnsavedEdits = hasUnsavedEdits;
       // Always show the updated result after editing, not stale Compare view.
       _compare = false;
     });
@@ -199,8 +201,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       if (_sourcePng == null) _notice('Upload Your Picture first');
       return;
     }
-    final previousEdits = _hasUnsavedEdits;
-    _recordUndo();
+    final originalMask = Uint8List.fromList(_mask!);
     setState(() {
       _busy = true;
       _manual = false;
@@ -213,12 +214,23 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       if (!mounted) return;
       _mask = result;
       await _updatePreview();
+      // Commit Undo only after inference AND preview composition succeed.
+      // A failed Auto attempt must never erase the user's existing Redo stack.
+      _undo.add(originalMask);
+      if (_undo.length > 8) _undo.removeAt(0);
+      _redo.clear();
       setState(() => _status = 'Auto cutout ready • Use Manual to refine edges');
     } catch (error) {
-      if (_undo.isNotEmpty) _mask = _undo.removeLast();
-      _hasUnsavedEdits = previousEdits;
+      _mask = originalMask;
+      _hasUnsavedEdits = originalMask.any((pixel) => pixel != 255);
       _notice('Offline auto removal unavailable: $error');
-      if (_sourcePng != null) await _updatePreview();
+      if (_sourcePng != null && mounted) {
+        try {
+          await _updatePreview();
+        } catch (_) {
+          // Keep the last valid preview if composing the original also fails.
+        }
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
