@@ -2450,6 +2450,126 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
+
+  Future<void> editTextBackground() async {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    bool enabled = textBgColors.containsKey(index);
+    Color color = textBgColors[index] ?? const Color(0xFF151A30);
+    double opacity = textBgOpacities[index] ?? 0.8;
+    double padding = textBgPaddings[index] ?? 5;
+    double radius = textBgRadii[index] ?? 8;
+    double border = textBgBorders[index] ?? 0;
+    double shadow = textBgShadows[index] ?? 0;
+    bool gradient = textBgGradients.contains(index);
+    const palette = <Color>[
+      Color(0xFF151A30), Colors.black, Colors.white,
+      Color(0xFF263238), Color(0xFF004D40), Color(0xFF0D47A1),
+      Color(0xFF4A148C), Color(0xFF880E4F), Color(0xFFB71C1C),
+      Color(0xFFF57F17), Color(0xFF00ACC1), Color(0xFF2E7D32),
+    ];
+    final apply = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) {
+          Widget control(String label, double value, double max,
+              ValueChanged<double> change) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$label: ${value.toStringAsFixed(label == "Opacity" ? 2 : 0)}'),
+              Slider(
+                value: value.clamp(0.0, max).toDouble(),
+                min: 0, max: max,
+                onChanged: (v) => update(() => change(v)),
+              ),
+            ],
+          );
+          return AlertDialog(
+            title: const Text('Text Background'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Enable tight-fit background'),
+                      value: enabled,
+                      onChanged: (v) => update(() => enabled = v),
+                    ),
+                    const Text('Background color'),
+                    Wrap(spacing: 7, runSpacing: 7, children: [
+                      for (final swatch in palette)
+                        InkWell(
+                          onTap: () => update(() { color = swatch; enabled = true; }),
+                          child: Container(
+                            width: 31, height: 31,
+                            decoration: BoxDecoration(
+                              color: swatch,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: color == swatch ? Colors.amber : Colors.grey,
+                                width: color == swatch ? 3 : 1),
+                            ),
+                          ),
+                        ),
+                    ]),
+                    control('Opacity', opacity, 1, (v) => opacity = v),
+                    control('Padding', padding, 24, (v) => padding = v),
+                    control('Corners', radius, 36, (v) => radius = v),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Gradient background'),
+                      value: gradient,
+                      onChanged: (v) => update(() => gradient = v),
+                    ),
+                    control('Border width', border, 6, (v) => border = v),
+                    control('Shadow blur', shadow, 24, (v) => shadow = v),
+                    const Text('Background follows the text, not the poster width.'),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Apply')),
+            ],
+          );
+        },
+      ),
+    );
+    if (apply != true || !mounted || index >= overlays.length ||
+        !textOverlayIds.contains(index)) return;
+    _rememberTextEdit();
+    setState(() {
+      if (enabled) {
+        textBgColors[index] = color;
+        textBgOpacities[index] = opacity;
+        textBgPaddings[index] = padding;
+        textBgRadii[index] = radius;
+        textBgBorders[index] = border;
+        textBgShadows[index] = shadow;
+        if (gradient) { textBgGradients.add(index); }
+        else { textBgGradients.remove(index); }
+      } else {
+        textBgColors.remove(index);
+        textBgOpacities.remove(index);
+        textBgPaddings.remove(index);
+        textBgRadii.remove(index);
+        textBgBorders.remove(index);
+        textBgShadows.remove(index);
+        textBgGradients.remove(index);
+      }
+    });
+  }
+
   void resetSelectedTextStyle() {
     final index = _activeTextIndex;
     if (index == null) return;
@@ -5287,6 +5407,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('◉−', 'Opacity −', () => adjustTextOpacity(-0.1)),
                       tool('↺', 'Reset Text Style', resetSelectedTextStyle),
                       tool('🎨', 'Color', chooseTextColor),
+                      tool('▰', 'Text Background', editTextBackground),
                       tool(
                         '✨',
                         'Glow',
