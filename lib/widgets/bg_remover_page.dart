@@ -49,7 +49,9 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   final List<Uint8List> _undo = [];
   final List<Uint8List> _redo = [];
   Offset? _lastPoint;
-  Offset? _brushCursor;
+  // Brush cursor repaints independently; pan events must not rebuild the
+  // entire full-screen editor and decode/recreate the preview on each move.
+  final ValueNotifier<Offset?> _brushCursor = ValueNotifier<Offset?>(null);
   Rect? _previewRect;
   String _status = 'Upload a picture or use the current A/B photo';
 
@@ -63,6 +65,12 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         if (mounted) _loadFile(initial);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _brushCursor.dispose();
+    super.dispose();
   }
 
   void _notice(String message) {
@@ -180,7 +188,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     if (!mounted) return;
     setState(() {
       _previewPng = bytes;
-      _brushCursor = null;
+      _brushCursor.value = null;
       // Always show the updated result after editing, not stale Compare view.
       _compare = false;
     });
@@ -284,7 +292,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       );
     }
     _lastPoint = point;
-    setState(() => _brushCursor = local);
+    _brushCursor.value = local;
   }
 
   void _beginStroke(Offset local) {
@@ -499,21 +507,30 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                                             ),
                                           ),
                                         ),
-                                        if (_manual && _brushCursor != null)
-                                          Positioned(
-                                            left: _brushCursor!.dx - _brushSize / 2,
-                                            top: _brushCursor!.dy - _brushSize / 2,
-                                            child: IgnorePointer(child: Container(
-                                              width: _brushSize,
-                                              height: _brushSize,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: gold, width: 2,
+                                        ValueListenableBuilder<Offset?>(
+                                          valueListenable: _brushCursor,
+                                          builder: (context, cursor, child) {
+                                            if (!_manual || cursor == null) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            return Positioned(
+                                              left: cursor.dx - _brushSize / 2,
+                                              top: cursor.dy - _brushSize / 2,
+                                              child: IgnorePointer(
+                                                child: Container(
+                                                  width: _brushSize,
+                                                  height: _brushSize,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: gold, width: 2,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
-                                            )),
-                                          ),
+                                            );
+                                          },
+                                        ),
                                         Positioned(
                                           right: 6, top: 6,
                                           child: _action(
