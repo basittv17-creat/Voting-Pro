@@ -13,6 +13,35 @@ void main() {
     expect(OfflineBgRemover.normalizeMediaPipeChannel(300), 1);
   });
 
+  test('Mask resize preserves the four corners on enlarged images', () {
+    final original = Float32List.fromList([1, 0, 0, 1]);
+    final enlarged = OfflineBgRemover.resizeSoftMask(
+      original, 2, 2, 6, 6,
+    );
+    expect(enlarged[0], 255);
+    expect(enlarged[5], 0);
+    expect(enlarged[30], 0);
+    expect(enlarged[35], 255);
+    expect(enlarged[2 * 6 + 2], greaterThan(0));
+    expect(enlarged[2 * 6 + 2], lessThan(255));
+  });
+
+  test('Single-pixel mask expands without leaking transparency', () {
+    final resized = OfflineBgRemover.resizeSoftMask(
+      Float32List.fromList([1]), 1, 1, 3, 5,
+    );
+    expect(resized, everyElement(255));
+  });
+
+  test('Invalid soft mask dimensions are rejected', () {
+    expect(
+      () => OfflineBgRemover.resizeSoftMask(
+        Float32List(1), 2, 2, 6, 6,
+      ),
+      throwsFormatException,
+    );
+  });
+
   test('Erase brush affects only the selected circular area', () {
     final alpha = Uint8List.fromList(List<int>.filled(100, 255));
     OfflineBgRemover.brush(alpha, 10, 10, 4.5, 4.5, 2, erase: true);
