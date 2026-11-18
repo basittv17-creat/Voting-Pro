@@ -4956,7 +4956,29 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
                               )
                             : null,
-                        child: AdvancedTextOverlay(
+                        child: Container(
+                          padding: isText && textBgColors.containsKey(index)
+                              ? EdgeInsets.all(textBgPaddings[index] ?? 5) : EdgeInsets.zero,
+                          decoration: isText && textBgColors.containsKey(index)
+                              ? BoxDecoration(
+                                  color: textBgGradients.contains(index) ? null
+                                    : textBgColors[index]!.withOpacity(textBgOpacities[index] ?? 0.8),
+                                  gradient: textBgGradients.contains(index)
+                                    ? LinearGradient(colors: [
+                                        textBgColors[index]!.withOpacity(textBgOpacities[index] ?? 0.8),
+                                        Color.lerp(textBgColors[index]!, Colors.purpleAccent, 0.55)!
+                                          .withOpacity(textBgOpacities[index] ?? 0.8),
+                                      ]) : null,
+                                  borderRadius: BorderRadius.circular(textBgRadii[index] ?? 8),
+                                  border: (textBgBorders[index] ?? 0) > 0
+                                    ? Border.all(color: Colors.white70, width: textBgBorders[index]!)
+                                    : null,
+                                  boxShadow: (textBgShadows[index] ?? 0) > 0
+                                    ? [BoxShadow(color: Colors.black.withOpacity(0.4),
+                                        blurRadius: textBgShadows[index]!,
+                                        offset: const Offset(0, 3))] : null,
+                                ) : null,
+                          child: AdvancedTextOverlay(
                           text: entry.value,
                           alignment: _overlayTextAlign(index),
                           direction: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
@@ -4983,6 +5005,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 .withOpacity(textOpacities[index] ?? 1.0),
                             shadows: _textGlowShadows(index),
                           ),
+                        ),
                         ),
                       ),
                       if (isSticker && isSelectedSticker)
