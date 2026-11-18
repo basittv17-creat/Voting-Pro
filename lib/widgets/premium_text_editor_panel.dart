@@ -24,6 +24,7 @@ class PremiumTextEditorPanel extends StatefulWidget {
     required this.moreActions,
     required this.textColor,
     required this.onTextColor,
+    required this.onMoreColors,
     required this.textOpacity,
     required this.onOpacityStart,
     required this.onTextOpacity,
@@ -55,6 +56,7 @@ class PremiumTextEditorPanel extends StatefulWidget {
   final List<TextPanelAction> styleActions, layoutActions, moreActions;
   final Color textColor;
   final ValueChanged<Color> onTextColor;
+  final VoidCallback onMoreColors;
   final double textOpacity;
   final VoidCallback onOpacityStart;
   final ValueChanged<double> onTextOpacity;
@@ -261,7 +263,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       _palette(widget.textColor, widget.onTextColor),
       const SizedBox(height: 12),
       _actionGrid([TextPanelAction('More colors', Icons.palette,
-        () { widget.onTextColor(widget.textColor); })]),
+        widget.onMoreColors)]),
       const SizedBox(height: 10),
       _slider('Text opacity', widget.textOpacity, 0.1, 1,
         widget.onOpacityStart, widget.onTextOpacity, percentage: true),
