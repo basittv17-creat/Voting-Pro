@@ -237,31 +237,38 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     ));
   }
 
-  Widget _actionGrid(List<TextPanelAction> actions) => Wrap(
-    spacing: 8, runSpacing: 8,
-    children: actions.map((action) => SizedBox(
-      width: 137,
-      height: 70,
-      child: OutlinedButton(
-        onPressed: action.onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: _panel,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.all(7),
-          side: const BorderSide(color: Color(0xFF3D7284)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
+  Widget _actionGrid(List<TextPanelAction> actions) => LayoutBuilder(
+    builder: (context, constraints) {
+      // Avoid one giant column on narrow phones. Each row gets equal widths.
+      final columns = constraints.maxWidth >= 470 ? 3 : 2;
+      final tileWidth = (constraints.maxWidth - (columns - 1) * 8) / columns;
+      return Wrap(
+        spacing: 8, runSpacing: 8,
+        children: actions.map((action) => SizedBox(
+          width: tileWidth,
+          height: 70,
+          child: OutlinedButton(
+            onPressed: action.onPressed,
+            style: OutlinedButton.styleFrom(
+              backgroundColor: _panel,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.all(6),
+              side: const BorderSide(color: Color(0xFF3D7284)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(13),
+              ),
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(action.icon, size: 22, color: _mint),
+              const SizedBox(height: 4),
+              Text(action.label, maxLines: 2, textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11)),
+            ]),
           ),
-        ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(action.icon, size: 22, color: _mint),
-          const SizedBox(height: 4),
-          Text(action.label, maxLines: 2, textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11)),
-        ]),
-      ),
-    )).toList(),
+        )).toList(),
+      );
+    },
   );
 
   Widget _style() => Column(crossAxisAlignment: CrossAxisAlignment.start,
