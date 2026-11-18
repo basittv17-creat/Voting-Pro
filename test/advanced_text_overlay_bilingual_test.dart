@@ -43,7 +43,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(
         body: AdvancedTextOverlay(
-          text: 'ووٹنگ پرو\\nمقابلہ',
+          text: 'ووٹنگ پرو\nمقابلہ',
           style: TextStyle(fontSize: 26),
           alignment: TextAlign.center,
           direction: TextDirection.rtl,
@@ -52,6 +52,6 @@ void main() {
       ),
     ));
     expect(tester.takeException(), isNull);
-    expect(find.text('ووٹنگ پرو\\nمقابلہ'), findsOneWidget);
+    expect(find.text('ووٹنگ پرو\nمقابلہ'), findsOneWidget);
   });
 }
