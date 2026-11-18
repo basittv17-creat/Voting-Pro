@@ -94,29 +94,49 @@ class OfflineBgRemover {
               .clamp(0.0, 1.0).toDouble();
         }
       }
-      final mask = Uint8List(width * height);
-      for (var y = 0; y < height; y++) {
-        final fy = (y + 0.5) * mh / height - 0.5;
-        final y0 = fy.floor().clamp(0, mh - 1);
-        final y1 = (y0 + 1).clamp(0, mh - 1);
-        final ty = (fy - fy.floor()).clamp(0.0, 1.0);
-        for (var x = 0; x < width; x++) {
-          final fx = (x + 0.5) * mw / width - 0.5;
-          final x0 = fx.floor().clamp(0, mw - 1);
-          final x1 = (x0 + 1).clamp(0, mw - 1);
-          final tx = (fx - fx.floor()).clamp(0.0, 1.0);
-          final top = result[y0 * mw + x0] * (1 - tx) +
-              result[y0 * mw + x1] * tx;
-          final bottom = result[y1 * mw + x0] * (1 - tx) +
-              result[y1 * mw + x1] * tx;
-          mask[y * width + x] =
-              ((top * (1 - ty) + bottom * ty) * 255).round().clamp(0, 255);
-        }
-      }
-      return mask;
+      return resizeSoftMask(result, mw, mh, width, height);
     } finally {
       interpreter.close();
     }
+  }
+
+  /// Bilinearly scale the foreground mask without mixing edge pixels with
+  /// nonexistent neighbours. The output is a device-local 8-bit alpha mask.
+  static Uint8List resizeSoftMask(
+    Float32List source,
+    int sourceWidth,
+    int sourceHeight,
+    int targetWidth,
+    int targetHeight,
+  ) {
+    if (sourceWidth < 1 || sourceHeight < 1 ||
+        targetWidth < 1 || targetHeight < 1 ||
+        source.length != sourceWidth * sourceHeight) {
+      throw const FormatException('Invalid segmentation mask dimensions');
+    }
+    final alpha = Uint8List(targetWidth * targetHeight);
+    for (var y = 0; y < targetHeight; y++) {
+      final fy = ((y + 0.5) * sourceHeight / targetHeight - 0.5)
+          .clamp(0.0, (sourceHeight - 1).toDouble());
+      final y0 = fy.floor();
+      final y1 = math.min(y0 + 1, sourceHeight - 1);
+      final dy = fy - y0;
+      for (var x = 0; x < targetWidth; x++) {
+        final fx = ((x + 0.5) * sourceWidth / targetWidth - 0.5)
+            .clamp(0.0, (sourceWidth - 1).toDouble());
+        final x0 = fx.floor();
+        final x1 = math.min(x0 + 1, sourceWidth - 1);
+        final dx = fx - x0;
+        final top = source[y0 * sourceWidth + x0] * (1 - dx) +
+            source[y0 * sourceWidth + x1] * dx;
+        final bottom = source[y1 * sourceWidth + x0] * (1 - dx) +
+            source[y1 * sourceWidth + x1] * dx;
+        final value = top * (1 - dy) + bottom * dy;
+        alpha[y * targetWidth + x] =
+            (value.clamp(0.0, 1.0) * 255).round();
+      }
+    }
+    return alpha;
   }
 
   /// Draw an anti-aliased circular manual brush into the alpha mask.
