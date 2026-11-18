@@ -21,6 +21,28 @@ void main() {
     expect(alpha[99], 0);
   });
 
+  test('Thin panorama and portrait images retain nonzero dimensions', () async {
+    for (final original in [
+      img.Image(width: 1, height: 5000),
+      img.Image(width: 5000, height: 1),
+    ]) {
+      final png = Uint8List.fromList(img.encodePng(original));
+      final prepared = await OfflineBgRemover.prepare(png);
+      final result = img.decodeImage(prepared)!;
+      expect(result.width, greaterThanOrEqualTo(1));
+      expect(result.height, greaterThanOrEqualTo(1));
+      expect(result.width, lessThanOrEqualTo(1600));
+      expect(result.height, lessThanOrEqualTo(1600));
+    }
+  });
+
+  test('Brush accepts a stroke that touches the image edge', () {
+    final alpha = Uint8List.fromList(List<int>.filled(16, 255));
+    OfflineBgRemover.brush(alpha, 4, 4, 0, 0, 3, erase: true);
+    expect(alpha[0], lessThan(255));
+    expect(alpha[15], 255);
+  });
+
   test('Offline PNG composition produces correct transparent alpha', () async {
     final source = img.Image(width: 2, height: 1, numChannels: 4);
     source.setPixelRgba(0, 0, 255, 0, 0, 255);
