@@ -104,9 +104,18 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         _undo.clear();
         _redo.clear();
         _hasUnsavedEdits = false;
+        _lastPoint = null;
+        _brushCursor.value = null;
         _status = 'Image ready • Auto or Manual editing';
       });
     } catch (error) {
+      if (mounted) {
+        setState(() {
+          _status = _sourcePng == null
+              ? 'Image unavailable • please choose another picture'
+              : 'Previous image kept • choose another picture';
+        });
+      }
       _notice('Image could not be loaded: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -143,7 +152,12 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   Future<void> _uploadPicture() async {
     if (_busy || !await _confirmDiscardEdits()) return;
     try {
-      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 90,
+      );
       if (picked == null || !mounted) return;
       await _loadFile(File(picked.path));
     } catch (error) {
@@ -161,6 +175,8 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       _undo.clear();
       _redo.clear();
       _hasUnsavedEdits = false;
+      _lastPoint = null;
+      _brushCursor.value = null;
       _previewRect = null;
     });
     final photo = sideA ? widget.initialPhotoA : widget.initialPhotoB;
