@@ -2769,6 +2769,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   };
 
   void _restoreTextSnapshot(Map<String, Object> snapshot) {
+    // Undo/Redo must not accidentally deselect a text that still exists.
+    final previousSelectedText = selectedTextIndex;
     overlays..clear()..addAll(snapshot['overlays'] as List<String>);
     textOverlayIds..clear()..addAll(snapshot['textOverlayIds'] as Set<int>);
     stickerOverlayIds..clear()..addAll(snapshot['stickerOverlayIds'] as Set<int>);
@@ -2799,6 +2801,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     strikeTextOverlayIds..clear()..addAll(snapshot['strikeTextOverlayIds'] as Set<int>);
     gradientTextOverlayIds..clear()..addAll(snapshot['gradientTextOverlayIds'] as Set<int>);
     _clearCanvasSelection();
+    if (previousSelectedText != null &&
+        previousSelectedText >= 0 &&
+        previousSelectedText < overlays.length &&
+        textOverlayIds.contains(previousSelectedText)) {
+      selectedTextIndex = previousSelectedText;
+    }
   }
 
   void _rememberTextEdit() {
