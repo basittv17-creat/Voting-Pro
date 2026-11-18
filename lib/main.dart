@@ -14,6 +14,7 @@ import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
 import 'widgets/advanced_text_overlay.dart';
+import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
 import 'app_language.dart';
 
@@ -4354,6 +4355,144 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
+
+  Widget _buildPremiumTextPanel() {
+    final index = selectedTextIndex;
+    final valid = index != null &&
+        index >= 0 &&
+        index < overlays.length &&
+        textOverlayIds.contains(index);
+    final active = valid ? index : null;
+
+    void updateSelected(VoidCallback mutation) {
+      if (active == null) {
+        msg('پہلے ٹیکسٹ منتخب کریں');
+        return;
+      }
+      _rememberTextEdit();
+      setState(mutation);
+    }
+
+    return PremiumTextEditorPanel(
+      selectedText: active == null ? null : overlays[active],
+      onClose: () => setState(() {
+        showTextTools = false;
+        showGlowPanel = false;
+      }),
+      onAddText: addText,
+      onEditText: editSelectedText,
+      onDeleteText: deleteSelectedText,
+      styleActions: [
+        TextPanelAction('Font', Icons.font_download_outlined, chooseTextFont),
+        TextPanelAction('Import TTF/OTF', Icons.upload_file, importSelectedTextFont),
+        TextPanelAction('Zoom +', Icons.zoom_in, () => zoomSelectedText(1.2)),
+        TextPanelAction('Zoom −', Icons.zoom_out, () => zoomSelectedText(0.8)),
+        TextPanelAction('Bold', Icons.format_bold, toggleSelectedTextBold),
+        TextPanelAction('Italic', Icons.format_italic, toggleTextItalic),
+        TextPanelAction('Underline', Icons.format_underline, toggleTextUnderline),
+        TextPanelAction('Strike', Icons.strikethrough_s, toggleTextStrikethrough),
+        TextPanelAction('Presets', Icons.style_outlined, chooseTextPreset),
+        TextPanelAction('Reset Style', Icons.restart_alt, resetSelectedTextStyle),
+      ],
+      layoutActions: [
+        TextPanelAction('Alignment', Icons.format_align_center,
+          cycleSelectedTextAlignment),
+        TextPanelAction('Line Height +', Icons.height,
+          () => adjustTextLineHeight(0.1)),
+        TextPanelAction('Line Height −', Icons.compress,
+          () => adjustTextLineHeight(-0.1)),
+        TextPanelAction('Letter Space +', Icons.space_bar,
+          () => adjustSelectedTextSpacing(0.5)),
+        TextPanelAction('Letter Space −', Icons.format_letter_spacing,
+          () => adjustSelectedTextSpacing(-0.5)),
+        TextPanelAction('Curve Up', Icons.keyboard_arrow_up,
+          () => adjustSelectedTextCurve(0.2)),
+        TextPanelAction('Curve Down', Icons.keyboard_arrow_down,
+          () => adjustSelectedTextCurve(-0.2)),
+        TextPanelAction('Duplicate', Icons.copy, duplicateSelectedText),
+      ],
+      moreActions: [
+        TextPanelAction('Undo Text', Icons.undo, undoTextEdit),
+        TextPanelAction('Redo Text', Icons.redo, redoTextEdit),
+        TextPanelAction('BG Remover', Icons.content_cut, openBackgroundRemover),
+        TextPanelAction('Color Palette', Icons.palette, chooseTextColor),
+        TextPanelAction('Text Background', Icons.format_color_fill,
+          editTextBackground),
+        TextPanelAction('Reset Style', Icons.restart_alt,
+          resetSelectedTextStyle),
+      ],
+      textColor: active == null ? Colors.white :
+          (textColors[active] ?? Colors.white),
+      onTextColor: (color) => updateSelected(
+        () => textColors[active!] = color),
+      onMoreColors: chooseTextColor,
+      textOpacity: active == null ? 1 : (textOpacities[active] ?? 1),
+      onOpacityStart: () { if (active != null) _rememberTextEdit(); },
+      onTextOpacity: (value) {
+        if (active == null) return;
+        setState(() => textOpacities[active] = value);
+      },
+      glowEnabled: active != null && (textGlowStrengths[active] ?? 0) > 0,
+      onGlowToggle: () => updateSelected(() {
+        textGlowStrengths[active!] =
+            (textGlowStrengths[active] ?? 0) > 0 ? 0 : 100;
+      }),
+      glowStrength: active == null ? 0 :
+          (textGlowStrengths[active] ?? 0),
+      onGlowStart: () { if (active != null) _rememberTextEdit(); },
+      onGlowStrength: (value) {
+        if (active == null) return;
+        setState(() => textGlowStrengths[active] = value);
+      },
+      glowColor: active == null ? const Color(0xFFFF1744) :
+          (textGlowColors[active] ?? const Color(0xFFFF1744)),
+      onGlowColor: (color) => updateSelected(() {
+        textGlowColors[active!] = color;
+        if ((textGlowStrengths[active] ?? 0) <= 0) {
+          textGlowStrengths[active] = 100;
+        }
+      }),
+      gradientEnabled: active != null &&
+          gradientTextOverlayIds.contains(active),
+      onGradientToggle: toggleSelectedTextGradient,
+      outlineWidth: active == null ? 0 :
+          (textOutlineWidths[active] ?? 0),
+      onOutlineIncrease: () => adjustSelectedTextOutline(0.5),
+      onOutlineDecrease: () => adjustSelectedTextOutline(-0.5),
+      onOutlineColor: cycleTextOutlineColor,
+      backgroundEnabled: active != null &&
+          textBgColors.containsKey(active),
+      onBackgroundToggle: () => updateSelected(() {
+        if (textBgColors.containsKey(active)) {
+          textBgColors.remove(active);
+        } else {
+          textBgColors[active!] = const Color(0xFF0C1430);
+          textBgOpacities[active] = 0.85;
+        }
+      }),
+      backgroundColor: active == null ? const Color(0xFF0C1430) :
+          (textBgColors[active] ?? const Color(0xFF0C1430)),
+      onBackgroundColor: (color) => updateSelected(() {
+        textBgColors[active!] = color;
+        textBgOpacities.putIfAbsent(active, () => 0.85);
+      }),
+      backgroundOpacity: active == null ? 0.85 :
+          (textBgOpacities[active] ?? 0.85),
+      onBackgroundOpacityStart: () {
+        if (active != null) _rememberTextEdit();
+      },
+      onBackgroundOpacity: (value) {
+        if (active == null) return;
+        setState(() {
+          textBgColors.putIfAbsent(
+            active, () => const Color(0xFF0C1430));
+          textBgOpacities[active] = value;
+        });
+      },
+      onBackgroundSettings: editTextBackground,
+    );
+  }
+
   Widget tool(String icon, String title, VoidCallback tap) {
     final isGlowTool = title == 'Glow';
     final originalTap = tap;
@@ -5485,10 +5624,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         _buildBStyleControlPanel(),
 
     ]))),
-    if (showGlowPanel && showTextTools && selectedTextIndex != null)
+    if (showGlowPanel && showTextTools && selectedTextIndex != null && false)
       _buildInlineGlowPanel(),
     if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
-    Container(
+    if (showTextTools && selectedReadyMadeTemplate == null)
+      _buildPremiumTextPanel(),
+    if (!showTextTools || selectedReadyMadeTemplate != null) Container(
       padding: const EdgeInsets.fromLTRB(6, 7, 6, 9),
       color: const Color(0xFF101827),
       child: selectedReadyMadeTemplate != null
