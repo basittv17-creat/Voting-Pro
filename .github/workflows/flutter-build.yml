@@ -167,6 +167,15 @@ jobs:
           jarsigner -verify "$AAB" >/dev/null
           echo "SIGNED_APK_AND_AAB_VERIFIED"
 
+      - name: Verify Android 16 KB APK alignment for Google Play
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -name zipalign -type f | sort -V | tail -n 1)"
+          test -n "$ZIPALIGN"
+          "$ZIPALIGN" -c -P 16 -v 4 "$APK"
+          echo "ANDROID_16KB_ALIGNMENT_VERIFIED"
+
       - name: Build Web
         run: flutter build web --release
 
