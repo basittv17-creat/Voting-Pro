@@ -507,29 +507,36 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                                             ),
                                           ),
                                         ),
-                                        ValueListenableBuilder<Offset?>(
-                                          valueListenable: _brushCursor,
-                                          builder: (context, cursor, child) {
-                                            if (!_manual || cursor == null) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            return Positioned(
-                                              left: cursor.dx - _brushSize / 2,
-                                              top: cursor.dy - _brushSize / 2,
-                                              child: IgnorePointer(
-                                                child: Container(
-                                                  width: _brushSize,
-                                                  height: _brushSize,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(
-                                                      color: gold, width: 2,
+                                        Positioned.fill(
+                                          child: IgnorePointer(
+                                            child: ValueListenableBuilder<Offset?>(
+                                              valueListenable: _brushCursor,
+                                              builder: (context, cursor, child) {
+                                                if (!_manual || cursor == null) {
+                                                  return const SizedBox.shrink();
+                                                }
+                                                return Stack(
+                                                  clipBehavior: Clip.none,
+                                                  children: [
+                                                    Positioned(
+                                                      left: cursor.dx - _brushSize / 2,
+                                                      top: cursor.dy - _brushSize / 2,
+                                                      child: Container(
+                                                        width: _brushSize,
+                                                        height: _brushSize,
+                                                        decoration: BoxDecoration(
+                                                          shape: BoxShape.circle,
+                                                          border: Border.all(
+                                                            color: gold, width: 2,
+                                                          ),
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
+                                                  ],
+                                                );
+                                              },
+                                            ),
+                                          ),
                                         ),
                                         Positioned(
                                           right: 6, top: 6,
