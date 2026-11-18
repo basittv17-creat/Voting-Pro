@@ -20,6 +20,7 @@ class AdvancedTextOverlay extends StatelessWidget {
     this.backgroundExpansion = 0,
     this.backgroundGradient = false,
     this.backgroundShadowBlur = 0,
+    this.backgroundBorderWidth = 0,
   });
 
   final String text;
@@ -35,6 +36,7 @@ class AdvancedTextOverlay extends StatelessWidget {
   final double backgroundExpansion;
   final bool backgroundGradient;
   final double backgroundShadowBlur;
+  final double backgroundBorderWidth;
 
   static const LinearGradient _fill = LinearGradient(
     colors: [Color(0xFFFFD700), Color(0xFFFF478B), Color(0xFF00E5FF)],
@@ -76,6 +78,7 @@ class AdvancedTextOverlay extends StatelessWidget {
           backgroundExpansion: backgroundExpansion,
           backgroundGradient: backgroundGradient,
           backgroundShadowBlur: backgroundShadowBlur,
+          backgroundBorderWidth: backgroundBorderWidth,
         ),
       );
     }
@@ -117,6 +120,22 @@ class AdvancedTextOverlay extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
+        // Keep the border wrapped around the actual shaped text glyphs.
+        if (hasBg && backgroundBorderWidth > 0) Text(
+          text,
+          textAlign: alignment,
+          textDirection: direction,
+          style: style.copyWith(
+            shadows: const <Shadow>[],
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeJoin = StrokeJoin.round
+              ..strokeCap = StrokeCap.round
+              ..strokeWidth = (backgroundExpansion.clamp(0.0, 24.0).toDouble() +
+                  backgroundBorderWidth.clamp(0.0, 6.0).toDouble()) * 2 + 2
+              ..color = Colors.white70,
+          ),
+        ),
         if (hasBg) Text(
           text,
           textAlign: alignment,
@@ -159,6 +178,7 @@ class _CurvedTextPainter extends CustomPainter {
     this.backgroundExpansion = 0,
     this.backgroundGradient = false,
     this.backgroundShadowBlur = 0,
+    this.backgroundBorderWidth = 0,
   });
 
   final String text;
@@ -173,6 +193,7 @@ class _CurvedTextPainter extends CustomPainter {
   final double backgroundExpansion;
   final bool backgroundGradient;
   final double backgroundShadowBlur;
+  final double backgroundBorderWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -217,6 +238,23 @@ class _CurvedTextPainter extends CustomPainter {
       canvas.rotate(angle);
       final origin = Offset(-painter.width / 2, -painter.height / 2);
       if (backgroundColor != null && backgroundOpacity > 0) {
+        if (backgroundBorderWidth > 0) {
+          final borderPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeJoin = StrokeJoin.round
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = (backgroundExpansion.clamp(0.0, 24.0).toDouble() +
+                backgroundBorderWidth.clamp(0.0, 6.0).toDouble()) * 2 + 2
+            ..color = Colors.white70;
+          final borderPainter = TextPainter(
+            text: TextSpan(text: characters[i],
+              style: style.copyWith(
+                shadows: const <Shadow>[], foreground: borderPaint)),
+            textDirection: direction,
+          )..layout();
+          borderPainter.paint(canvas, origin);
+          borderPainter.dispose();
+        }
         final paint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeJoin = StrokeJoin.round
@@ -288,5 +326,6 @@ class _CurvedTextPainter extends CustomPainter {
       backgroundOpacity != old.backgroundOpacity ||
       backgroundExpansion != old.backgroundExpansion ||
       backgroundGradient != old.backgroundGradient ||
-      backgroundShadowBlur != old.backgroundShadowBlur;
+      backgroundShadowBlur != old.backgroundShadowBlur ||
+      backgroundBorderWidth != old.backgroundBorderWidth;
 }
