@@ -3620,28 +3620,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     setState(() => item.position += delta);
   }
 
-  Widget _buildLetterStyleDeselectButton() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: SizedBox(
-        width: 42,
-        height: 42,
-        child: Material(
-          color: Colors.red,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () => setState(_clearCanvasSelection),
-            child: const Tooltip(
-              message: 'Deselect Style',
-              child: Icon(Icons.close, color: Colors.white, size: 25),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCompactLetterStylePanel(bool sideA) {
     final index = selectedLetterOverlayIndex;
     if (index == null || index < 0 || index >= letterOverlays.length ||
@@ -4225,7 +4203,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ]),
     ])),
     Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Column(children: [
-      Screenshot(controller: shot, child: AspectRatio(aspectRatio: canvasRatio, child: Container(
+      // Empty canvas tap dismisses A/B controls; overlay and photo gestures
+      // still take priority because their own GestureDetectors win the tap.
+      GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        onTap: () {
+          if (selectedLetterOverlayIndex != null) {
+            setState(_clearCanvasSelection);
+          }
+        },
+        child: Screenshot(controller: shot, child: AspectRatio(aspectRatio: canvasRatio, child: Container(
         padding: selectedReadyMadeTemplate == null ? const EdgeInsets.all(7) : EdgeInsets.zero,
         decoration: selectedReadyMadeTemplate == null
             ? BoxDecoration(color: background, border: Border.all(color: frameColor, width: frameWidth))
@@ -4891,7 +4878,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           if (selectedReadyMadeTemplate != null)
             Positioned.fill(child: _buildReadyMadeTemplateArtwork()),
         ]),
-      ))),
+      )))),
       if (!isExportingPoster && _hasSelectedAStyle)
         _buildAStyleControlPanel(),
       if (!isExportingPoster && _hasSelectedBStyle)
