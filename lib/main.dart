@@ -2701,6 +2701,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   label: Text(AppLanguage.tr(preset), style: const TextStyle(color: Colors.white)),
                   backgroundColor: const Color(0xFF263247),
                   onPressed: () {
+                    _rememberTextEdit();
                     setState(() {
                       if (preset == 'Headline') {
                         boldTextOverlayIds.add(index);
@@ -5264,6 +5265,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           backgroundExpansion: textBgPaddings[index] ?? 0,
                           backgroundGradient: textBgGradients.contains(index),
                           backgroundShadowBlur: textBgShadows[index] ?? 0,
+                          backgroundBorderWidth: textBgBorders[index] ?? 0,
                           alignment: _overlayTextAlign(index),
                           direction: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
                           gradient: gradientTextOverlayIds.contains(index),
