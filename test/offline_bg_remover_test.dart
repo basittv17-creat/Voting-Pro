@@ -15,8 +15,7 @@ void main() {
 
   test('Mask resize preserves the four corners on enlarged images', () {
     final original = Float32List.fromList([1, 0, 0, 1]);
-    final enlarged =
-        OfflineBgRemover.resizeSoftMask(original, 2, 2, 6, 6);
+    final enlarged = OfflineBgRemover.resizeSoftMask(original, 2, 2, 6, 6);
     expect(enlarged[0], 255);
     expect(enlarged[5], 0);
     expect(enlarged[30], 0);
@@ -27,8 +26,7 @@ void main() {
 
   test('Single-pixel mask expands without leaking transparency', () {
     final singlePixel = Float32List.fromList([1]);
-    final resized =
-        OfflineBgRemover.resizeSoftMask(singlePixel, 1, 1, 3, 5);
+    final resized = OfflineBgRemover.resizeSoftMask(singlePixel, 1, 1, 3, 5);
     expect(resized, everyElement(255));
   });
 
