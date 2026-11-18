@@ -162,8 +162,10 @@ class _NeonPurpleVsTemplateState extends State<NeonPurpleVsTemplate> {
               child: SizedBox.expand()),
             Positioned(left: 92, top: 155, width: 535, height: 575, child: _photo(true)),
             Positioned(left: 780, top: 155, width: 555, height: 575, child: _photo(false)),
-            Image.asset('assets/templates/Neon_Purple_VS_Template.png',
-              fit: BoxFit.fill, filterQuality: FilterQuality.high, gaplessPlayback: true),
+            IgnorePointer(
+              child: Image.asset('assets/templates/Neon_Purple_VS_Template.png',
+                fit: BoxFit.fill, filterQuality: FilterQuality.high, gaplessPlayback: true),
+            ),
             if (!widget.preview)
               Positioned(left: 85, top: 837, width: 535, height: 92,
                 child: _name(widget.nameA, true)),
