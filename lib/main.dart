@@ -398,6 +398,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<int, double> textScales = {};
   final Map<int, String> textFonts = {};
   final Map<int, Color> textColors = {};
+  final Map<int, Color> textBgColors = {};
+  final Map<int, double> textBgOpacities = {};
+  final Map<int, double> textBgPaddings = {};
+  final Map<int, double> textBgRadii = {};
+  final Map<int, double> textBgBorders = {};
+  final Map<int, double> textBgShadows = {};
+  final Set<int> textBgGradients = {};
   final Map<int, Color> textGlowColors = {};
   final Map<int, String> textAlignments = {};
   final Map<int, double> textLetterSpacings = {};
@@ -602,6 +609,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'gradientTextOverlayIds': gradientTextOverlayIds.toList(),
         'customFontPaths': _stringMapJson(customFontPaths),
         'textColors': _colorMapJson(textColors),
+        'textBgColors': _colorMapJson(textBgColors),
+        'textBgOpacities': _doubleMapJson(textBgOpacities),
+        'textBgPaddings': _doubleMapJson(textBgPaddings),
+        'textBgRadii': _doubleMapJson(textBgRadii),
+        'textBgBorders': _doubleMapJson(textBgBorders),
+        'textBgShadows': _doubleMapJson(textBgShadows),
+        'textBgGradients': textBgGradients.toList(),
         'textGlowColors': _colorMapJson(textGlowColors),
         'textGlowStrengths': _doubleMapJson(textGlowStrengths),
         'tagraStickerOverlays': [
@@ -798,6 +812,36 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             }
           }
         }
+        void readBgColors() {
+          textBgColors.clear();
+          final saved = data['textBgColors'];
+          if (saved is Map) {
+            for (final e in saved.entries) {
+              final i = int.tryParse(e.key.toString());
+              if (i != null && e.value is num) textBgColors[i] = Color((e.value as num).toInt());
+            }
+          }
+        }
+        void readBgValues(String key, Map<int, double> dest, double max) {
+          dest.clear();
+          final saved = data[key];
+          if (saved is Map) {
+            for (final e in saved.entries) {
+              final i = int.tryParse(e.key.toString());
+              if (i != null && e.value is num) {
+                dest[i] = (e.value as num).toDouble().clamp(0.0, max).toDouble();
+              }
+            }
+          }
+        }
+        readBgColors();
+        readBgValues('textBgOpacities', textBgOpacities, 1);
+        readBgValues('textBgPaddings', textBgPaddings, 24);
+        readBgValues('textBgRadii', textBgRadii, 36);
+        readBgValues('textBgBorders', textBgBorders, 6);
+        readBgValues('textBgShadows', textBgShadows, 24);
+        textBgGradients..clear()..addAll(
+          (data['textBgGradients'] as List? ?? const []).whereType<num>().map((e) => e.toInt()));
         textColors.clear();
         final colors = data['textColors'];
         if (colors is Map) {
@@ -2413,6 +2457,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     setState(() {
       textFonts.remove(index);
       textColors.remove(index);
+      textBgColors.remove(index);
+      textBgOpacities.remove(index);
+      textBgPaddings.remove(index);
+      textBgRadii.remove(index);
+      textBgBorders.remove(index);
+      textBgShadows.remove(index);
+      textBgGradients.remove(index);
       textGlowColors.remove(index);
       textGlowStrengths.remove(index);
       textAlignments.remove(index);
@@ -2446,6 +2497,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textScales[next] = textScales[index] ?? 1.0;
       if (textFonts.containsKey(index)) textFonts[next] = textFonts[index]!;
       if (textColors.containsKey(index)) textColors[next] = textColors[index]!;
+      if (textBgColors.containsKey(index)) textBgColors[next] = textBgColors[index]!;
+      if (textBgOpacities.containsKey(index)) textBgOpacities[next] = textBgOpacities[index]!;
+      if (textBgPaddings.containsKey(index)) textBgPaddings[next] = textBgPaddings[index]!;
+      if (textBgRadii.containsKey(index)) textBgRadii[next] = textBgRadii[index]!;
+      if (textBgBorders.containsKey(index)) textBgBorders[next] = textBgBorders[index]!;
+      if (textBgShadows.containsKey(index)) textBgShadows[next] = textBgShadows[index]!;
+      if (textBgGradients.contains(index)) textBgGradients.add(next);
       if (textGlowColors.containsKey(index)) textGlowColors[next] = textGlowColors[index]!;
       if (textGlowStrengths.containsKey(index)) textGlowStrengths[next] = textGlowStrengths[index]!;
       if (textAlignments.containsKey(index)) textAlignments[next] = textAlignments[index]!;
@@ -2542,6 +2600,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     'textAlignments': Map<int, String>.from(textAlignments),
     'customFontPaths': Map<int, String>.from(customFontPaths),
     'textColors': Map<int, Color>.from(textColors),
+    'textBgColors': Map<int, Color>.from(textBgColors),
+    'textBgOpacities': Map<int, double>.from(textBgOpacities),
+    'textBgPaddings': Map<int, double>.from(textBgPaddings),
+    'textBgRadii': Map<int, double>.from(textBgRadii),
+    'textBgBorders': Map<int, double>.from(textBgBorders),
+    'textBgShadows': Map<int, double>.from(textBgShadows),
+    'textBgGradients': Set<int>.from(textBgGradients),
     'textGlowColors': Map<int, Color>.from(textGlowColors),
     'textOutlineColors': Map<int, Color>.from(textOutlineColors),
     'boldTextOverlayIds': Set<int>.from(boldTextOverlayIds),
@@ -2567,6 +2632,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     textAlignments..clear()..addAll(snapshot['textAlignments'] as Map<int, String>);
     customFontPaths..clear()..addAll(snapshot['customFontPaths'] as Map<int, String>);
     textColors..clear()..addAll(snapshot['textColors'] as Map<int, Color>);
+    textBgColors..clear()..addAll(snapshot['textBgColors'] as Map<int, Color>);
+    textBgOpacities..clear()..addAll(snapshot['textBgOpacities'] as Map<int, double>);
+    textBgPaddings..clear()..addAll(snapshot['textBgPaddings'] as Map<int, double>);
+    textBgRadii..clear()..addAll(snapshot['textBgRadii'] as Map<int, double>);
+    textBgBorders..clear()..addAll(snapshot['textBgBorders'] as Map<int, double>);
+    textBgShadows..clear()..addAll(snapshot['textBgShadows'] as Map<int, double>);
+    textBgGradients..clear()..addAll(snapshot['textBgGradients'] as Set<int>);
     textGlowColors..clear()..addAll(snapshot['textGlowColors'] as Map<int, Color>);
     textOutlineColors..clear()..addAll(snapshot['textOutlineColors'] as Map<int, Color>);
     boldTextOverlayIds..clear()..addAll(snapshot['boldTextOverlayIds'] as Set<int>);
@@ -3362,6 +3434,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldScales = Map<int, double>.from(textScales);
       final oldFonts = Map<int, String>.from(textFonts);
       final oldColors = Map<int, Color>.from(textColors);
+      final oldBgColors = Map<int, Color>.from(textBgColors);
+      final oldBgOpacities = Map<int, double>.from(textBgOpacities);
+      final oldBgPaddings = Map<int, double>.from(textBgPaddings);
+      final oldBgRadii = Map<int, double>.from(textBgRadii);
+      final oldBgBorders = Map<int, double>.from(textBgBorders);
+      final oldBgShadows = Map<int, double>.from(textBgShadows);
+      final oldBgGradients = Set<int>.from(textBgGradients);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
       final oldAlignments = Map<int, String>.from(textAlignments);
@@ -3382,6 +3461,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textScales.clear();
       textFonts.clear();
       textColors.clear();
+      textBgColors.clear();
+      textBgOpacities.clear();
+      textBgPaddings.clear();
+      textBgRadii.clear();
+      textBgBorders.clear();
+      textBgShadows.clear();
+      textBgGradients.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
       textAlignments.clear();
@@ -3414,6 +3500,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
+        if (oldBgColors.containsKey(sourceIndex)) textBgColors[i] = oldBgColors[sourceIndex]!;
+        if (oldBgOpacities.containsKey(sourceIndex)) textBgOpacities[i] = oldBgOpacities[sourceIndex]!;
+        if (oldBgPaddings.containsKey(sourceIndex)) textBgPaddings[i] = oldBgPaddings[sourceIndex]!;
+        if (oldBgRadii.containsKey(sourceIndex)) textBgRadii[i] = oldBgRadii[sourceIndex]!;
+        if (oldBgBorders.containsKey(sourceIndex)) textBgBorders[i] = oldBgBorders[sourceIndex]!;
+        if (oldBgShadows.containsKey(sourceIndex)) textBgShadows[i] = oldBgShadows[sourceIndex]!;
+        if (oldBgGradients.contains(sourceIndex)) textBgGradients.add(i);
         if (oldGlowColors.containsKey(sourceIndex)) {
           textGlowColors[i] = oldGlowColors[sourceIndex]!;
         }
@@ -3477,6 +3570,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldScales = Map<int, double>.from(textScales);
       final oldFonts = Map<int, String>.from(textFonts);
       final oldColors = Map<int, Color>.from(textColors);
+      final oldBgColors = Map<int, Color>.from(textBgColors);
+      final oldBgOpacities = Map<int, double>.from(textBgOpacities);
+      final oldBgPaddings = Map<int, double>.from(textBgPaddings);
+      final oldBgRadii = Map<int, double>.from(textBgRadii);
+      final oldBgBorders = Map<int, double>.from(textBgBorders);
+      final oldBgShadows = Map<int, double>.from(textBgShadows);
+      final oldBgGradients = Set<int>.from(textBgGradients);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
       final oldAlignments = Map<int, String>.from(textAlignments);
@@ -3499,6 +3599,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textScales.clear();
       textFonts.clear();
       textColors.clear();
+      textBgColors.clear();
+      textBgOpacities.clear();
+      textBgPaddings.clear();
+      textBgRadii.clear();
+      textBgBorders.clear();
+      textBgShadows.clear();
+      textBgGradients.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
       textAlignments.clear();
@@ -3527,6 +3634,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
+        if (oldBgColors.containsKey(sourceIndex)) textBgColors[i] = oldBgColors[sourceIndex]!;
+        if (oldBgOpacities.containsKey(sourceIndex)) textBgOpacities[i] = oldBgOpacities[sourceIndex]!;
+        if (oldBgPaddings.containsKey(sourceIndex)) textBgPaddings[i] = oldBgPaddings[sourceIndex]!;
+        if (oldBgRadii.containsKey(sourceIndex)) textBgRadii[i] = oldBgRadii[sourceIndex]!;
+        if (oldBgBorders.containsKey(sourceIndex)) textBgBorders[i] = oldBgBorders[sourceIndex]!;
+        if (oldBgShadows.containsKey(sourceIndex)) textBgShadows[i] = oldBgShadows[sourceIndex]!;
+        if (oldBgGradients.contains(sourceIndex)) textBgGradients.add(i);
         if (oldGlowColors.containsKey(sourceIndex)) {
           textGlowColors[i] = oldGlowColors[sourceIndex]!;
         }
