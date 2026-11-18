@@ -39,6 +39,8 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   bool _manual = false;
   bool _erase = true;
   bool _compare = false;
+  bool _hasUnsavedEdits = false;
+  bool _allowExit = false;
   double _brushSize = 28;
   Uint8List? _sourcePng;
   Uint8List? _previewPng;
@@ -93,6 +95,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         _compare = false;
         _undo.clear();
         _redo.clear();
+        _hasUnsavedEdits = false;
         _status = 'Image ready • Auto or Manual editing';
       });
     } catch (error) {
@@ -105,13 +108,13 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   // Prevent accidentally losing a manual cutout when switching slots or
   // replacing the source image. Undo history changes only after editing.
   Future<bool> _confirmDiscardEdits() async {
-    if (_undo.isEmpty) return true;
+    if (!_hasUnsavedEdits) return true;
     final discard = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Discard background edits?'),
         content: const Text(
-          'Switching pictures will discard the current cutout and its Undo history. '
+          'Leaving or switching pictures will discard the current cutout and its Undo history. '
           'Use Apply Cutout to save your work first.',
         ),
         actions: [
@@ -149,6 +152,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       _mask = null;
       _undo.clear();
       _redo.clear();
+      _hasUnsavedEdits = false;
       _previewRect = null;
     });
     final photo = sideA ? widget.initialPhotoA : widget.initialPhotoB;
@@ -162,6 +166,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   void _recordUndo() {
     final current = _mask;
     if (current == null) return;
+    _hasUnsavedEdits = true;
     _undo.add(Uint8List.fromList(current));
     if (_undo.length > 8) _undo.removeAt(0);
     _redo.clear();
@@ -186,6 +191,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       if (_sourcePng == null) _notice('Upload Your Picture first');
       return;
     }
+    final previousEdits = _hasUnsavedEdits;
     _recordUndo();
     setState(() {
       _busy = true;
@@ -202,6 +208,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       setState(() => _status = 'Auto cutout ready • Use Manual to refine edges');
     } catch (error) {
       if (_undo.isNotEmpty) _mask = _undo.removeLast();
+      _hasUnsavedEdits = previousEdits;
       _notice('Offline auto removal unavailable: $error');
       if (_sourcePng != null) await _updatePreview();
     } finally {
@@ -310,7 +317,10 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       );
       await file.writeAsBytes(png, flush: true);
       await widget.onApply(_sideA, file);
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        setState(() => _allowExit = true);
+        Navigator.of(context).pop();
+      }
     } catch (error) {
       _notice('Could not apply cutout: $error');
     } finally {
@@ -340,7 +350,16 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   @override
   Widget build(BuildContext context) {
     final imageAvailable = _previewPng != null && _sourcePng != null;
-    return Scaffold(
+    return PopScope(
+      canPop: _allowExit || (!_busy && !_hasUnsavedEdits),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop || !mounted || _busy) return;
+        if (await _confirmDiscardEdits() && mounted) {
+          setState(() => _allowExit = true);
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
       backgroundColor: dark,
       appBar: AppBar(
         backgroundColor: dark,
@@ -594,6 +613,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
