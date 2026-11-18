@@ -216,26 +216,43 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     }
   }
 
+  // Serialize preview recomposition so quick Undo/Redo taps cannot show
+  // an older PNG after a newer mask change finishes.
+  Future<void> _runMaskEdit(VoidCallback edit) async {
+    if (_busy || _mask == null || _sourcePng == null) return;
+    setState(() => _busy = true);
+    try {
+      edit();
+      await _updatePreview();
+    } catch (error) {
+      _notice('Could not update cutout preview: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _reset() async {
-    if (_busy || _mask == null) return;
-    _recordUndo();
-    _mask!.fillRange(0, _mask!.length, 255);
-    await _updatePreview();
-    if (mounted) setState(() => _status = 'Reset to original image');
+    await _runMaskEdit(() {
+      _recordUndo();
+      _mask!.fillRange(0, _mask!.length, 255);
+      _status = 'Reset to original image';
+    });
   }
 
   Future<void> _undoChange() async {
-    if (_busy || _undo.isEmpty || _mask == null) return;
-    _redo.add(Uint8List.fromList(_mask!));
-    _mask = _undo.removeLast();
-    await _updatePreview();
+    if (_undo.isEmpty) return;
+    await _runMaskEdit(() {
+      _redo.add(Uint8List.fromList(_mask!));
+      _mask = _undo.removeLast();
+    });
   }
 
   Future<void> _redoChange() async {
-    if (_busy || _redo.isEmpty || _mask == null) return;
-    _undo.add(Uint8List.fromList(_mask!));
-    _mask = _redo.removeLast();
-    await _updatePreview();
+    if (_redo.isEmpty) return;
+    await _runMaskEdit(() {
+      _undo.add(Uint8List.fromList(_mask!));
+      _mask = _redo.removeLast();
+    });
   }
 
   Offset? _toImagePoint(Offset local) {
