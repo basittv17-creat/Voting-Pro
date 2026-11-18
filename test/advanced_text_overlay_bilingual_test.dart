@@ -21,6 +21,10 @@ void main() {
               gradient: true,
               outlineWidth: 1.5,
               outlineColor: Colors.black,
+              backgroundColor: Colors.indigo,
+              backgroundOpacity: 0.8,
+              backgroundExpansion: 3,
+              backgroundBorderWidth: 2,
             ),
           ),
         ),
@@ -46,6 +50,28 @@ void main() {
     tester,
   ) async {
     await checkCurve(tester, 'ووٹنگ پرو مقابلہ', TextDirection.rtl);
+  });
+
+  testWidgets('Normal Urdu text renders glyph border and background', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AdvancedTextOverlay(
+            text: 'علی کام کر رہا ہے',
+            style: TextStyle(fontSize: 26, color: Colors.white),
+            alignment: TextAlign.center,
+            direction: TextDirection.rtl,
+            backgroundColor: Colors.deepPurple,
+            backgroundExpansion: 4,
+            backgroundBorderWidth: 3,
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('علی کام کر رہا ہے'), findsWidgets);
   });
 
   testWidgets('Multiline Urdu uses normal shaped text renderer', (
