@@ -5096,18 +5096,29 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final position = textPositions[index] ??
                 Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
             final scale = textScales[index] ?? 1.0;
+            // Enlarge the hit target without changing the painted text position.
+            final textTouchInset = isText && !isExportingPoster ? 12.0 : 0.0;
             return Positioned(
-              left: position.dx,
-              top: position.dy,
+              left: position.dx - textTouchInset,
+              top: position.dy - textTouchInset,
               child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () => setState(() {
-                  if (isText) {
-                    _selectCanvasObject(textIndex: index);
-                  } else {
-                    _selectCanvasObject(stickerIndex: index);
+                key: ValueKey(index),
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) {
+                  // Do not wait for the double-tap recognizer before selecting.
+                  if (isText && selectedTextIndex != index) {
+                    setState(() => _selectCanvasObject(textIndex: index));
+                  } else if (isSticker && selectedStickerIndex != index) {
+                    setState(() => _selectCanvasObject(stickerIndex: index));
                   }
-                }),
+                },
+                onTap: () {
+                  if (isText && selectedTextIndex != index) {
+                    setState(() => _selectCanvasObject(textIndex: index));
+                  } else if (isSticker && selectedStickerIndex != index) {
+                    setState(() => _selectCanvasObject(stickerIndex: index));
+                  }
+                },
                 onDoubleTap: () {
                   if (isText) {
                     setState(() => _selectCanvasObject(textIndex: index));
@@ -5151,7 +5162,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     }
                   });
                 },
-                child: Transform.scale(
+                child: Padding(
+                  padding: EdgeInsets.all(textTouchInset),
+                  child: Transform.scale(
                   scale: (isText || isSticker) ? scale : 1.0,
                   alignment: Alignment.topLeft,
                   child: Stack(
@@ -5335,6 +5348,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                     ],
                   ),
+                ),
                 ),
               ),
             );
