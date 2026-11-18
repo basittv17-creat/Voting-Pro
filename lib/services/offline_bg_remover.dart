@@ -151,8 +151,9 @@ Uint8List _prepareImage(Uint8List bytes) {
   final picture = maxSide > 1600
       ? img.copyResize(
           oriented,
-          width: (oriented.width * 1600 / maxSide).round(),
-          height: (oriented.height * 1600 / maxSide).round(),
+          // Preserve at least one pixel for extreme portrait/wide photos.
+          width: math.max(1, (oriented.width * 1600 / maxSide).round()),
+          height: math.max(1, (oriented.height * 1600 / maxSide).round()),
           interpolation: img.Interpolation.linear,
         )
       : oriented;
