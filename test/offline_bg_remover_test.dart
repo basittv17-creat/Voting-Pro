@@ -15,9 +15,8 @@ void main() {
 
   test('Mask resize preserves the four corners on enlarged images', () {
     final original = Float32List.fromList([1, 0, 0, 1]);
-    final enlarged = OfflineBgRemover.resizeSoftMask(
-      original, 2, 2, 6, 6,
-    );
+    final enlarged =
+        OfflineBgRemover.resizeSoftMask(original, 2, 2, 6, 6);
     expect(enlarged[0], 255);
     expect(enlarged[5], 0);
     expect(enlarged[30], 0);
@@ -27,17 +26,15 @@ void main() {
   });
 
   test('Single-pixel mask expands without leaking transparency', () {
-    final resized = OfflineBgRemover.resizeSoftMask(
-      Float32List.fromList([1]), 1, 1, 3, 5,
-    );
+    final singlePixel = Float32List.fromList([1]);
+    final resized =
+        OfflineBgRemover.resizeSoftMask(singlePixel, 1, 1, 3, 5);
     expect(resized, everyElement(255));
   });
 
   test('Invalid soft mask dimensions are rejected', () {
     expect(
-      () => OfflineBgRemover.resizeSoftMask(
-        Float32List(1), 2, 2, 6, 6,
-      ),
+      () => OfflineBgRemover.resizeSoftMask(Float32List(1), 2, 2, 6, 6),
       throwsFormatException,
     );
   });
