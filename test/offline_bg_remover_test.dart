@@ -5,6 +5,14 @@ import 'package:image/image.dart' as img;
 import 'package:voting_pro/services/offline_bg_remover.dart';
 
 void main() {
+  test('MediaPipe RGB normalization uses float range [0, 1]', () {
+    expect(OfflineBgRemover.normalizeMediaPipeChannel(0), 0);
+    expect(OfflineBgRemover.normalizeMediaPipeChannel(255), 1);
+    expect(OfflineBgRemover.normalizeMediaPipeChannel(127.5), 0.5);
+    expect(OfflineBgRemover.normalizeMediaPipeChannel(-1), 0);
+    expect(OfflineBgRemover.normalizeMediaPipeChannel(300), 1);
+  });
+
   test('Erase brush affects only the selected circular area', () {
     final alpha = Uint8List.fromList(List<int>.filled(100, 255));
     OfflineBgRemover.brush(alpha, 10, 10, 4.5, 4.5, 2, erase: true);
