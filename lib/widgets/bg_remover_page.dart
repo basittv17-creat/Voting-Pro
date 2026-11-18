@@ -102,8 +102,35 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     }
   }
 
+  // Prevent accidentally losing a manual cutout when switching slots or
+  // replacing the source image. Undo history changes only after editing.
+  Future<bool> _confirmDiscardEdits() async {
+    if (_undo.isEmpty) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Discard background edits?'),
+        content: const Text(
+          'Switching pictures will discard the current cutout and its Undo history. '
+          'Use Apply Cutout to save your work first.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep Editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Discard Changes'),
+          ),
+        ],
+      ),
+    );
+    return discard == true && mounted;
+  }
+
   Future<void> _uploadPicture() async {
-    if (_busy) return;
+    if (_busy || !await _confirmDiscardEdits()) return;
     try {
       final picked = await _picker.pickImage(source: ImageSource.gallery);
       if (picked == null || !mounted) return;
@@ -114,7 +141,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   }
 
   Future<void> _changeSide(bool sideA) async {
-    if (_busy || _sideA == sideA) return;
+    if (_busy || _sideA == sideA || !await _confirmDiscardEdits()) return;
     setState(() {
       _sideA = sideA;
       _sourcePng = null;
