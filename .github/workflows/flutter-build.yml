@@ -129,6 +129,9 @@ jobs:
             -storepass "$STORE_PASSWORD" \
             -alias "$KEY_ALIAS" >/dev/null
 
+      - name: Bundle offline segmentation model
+        run: bash scripts/fetch_bg_remover_model.sh
+
       - name: Get dependencies
         run: flutter pub get
 
