@@ -178,11 +178,13 @@ class _NeonVsDuelTemplateState extends State<NeonVsDuelTemplate> {
                 ),
               ),
               Positioned.fill(
-                child: Image.asset(
-                  'assets/templates/Neon_VS_Duel_Template.png',
-                  fit: BoxFit.fill,
-                  filterQuality: FilterQuality.high,
-                  gaplessPlayback: true,
+                child: IgnorePointer(
+                  child: Image.asset(
+                    'assets/templates/Neon_VS_Duel_Template.png',
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.high,
+                    gaplessPlayback: true,
+                  ),
                 ),
               ),
               if (!widget.preview) ...[
