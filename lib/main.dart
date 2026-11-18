@@ -1773,12 +1773,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     child: _neonDuelPhotoLayer(true, preview: preview)),
                   Positioned(left: 752, top: 105, width: 590, height: 639,
                     child: _neonDuelPhotoLayer(false, preview: preview)),
-                  // Name strips are painted above the artwork only when edited.
-                  // The source PNG's decorative A/B badges and VS shield remain visible.
+                  // Keep the original A/B badges and VS shield entirely visible.
+                  // Editable name panels start below the badges, not across them.
                   IgnorePointer(child: Image.asset('assets/templates/Neon_VS_Duel_Template.png',
                     fit: BoxFit.fill, filterQuality: FilterQuality.high, gaplessPlayback: true)),
                   if (!preview && _templateANameEdited)
-                    Positioned(left: 95, top: 865, width: 515, height: 95,
+                    Positioned(left: 95, top: 900, width: 515, height: 78,
                       child: DecoratedBox(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(colors: [
@@ -1788,7 +1788,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           onTap: () => editSideLabelText(true),
                           child: _neonDuelName(aSideLabelText, sideA: true)))),
                   if (!preview && _templateBNameEdited)
-                    Positioned(left: 840, top: 865, width: 515, height: 95,
+                    Positioned(left: 840, top: 900, width: 515, height: 78,
                       child: DecoratedBox(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(colors: [
