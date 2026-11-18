@@ -907,6 +907,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     _isRestartingProject = true;
     _autoSaveTimer?.cancel();
     try {
+      // Wait for pending autosaves before removing the old project.
+      await _saveQueue;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_projectSaveKey);
       final dir = await _projectDirectory();
@@ -1071,6 +1073,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           _photoScales[sideA] = 1.0;
           _photoOffsets[sideA] = Offset.zero;
           _photoStartScales[sideA] = 1.0;
+          _templatePhotoScales[sideA] = 1.0;
+          _templatePhotoOffsets[sideA] = Offset.zero;
+          _templatePhotoStartScales[sideA] = 1.0;
           _selectCanvasObject(photoSideA: sideA);
         });
       }
@@ -1137,6 +1142,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Future<void> share() async {
+    if (busy) return;
+    setState(() {
+      _clearCanvasSelection();
+      busy = true;
+    });
     try {
       final bytes = await capturePosterWithoutControls();
       if (bytes == null) {
@@ -1152,6 +1162,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       );
     } catch (e) {
       msg('شیئر نہیں ہو سکا: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -1204,14 +1216,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         initialOffsetA: _templatePhotoOffsets[true] ?? Offset.zero,
         initialOffsetB: _templatePhotoOffsets[false] ?? Offset.zero,
         onPickPhoto: (sideA) => pick(sideA),
-        onEditName: (sideA) async {
-          if (sideA && aSideLabelText == 'A SIDE') {
-            setState(() => aSideLabelText = '');
-          } else if (!sideA && bSideLabelText == 'B SIDE') {
-            setState(() => bSideLabelText = '');
-          }
-          await editSideLabelText(sideA);
-        },
+        onEditName: (sideA) => editSideLabelText(sideA),
         onPhotoSelected: (sideA) =>
             _selectCanvasObject(templatePhotoSideA: sideA),
         onPhotoTransform: (sideA, scale, offset) {
@@ -1777,7 +1782,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (templateKey == 'royal_a_vs_b_battle' ||
           templateKey == 'tagra_muqabla' ||
           templateKey == 'neon_vs_duel' ||
-          templateKey == 'neon_purple_showdown') {
+          templateKey == 'neon_purple_showdown' ||
+          templateKey == 'metallic_vs_battle') {
         selectedReadyMadeTemplate = templateKey;
         canvasRatio = templateKey == 'tagra_muqabla' ? 1447 / 1087 : 4 / 3;
         background = dark;
@@ -1823,6 +1829,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final isTagra = template.key == 'tagra_muqabla';
     final isNeonDuel = template.key == 'neon_vs_duel';
     final isNeonPurple = template.key == 'neon_purple_showdown';
+    final isMetallic = template.key == 'metallic_vs_battle';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -1838,7 +1845,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             ),
           ),
-          if (isNeonPurple)
+          if (isMetallic)
+            Image.asset('assets/templates/Metallic_VS_Battle_Template.png',
+              fit: BoxFit.contain, filterQuality: FilterQuality.medium)
+          else if (isNeonPurple)
             Image.asset('assets/templates/Neon_Purple_VS_Template.png',
               fit: BoxFit.contain, filterQuality: FilterQuality.medium)
           else if (isNeonDuel)
@@ -4494,8 +4504,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          top: -12,
+                          right: 0,
+                          top: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
@@ -4504,7 +4514,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                               }
                               setState(() {
                                 letterOverlays.removeAt(index);
-                                selectedLetterOverlayIndex = null;
+                                _selectCanvasObject();
                               });
                             },
                             child: Container(
@@ -4525,8 +4535,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          bottom: -12,
+                          right: 0,
+                          bottom: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
@@ -4590,12 +4600,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 onScaleUpdate: (details) {
                   if (selectedTagraStickerIndex != index) return;
                   setState(() {
-                    item.position += details.focalPointDelta;
-                    if (details.pointerCount >= 2) {
-                      item.scale = (tagraGestureStartScale * details.scale)
-                          .clamp(0.2, 5.0)
-                          .toDouble();
-                    }
+                    final oldScale = item.scale;
+                    final nextScale = details.pointerCount >= 2
+                        ? (tagraGestureStartScale * details.scale)
+                            .clamp(0.2, 5.0).toDouble()
+                        : oldScale;
+                    item.position += details.focalPointDelta +
+                        Offset(70.0 * (oldScale - nextScale),
+                            70.0 * (oldScale - nextScale));
+                    item.scale = nextScale;
                   });
                 },
                 child: Transform.scale(
@@ -4631,8 +4644,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          top: -12,
+                          right: 0,
+                          top: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: deleteSelectedTagraSticker,
@@ -4654,8 +4667,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                       if (selected)
                         Positioned(
-                          right: -12,
-                          bottom: -12,
+                          right: 0,
+                          bottom: 0,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
@@ -4671,10 +4684,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 final delta =
                                     details.globalPosition.dy -
                                     tagraResizeStartY;
-                                item.scale =
+                                final nextScale =
                                     (tagraGestureStartScale + delta * 0.01)
-                                        .clamp(0.2, 5.0)
-                                        .toDouble();
+                                        .clamp(0.2, 5.0).toDouble();
+                                final centerDelta = 70.0 * (item.scale - nextScale);
+                                item.position += Offset(centerDelta, centerDelta);
+                                item.scale = nextScale;
                               });
                             },
                             child: Container(
