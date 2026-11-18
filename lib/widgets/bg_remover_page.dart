@@ -202,6 +202,8 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       return;
     }
     final originalMask = Uint8List.fromList(_mask!);
+    final wasManual = _manual;
+    final previousStatus = _status;
     setState(() {
       _busy = true;
       _manual = false;
@@ -223,6 +225,12 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     } catch (error) {
       _mask = originalMask;
       _hasUnsavedEdits = originalMask.any((pixel) => pixel != 255);
+      if (mounted) {
+        setState(() {
+          _manual = wasManual;
+          _status = previousStatus;
+        });
+      }
       _notice('Offline auto removal unavailable: $error');
       if (_sourcePng != null && mounted) {
         try {
