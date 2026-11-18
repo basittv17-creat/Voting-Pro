@@ -1773,30 +1773,30 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     child: _neonDuelPhotoLayer(true, preview: preview)),
                   Positioned(left: 752, top: 105, width: 590, height: 639,
                     child: _neonDuelPhotoLayer(false, preview: preview)),
-                  const Positioned(left: 250, top: 770, width: 188, height: 132,
-                    child: DecoratedBox(decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [Color(0xFF07356E), Color(0xFF041B3D)])))),
-                  const Positioned(left: 1000, top: 770, width: 188, height: 132,
-                    child: DecoratedBox(decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [Color(0xFF710B45), Color(0xFF350024)])))),
-                  Image.asset('assets/templates/Neon_VS_Duel_Template.png',
-                    fit: BoxFit.fill, filterQuality: FilterQuality.high, gaplessPlayback: true),
-                  if (!preview)
-                    Positioned(left: 245, top: 765, width: 190, height: 135,
-                      child: GestureDetector(behavior: HitTestBehavior.opaque,
-                        onTap: () => editSideLabelText(true),
-                        child: _templateANameEdited
-                          ? _neonDuelName(aSideLabelText, sideA: true)
-                          : const SizedBox.expand())),
-                  if (!preview)
-                    Positioned(left: 990, top: 765, width: 190, height: 135,
-                      child: GestureDetector(behavior: HitTestBehavior.opaque,
-                        onTap: () => editSideLabelText(false),
-                        child: _templateBNameEdited
-                          ? _neonDuelName(bSideLabelText, sideA: false)
-                          : const SizedBox.expand())),
+                  // Name strips are painted above the artwork only when edited.
+                  // The source PNG's decorative A/B badges and VS shield remain visible.
+                  IgnorePointer(child: Image.asset('assets/templates/Neon_VS_Duel_Template.png',
+                    fit: BoxFit.fill, filterQuality: FilterQuality.high, gaplessPlayback: true)),
+                  if (!preview && _templateANameEdited)
+                    Positioned(left: 95, top: 865, width: 515, height: 95,
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(colors: [
+                            Color(0xFF07356E), Color(0xFF041B3D)])),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => editSideLabelText(true),
+                          child: _neonDuelName(aSideLabelText, sideA: true)))),
+                  if (!preview && _templateBNameEdited)
+                    Positioned(left: 840, top: 865, width: 515, height: 95,
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(colors: [
+                            Color(0xFF710B45), Color(0xFF350024)])),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => editSideLabelText(false),
+                          child: _neonDuelName(bSideLabelText, sideA: false)))),
                   if (!preview)
                     Positioned(left: 64, top: 105, width: 591, height: 639,
                       child: _neonDuelPhotoGesture(true)),
