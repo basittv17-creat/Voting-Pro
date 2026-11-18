@@ -306,19 +306,26 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     _section(
       'Outline (Stroke)', Icons.border_outer, widget.outlineWidth > 0,
       widget.onOutlineToggle,
-      child: Row(children: [
-        const Text('Width', style: TextStyle(color: Colors.white70)),
-        const SizedBox(width: 8),
-        IconButton(onPressed: widget.onOutlineDecrease,
-          icon: const Icon(Icons.remove, color: _mint)),
-        Text(widget.outlineWidth.toStringAsFixed(1)),
-        IconButton(onPressed: widget.onOutlineIncrease,
-          icon: const Icon(Icons.add, color: _mint)),
-        const Spacer(),
-        TextButton.icon(
-          onPressed: widget.onOutlineColor,
-          icon: const Icon(Icons.palette_outlined),
-          label: const Text('Color'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Text('Stroke width',
+            style: TextStyle(color: Colors.white70)),
+          const Spacer(),
+          IconButton(onPressed: widget.onOutlineDecrease,
+            tooltip: 'Decrease outline',
+            icon: const Icon(Icons.remove, color: _mint)),
+          Text(widget.outlineWidth.toStringAsFixed(1)),
+          IconButton(onPressed: widget.onOutlineIncrease,
+            tooltip: 'Increase outline',
+            icon: const Icon(Icons.add, color: _mint)),
+        ]),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: widget.onOutlineColor,
+            icon: const Icon(Icons.palette_outlined),
+            label: const Text('Outline color'),
+          ),
         ),
       ]),
     ),
