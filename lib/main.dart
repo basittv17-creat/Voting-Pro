@@ -1015,7 +1015,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       await Share.share(
         'Voting Pro — Poster Maker\n'
         'Download Voting Pro from Google Play:\n'
-        _votingProPlayStoreUrl,
+        '$_votingProPlayStoreUrl',
         subject: 'Voting Pro',
       );
     } catch (error) {
