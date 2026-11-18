@@ -4392,6 +4392,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   bool? _selectedPhotoSideA;
   bool? _selectedTemplatePhotoSideA;
 
+  // While a text layer is selected, do not send gestures to the photo below.
+  bool get _textOwnsCanvasGestures =>
+      !isExportingPoster &&
+      selectedTextIndex != null &&
+      textOverlayIds.contains(selectedTextIndex);
+
   void _selectCanvasObject({
     int? tagraIndex,
     int? letterIndex,
@@ -4501,15 +4507,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           if (file != null)
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _selectCanvasObject(photoSideA: sideA)),
+              onTap: () {
+                if (_textOwnsCanvasGestures) return;
+                setState(() => _selectCanvasObject(photoSideA: sideA));
+              },
               onScaleStart: (_) {
+                if (_textOwnsCanvasGestures) return;
                 setState(() {
                   _selectCanvasObject(photoSideA: sideA);
                   _photoStartScales[sideA] = _photoScales[sideA] ?? 1.0;
                 });
               },
               onScaleUpdate: (details) {
-                if (_selectedPhotoSideA != sideA) return;
+                if (_textOwnsCanvasGestures ||
+                    _selectedPhotoSideA != sideA) return;
                 setState(() {
                   _photoScales[sideA] = ((_photoStartScales[sideA] ?? 1.0) *
                       details.scale).clamp(1.0, 5.0).toDouble();
@@ -4680,12 +4691,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ]),
     ])),
     Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Column(children: [
-      // Empty canvas tap dismisses A/B controls; overlay and photo gestures
-      // still take priority because their own GestureDetectors win the tap.
+      // Tapping outside the selected text releases the text gesture lock.
+      // Child text gestures win when the user touches the text itself.
       GestureDetector(
         behavior: HitTestBehavior.deferToChild,
         onTap: () {
-          if (selectedLetterOverlayIndex != null) {
+          if (selectedTextIndex != null ||
+              selectedLetterOverlayIndex != null) {
             setState(_clearCanvasSelection);
           }
         },
@@ -4701,9 +4713,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               Expanded(
                 child: Row(
                   children: [
-                    Expanded(child: photoSlot(true)),
+                    Expanded(child: IgnorePointer(
+                      ignoring: _textOwnsCanvasGestures,
+                      child: photoSlot(true),
+                    )),
                     const SizedBox(width: 6),
-                    Expanded(child: photoSlot(false)),
+                    Expanded(child: IgnorePointer(
+                      ignoring: _textOwnsCanvasGestures,
+                      child: photoSlot(false),
+                    )),
                   ],
                 ),
               ),
@@ -5088,7 +5106,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             );
           }),
 
-          if (selectedReadyMadeTemplate == null) ...overlays.asMap().entries.map((entry) {
+          if (selectedReadyMadeTemplate == null)
+            ...([...overlays.asMap().entries]..sort((left, right) {
+              // Keep the active text on top for hit testing, while preserving
+              // the original poster stacking order when saving/exporting.
+              if (_textOwnsCanvasGestures) {
+                if (left.key == selectedTextIndex) return 1;
+                if (right.key == selectedTextIndex) return -1;
+              }
+              return left.key.compareTo(right.key);
+            })).map((entry) {
             final index = entry.key;
             final isText = textOverlayIds.contains(index);
             final isSticker = stickerOverlayIds.contains(index);
