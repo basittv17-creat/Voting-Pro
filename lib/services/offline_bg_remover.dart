@@ -67,7 +67,7 @@ class OfflineBgRemover {
       if (channels < 1 || channels > 2) {
         throw StateError('Unexpected segmentation channels: $channels');
       }
-      final dynamic output = shape.length == 4
+      final Object output = shape.length == 4
           ? [List.generate(
               mh, (_) => List.generate(
                 mw, (_) => List<double>.filled(channels, 0),
@@ -75,14 +75,15 @@ class OfflineBgRemover {
             )]
           : [List.generate(mh, (_) => List<double>.filled(mw, 0))];
       interpreter.run(input, output);
+      final dynamic values = output;
       final result = Float32List(mw * mh);
       for (var y = 0; y < mh; y++) {
         for (var x = 0; x < mw; x++) {
           final double value = channels == 1
               ? (shape.length == 4
-                  ? (output[0][y][x][0] as num).toDouble()
-                  : (output[0][y][x] as num).toDouble())
-              : (output[0][y][x][1] as num).toDouble();
+                  ? (values[0][y][x][0] as num).toDouble()
+                  : (values[0][y][x] as num).toDouble())
+              : (values[0][y][x][1] as num).toDouble();
           // Feather the hard edge; keep small uncertain areas manually editable.
           result[y * mw + x] = ((value - 0.12) / 0.76)
               .clamp(0.0, 1.0).toDouble();
