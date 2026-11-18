@@ -1,0 +1,160 @@
+import 'package:flutter/material.dart';
+
+/// Persisted editor interface language; user-created poster text is untouched.
+class AppLanguage {
+  static const preferenceKey = 'voting_pro_ui_language_v1';
+  static String current = 'en';
+  static bool get isUrdu => current == 'ur';
+  static TextDirection get direction =>
+      isUrdu ? TextDirection.rtl : TextDirection.ltr;
+
+  static const Map<String, String> _urdu = {
+    "Save Poster": "پوسٹر محفوظ کریں",
+    "Save Poster ↓": "پوسٹر محفوظ کریں ↓",
+    "Share Poster": "پوسٹر شیئر کریں",
+    "Add Photo A": "تصویر A شامل کریں",
+    "Add Photo B": "تصویر B شامل کریں",
+    "Change Photo A": "تصویر A تبدیل کریں",
+    "Change Photo B": "تصویر B تبدیل کریں",
+    "Ready-made Templates": "تیار ٹیمپلیٹس",
+    "Templates": "ٹیمپلیٹس",
+    "Classic Editor": "کلاسک ایڈیٹر",
+    "A Style": "اے اسٹائل",
+    "B Style": "بی اسٹائل",
+    "Text": "متن",
+    "A Side Label": "اے سائیڈ نام",
+    "B Side Label": "بی سائیڈ نام",
+    "3D Backgrounds": "تھری ڈی پس منظر",
+    "Stickers": "اسٹیکرز",
+    "Frame": "فریم",
+    "Emoji": "ایموجی",
+    "Canvas": "کینوس",
+    "Voting Sticker": "ووٹنگ اسٹیکر",
+    "Background": "پس منظر",
+    "Stylish Frames": "اسٹائلش فریم",
+    "VS Styles": "مقابلہ اسٹائلز",
+    "Restart Project": "نیا پروجیکٹ",
+    "Back": "واپس",
+    "Add Text": "متن شامل کریں",
+    "Edit Text": "متن تبدیل کریں",
+    "Font": "فونٹ",
+    "Import TTF/OTF Font": "نیا فونٹ شامل کریں",
+    "Undo Text": "پچھلی تبدیلی",
+    "Redo Text": "دوبارہ تبدیلی",
+    "Curve Up (English)": "متن اوپر خم دیں (English)",
+    "Curve Down (English)": "متن نیچے خم دیں (English)",
+    "Gradient Fill": "رنگوں کی گریڈینٹ",
+    "Outline Width +": "بیرونی لکیر موٹی",
+    "Outline Width −": "بیرونی لکیر باریک",
+    "Outline Color": "بیرونی لکیر کا رنگ",
+    "Bold On/Off": "بولڈ آن/آف",
+    "Italic On/Off": "ترچھا آن/آف",
+    "Underline On/Off": "نیچے لکیر آن/آف",
+    "Strikethrough On/Off": "درمیانی لکیر آن/آف",
+    "Text Presets": "تیار متن اسٹائلز",
+    "Duplicate Text": "متن کی نقل",
+    "Align Left / Center / Right": "متن کی سیدھ",
+    "Letter Spacing +": "حروف میں فاصلہ بڑھائیں",
+    "Letter Spacing −": "حروف میں فاصلہ گھٹائیں",
+    "Line Height +": "لائن فاصلہ بڑھائیں",
+    "Line Height −": "لائن فاصلہ گھٹائیں",
+    "Opacity +": "شفافیت کم کریں",
+    "Opacity −": "شفافیت بڑھائیں",
+    "Reset Text Style": "متن اسٹائل ری سیٹ",
+    "Color": "رنگ",
+    "Glow": "چمک",
+    "Zoom +": "بڑا کریں",
+    "Zoom −": "چھوٹا کریں",
+    "Delete": "حذف کریں",
+    "Add Sticker": "اسٹیکر شامل کریں",
+    "Royal Battle": "شاہی مقابلہ",
+    "Tagra Muqabla": "تگڑا مقابلہ",
+    "Metallic VS Battle": "میٹالک مقابلہ",
+    "Neon VS Duel": "نیون مقابلہ",
+    "Neon Purple Showdown": "جامنی نیون مقابلہ",
+    "Poster 4:5": "پوسٹر 4:5",
+    "Portrait 3:4": "عمودی 3:4",
+    "Portrait 4:3": "عمودی 4:3",
+    "Portrait 2:3": "عمودی 2:3",
+    "Story 9:16": "اسٹوری 9:16",
+    "Square 1:1": "مربع 1:1",
+    "Landscape 4:3": "افقی 4:3",
+    "Landscape 3:2": "افقی 3:2",
+    "Landscape 16:9": "افقی 16:9",
+    "Landscape 5:4": "افقی 5:4",
+    "Banner 2:1": "بینر 2:1",
+    "Deselect style": "انتخاب ختم کریں",
+    "Zoom out": "چھوٹا کریں",
+    "Zoom in": "بڑا کریں",
+    "Move up": "اوپر کریں",
+    "Move left": "بائیں کریں",
+    "Move down": "نیچے کریں",
+    "Move right": "دائیں کریں",
+    "Delete style": "اسٹائل حذف کریں",
+    "A STYLE": "اے اسٹائل",
+    "B STYLE": "بی اسٹائل",
+    "Drag • Pinch • Adjust": "پکڑیں • زوم کریں • بدلیں",
+    "NEON GLOW STUDIO": "نیون چمک اسٹوڈیو",
+    "Glow Color": "چمک کا رنگ",
+    "Intensity": "شدت",
+    "Reset Glow": "چمک ری سیٹ",
+    "Close Glow": "چمک بند کریں",
+    "Text Color Studio": "متن کے رنگ",
+    "Custom Color": "اپنی پسند کا رنگ",
+    "Custom": "اپنی پسند",
+    "Preview: ": "نمونہ: ",
+    "Apply Color": "رنگ لگائیں",
+    "Reset to white": "سفید رنگ بحال کریں",
+    "Typography Presets": "متن کے تیار انداز",
+    "Choose English Font": "انگریزی فونٹ منتخب کریں",
+    "Frame Color": "فریم کا رنگ",
+    "Frame Thickness": "فریم کی موٹائی",
+    "Cancel": "منسوخ",
+    "Save": "محفوظ کریں",
+    "Done": "مکمل",
+    "Add": "شامل کریں",
+    "Restart": "نیا شروع کریں",
+    "Loading...": "لوڈ ہو رہا ہے...",
+    "Share App": "ایپ شیئر کریں",
+    "Language": "زبان",
+    "Settings": "ترتیبات",
+    "App Language": "ایپ کی زبان",
+    "English": "English",
+    "Urdu": "اردو",
+    "Choose language": "زبان منتخب کریں",
+    "Select a language": "زبان منتخب کریں",
+    "Voting Pro Poster": "ووٹنگ پرو پوسٹر",
+    "Image": "تصویر",
+    "Close": "بند کریں",
+    "Premium • Gold • Neon • Pastel • 300+ Colors": "پریمیم • گولڈ • نیون • پیسٹل • 300+ رنگ",
+  };
+
+  static const Map<String, String> _english = {
+    "تگڑا مقابلہ اسٹیکرز": "تگڑا مقابلہ اسٹیکرز",
+    "متن شامل کریں": "Add Text",
+    "پہلے ٹیکسٹ منتخب کریں": "Select text first",
+    "تصویر شامل کریں": "Add photo",
+    "منسوخ": "Cancel",
+    "نیا پروجیکٹ شروع کریں؟": "Start a new project?",
+    "موجودہ محفوظ پروجیکٹ صاف ہو جائے گا۔ کیا آپ جاری رکھنا چاہتے ہیں؟": "Your saved project will be cleared. Continue?",
+    "ٹیمپلیٹس منتخب کریں": "Choose Templates",
+    "اردو فونٹس منتخب کریں": "Choose Urdu Font",
+    "ذرا انتظار کریں…": "Please wait…",
+  };
+
+  static String tr(String input) {
+    if (isUrdu) {
+      final explicit = _urdu[input];
+      if (explicit != null) return explicit;
+      // Keep variant indices and design names understandable in Urdu.
+      if (input.startsWith('A Style ')) {
+        return 'اے اسٹائل ${input.substring(8)}';
+      }
+      if (input.startsWith('B Style ')) {
+        return 'بی اسٹائل ${input.substring(8)}';
+      }
+      return input;
+    }
+    return _english[input] ?? input;
+  }
+}
