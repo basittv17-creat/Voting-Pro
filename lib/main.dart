@@ -4403,7 +4403,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           () => adjustTextLineHeight(-0.1)),
         TextPanelAction('Letter Space +', Icons.space_bar,
           () => adjustSelectedTextSpacing(0.5)),
-        TextPanelAction('Letter Space −', Icons.format_letter_spacing,
+        TextPanelAction('Letter Space −', Icons.space_bar,
           () => adjustSelectedTextSpacing(-0.5)),
         TextPanelAction('Curve Up', Icons.keyboard_arrow_up,
           () => adjustSelectedTextCurve(0.2)),
@@ -5624,8 +5624,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         _buildBStyleControlPanel(),
 
     ]))),
-    if (showGlowPanel && showTextTools && selectedTextIndex != null && false)
-      _buildInlineGlowPanel(),
     if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
     if (showTextTools && selectedReadyMadeTemplate == null)
       _buildPremiumTextPanel(),
