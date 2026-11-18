@@ -527,36 +527,10 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                                             ),
                                           ),
                                         ),
-                                        Positioned.fill(
-                                          child: IgnorePointer(
-                                            child: ValueListenableBuilder<Offset?>(
-                                              valueListenable: _brushCursor,
-                                              builder: (context, cursor, child) {
-                                                if (!_manual || cursor == null) {
-                                                  return const SizedBox.shrink();
-                                                }
-                                                return Stack(
-                                                  clipBehavior: Clip.none,
-                                                  children: [
-                                                    Positioned(
-                                                      left: cursor.dx - _brushSize / 2,
-                                                      top: cursor.dy - _brushSize / 2,
-                                                      child: Container(
-                                                        width: _brushSize,
-                                                        height: _brushSize,
-                                                        decoration: BoxDecoration(
-                                                          shape: BoxShape.circle,
-                                                          border: Border.all(
-                                                            color: gold, width: 2,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                );
-                                              },
-                                            ),
-                                          ),
+                                        BackgroundBrushCursor(
+                                          cursor: _brushCursor,
+                                          enabled: _manual,
+                                          size: _brushSize,
                                         ),
                                         Positioned(
                                           right: 6, top: 6,
@@ -678,6 +652,53 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       ),
     );
   }
+}
+
+/// Testable isolated cursor. A Positioned must be an effective direct
+/// child of Stack; returning Positioned *inside* ValueListenableBuilder causes
+/// a ParentDataWidget runtime exception during manual erase gestures.
+class BackgroundBrushCursor extends StatelessWidget {
+  const BackgroundBrushCursor({
+    super.key,
+    required this.cursor,
+    required this.enabled,
+    required this.size,
+  });
+
+  final ValueListenable<Offset?> cursor;
+  final bool enabled;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Positioned.fill(
+    child: IgnorePointer(
+      child: ValueListenableBuilder<Offset?>(
+        valueListenable: cursor,
+        builder: (context, position, child) {
+          if (!enabled || position == null) {
+            return const SizedBox.shrink();
+          }
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: position.dx - size / 2,
+                top: position.dy - size / 2,
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFFFD84D), width: 2),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ),
+  );
 }
 
 class _CheckerboardPainter extends CustomPainter {
