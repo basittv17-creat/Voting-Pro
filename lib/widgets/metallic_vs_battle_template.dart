@@ -180,11 +180,13 @@ class _MetallicVsBattleTemplateState extends State<MetallicVsBattleTemplate> {
               child: _photo(true)),
             Positioned(left: 806, top: 112, width: 514, height: 612,
               child: _photo(false)),
-            Image.asset(
-              'assets/templates/Metallic_VS_Battle_Template.png',
-              fit: BoxFit.fill,
-              filterQuality: FilterQuality.high,
-              gaplessPlayback: true,
+            IgnorePointer(
+              child: Image.asset(
+                'assets/templates/Metallic_VS_Battle_Template.png',
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.high,
+                gaplessPlayback: true,
+              ),
             ),
             if (!widget.preview) ...[
               Positioned(left: 82, top: 850, width: 535, height: 125,
