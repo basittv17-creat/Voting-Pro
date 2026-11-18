@@ -44,7 +44,6 @@ class _MetallicVsBattleTemplateState extends State<MetallicVsBattleTemplate> {
   late double _scaleA, _scaleB;
   late Offset _offsetA, _offsetB;
   double _startScale = 1;
-  Offset _startOffset = Offset.zero;
 
   @override
   void initState() {
@@ -81,7 +80,6 @@ class _MetallicVsBattleTemplateState extends State<MetallicVsBattleTemplate> {
             ? null : () => widget.onPickPhoto(sideA),
         onScaleStart: widget.preview || widget.isExporting ? null : (_) {
           _startScale = scale;
-          _startOffset = offset;
           widget.onPhotoSelected?.call(sideA);
         },
         onScaleUpdate: widget.preview || widget.isExporting ? null : (details) {
