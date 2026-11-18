@@ -38,6 +38,7 @@ class PremiumTextEditorPanel extends StatefulWidget {
     required this.gradientEnabled,
     required this.onGradientToggle,
     required this.outlineWidth,
+    required this.onOutlineToggle,
     required this.onOutlineIncrease,
     required this.onOutlineDecrease,
     required this.onOutlineColor,
@@ -70,6 +71,7 @@ class PremiumTextEditorPanel extends StatefulWidget {
   final bool gradientEnabled;
   final VoidCallback onGradientToggle;
   final double outlineWidth;
+  final VoidCallback onOutlineToggle;
   final VoidCallback onOutlineIncrease, onOutlineDecrease, onOutlineColor;
   final bool backgroundEnabled;
   final VoidCallback onBackgroundToggle;
@@ -99,9 +101,9 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.44;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.48;
     return Container(
-      constraints: BoxConstraints(maxHeight: maxHeight.clamp(245.0, 440.0)),
+      constraints: BoxConstraints(maxHeight: maxHeight.clamp(185.0, 450.0)),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -128,26 +130,12 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             icon: const Icon(Icons.close, color: Colors.white),
           ),
           const Icon(Icons.text_fields, color: _gold, size: 24),
-          const SizedBox(width: 5),
-          const Text('Text Editor', style: TextStyle(
-            fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white,
-          )),
-          const Spacer(),
-          Flexible(child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: const Color(0xFF192736),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: _gold),
-            ),
-            child: Text(
-              widget.selectedText == null
-                  ? 'Select text'
-                  : 'Selected: ${widget.selectedText}',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _gold, fontSize: 11, fontWeight: FontWeight.w700,
-              ),
+          const SizedBox(width: 6),
+          const Expanded(child: Text(
+            'Text Editor', maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white,
             ),
           )),
           IconButton(
@@ -156,6 +144,35 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             icon: const Icon(Icons.add_circle_outline, color: _mint),
           ),
         ]),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 2, 4, 7),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 340),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF192736),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: _gold),
+              ),
+              child: Text(
+                widget.selectedText == null
+                    ? 'Tap text on the poster to select'
+                    : 'Selected: ${widget.selectedText}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textDirection: widget.selectedText != null &&
+                    RegExp(r'[\u0600-\u06FF]').hasMatch(widget.selectedText!)
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
+                style: const TextStyle(
+                  color: _gold, fontSize: 12, fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 5),
         Row(children: [
           _tabButton(TextPanelTab.style, 'Style', Icons.brush_outlined),
@@ -281,13 +298,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     ),
     _section(
       'Outline (Stroke)', Icons.border_outer, widget.outlineWidth > 0,
-      () {
-        if (widget.outlineWidth > 0) {
-          widget.onOutlineDecrease();
-        } else {
-          widget.onOutlineIncrease();
-        }
-      },
+      widget.onOutlineToggle,
       child: Row(children: [
         const Text('Width', style: TextStyle(color: Colors.white70)),
         const SizedBox(width: 8),
