@@ -12,8 +12,9 @@ permissions:
   security-events: write
 
 concurrency:
+  # Keep the freshest security/test report; older builds run independently.
   group: security-quality-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   flutter-quality:
