@@ -69,7 +69,12 @@ void main() {
 
     await tester.pumpWidget(makeEditor());
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
+    final layoutError = tester.takeException();
+    if (layoutError is FlutterError) {
+      // Diagnose the exact constraint chain in CI on narrow devices.
+      debugPrint(layoutError.toStringDeep());
+    }
+    expect(layoutError, isNull);
     expect(find.text('Text Editor'), findsOneWidget);
     expect(find.text('Selected: علی اور ولی'), findsOneWidget);
     expect(find.text('Effects'), findsOneWidget);
@@ -93,6 +98,11 @@ void main() {
     await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
     expect(find.text('Delete Text'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    final layoutError = tester.takeException();
+    if (layoutError is FlutterError) {
+      // Diagnose the exact constraint chain in CI on narrow devices.
+      debugPrint(layoutError.toStringDeep());
+    }
+    expect(layoutError, isNull);
   });
 }
