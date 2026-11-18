@@ -401,20 +401,27 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
 
   Widget _slider(String label, double value, double min, double max,
       VoidCallback onStart, ValueChanged<double> onChanged,
-      {bool percentage = false}) => Row(children: [
-    SizedBox(width: 105, child: Text(label,
-      style: const TextStyle(fontSize: 11, color: Colors.white70))),
-    Expanded(child: Slider(
-      value: value.clamp(min, max),
-      min: min, max: max,
-      activeColor: _mint,
-      onChangeStart: (_) => onStart(),
-      onChanged: onChanged,
-    )),
-    SizedBox(width: 48, child: Text(
-      percentage ? '${(value * 100).round()}%' : value.round().toString(),
-      textAlign: TextAlign.end,
-      style: const TextStyle(fontSize: 11, color: _gold),
-    )),
-  ]);
+      {bool percentage = false}) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(children: [
+        Expanded(child: Text(label, maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, color: Colors.white70))),
+        const SizedBox(width: 6),
+        Text(
+          percentage ? '${(value * 100).round()}%' : value.round().toString(),
+          textAlign: TextAlign.end,
+          style: const TextStyle(fontSize: 12, color: _gold),
+        ),
+      ]),
+      Slider(
+        value: value.clamp(min, max),
+        min: min, max: max,
+        activeColor: _mint,
+        onChangeStart: (_) => onStart(),
+        onChanged: onChanged,
+      ),
+    ],
+  );
 }
