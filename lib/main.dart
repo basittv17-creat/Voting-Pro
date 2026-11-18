@@ -2729,7 +2729,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      padding: const EdgeInsets.fromLTRB(12, 7, 12, 8),
       decoration: BoxDecoration(
         color: const Color(0xFF07111F),
         border: const Border(
@@ -3642,119 +3642,136 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildAStyleControlPanel() {
-    final index = selectedLetterOverlayIndex!;
+  Widget _buildCompactLetterStylePanel(bool sideA) {
+    final index = selectedLetterOverlayIndex;
+    if (index == null || index < 0 || index >= letterOverlays.length ||
+        letterOverlays[index].sideA != sideA) {
+      return const SizedBox.shrink();
+    }
     final item = letterOverlays[index];
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final panelWidth = (screenWidth - 40).clamp(260.0, 360.0).toDouble();
-
-    // The panel follows the poster in the scroll layout. A small ratio-aware
-    // gap keeps it close to landscape posters and gives portrait posters room.
-    final gap = canvasRatio >= 1.5
-        ? 22.0
-        : canvasRatio < 0.9
-            ? 52.0
-            : 36.0;
-
-    Widget directionButton(IconData icon, Offset delta, String label) {
+    final accent = sideA ? gold : const Color(0xFFD6B5FF);
+    void setScale(double value) {
+      if (sideA) { _setSelectedAStyleScale(value); }
+      else { _setSelectedBStyleScale(value); }
+    }
+    void move(Offset delta) {
+      if (sideA) { _moveSelectedAStyle(delta); }
+      else { _moveSelectedBStyle(delta); }
+    }
+    Widget button(IconData icon, String tooltip, VoidCallback action,
+        {bool danger = false}) {
       return SizedBox(
-        width: 48,
-        height: 44,
-        child: Material(
-          color: const Color(0xFF252B3A),
-          borderRadius: BorderRadius.circular(10),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: () => _moveSelectedAStyle(delta),
-            child: Tooltip(
-              message: label,
-              child: Icon(icon, color: const Color(0xFFD6B5FF), size: 23),
+        width: 42, height: 42,
+        child: Tooltip(
+          message: tooltip,
+          child: Material(
+            color: danger ? const Color(0xFFCF393B) : const Color(0xFF263047),
+            borderRadius: BorderRadius.circular(11),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(11),
+              onTap: action,
+              child: Icon(icon, size: 21,
+                  color: danger ? Colors.white : accent),
             ),
           ),
         ),
       );
     }
-
     return Padding(
-      padding: EdgeInsets.only(top: gap, bottom: 16),
+      padding: const EdgeInsets.only(top: 10, bottom: 8),
       child: Center(
         child: Container(
-          width: panelWidth,
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          width: (MediaQuery.sizeOf(context).width - 28)
+              .clamp(240.0, 370.0).toDouble(),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF151D2C),
-            border: Border.all(color: gold, width: 1.5),
-            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFF141D2D),
+            border: Border.all(color: accent.withValues(alpha: 0.8),
+                width: 1.3),
+            borderRadius: BorderRadius.circular(17),
             boxShadow: const [
-              BoxShadow(
-                color: Color(0x55000000),
-                blurRadius: 14,
-                offset: Offset(0, 5),
-              ),
+              BoxShadow(color: Color(0x50000000), blurRadius: 12,
+                  offset: Offset(0, 4)),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildLetterStyleDeselectButton(),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'چھوٹا کریں',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _setSelectedAStyleScale(item.scale - 0.1),
-                    icon: const Icon(Icons.remove, color: Colors.white, size: 22),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: const Color(0xFFD0A5FF),
-                        inactiveTrackColor: Colors.white24,
-                        thumbColor: Colors.white,
-                        overlayColor: const Color(0x33D0A5FF),
-                        trackHeight: 5,
+              SizedBox(
+                height: 35,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Slider(
-                        min: 0.2,
-                        max: 5.0,
-                        value: item.scale.clamp(0.2, 5.0).toDouble(),
-                        onChanged: _setSelectedAStyleScale,
+                      child: Text(sideA ? 'A STYLE' : 'B STYLE',
+                        style: TextStyle(color: accent, fontSize: 11,
+                            fontWeight: FontWeight.w800, letterSpacing: 1)),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text('Drag • Pinch • Adjust', maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 10, color: Colors.white60)),
+                    ),
+                    SizedBox(
+                      width: 36, height: 34,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        tooltip: 'Deselect style',
+                        onPressed: () => setState(_clearCanvasSelection),
+                        icon: const Icon(Icons.close_rounded,
+                            size: 19, color: Colors.white70),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'بڑا کریں',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _setSelectedAStyleScale(item.scale + 0.1),
-                    icon: const Icon(Icons.add, color: Colors.white, size: 22),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  directionButton(Icons.arrow_upward, const Offset(0, -8), 'اوپر'),
-                  directionButton(Icons.arrow_back, const Offset(-8, 0), 'بائیں'),
-                  directionButton(Icons.arrow_downward, const Offset(0, 8), 'نیچے'),
-                  directionButton(Icons.arrow_forward, const Offset(8, 0), 'دائیں'),
-                  SizedBox(
-                    width: 48,
-                    height: 44,
-                    child: Material(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: deleteSelectedLetterOverlay,
-                        child: const Tooltip(
-                          message: 'Delete A Style',
-                          child: Icon(Icons.delete_outline, color: Colors.white, size: 23),
+              SizedBox(
+                height: 41,
+                child: Row(
+                  children: [
+                    button(Icons.remove_rounded, 'Zoom out',
+                        () => setScale(item.scale - 0.1)),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: accent,
+                          inactiveTrackColor: const Color(0xFF364054),
+                          thumbColor: Colors.white,
+                          trackHeight: 3,
+                          overlayShape: SliderComponentShape.noOverlay,
+                        ),
+                        child: Slider(
+                          min: 0.2, max: 5.0,
+                          value: item.scale.clamp(0.2, 5.0).toDouble(),
+                          onChanged: setScale,
                         ),
                       ),
                     ),
-                  ),
+                    button(Icons.add_rounded, 'Zoom in',
+                        () => setScale(item.scale + 0.1)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 5),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  button(Icons.keyboard_arrow_up_rounded, 'Move up',
+                      () => move(const Offset(0, -8))),
+                  button(Icons.keyboard_arrow_left_rounded, 'Move left',
+                      () => move(const Offset(-8, 0))),
+                  button(Icons.keyboard_arrow_down_rounded, 'Move down',
+                      () => move(const Offset(0, 8))),
+                  button(Icons.keyboard_arrow_right_rounded, 'Move right',
+                      () => move(const Offset(8, 0))),
+                  button(Icons.delete_outline_rounded, 'Delete style',
+                      deleteSelectedLetterOverlay, danger: true),
                 ],
               ),
             ],
@@ -3763,6 +3780,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ),
     );
   }
+
+  Widget _buildAStyleControlPanel() => _buildCompactLetterStylePanel(true);
 
   bool get _hasSelectedBStyle {
     final index = selectedLetterOverlayIndex;
@@ -3797,152 +3816,34 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     setState(() => item.position += delta);
   }
 
-  Widget _buildBStyleControlPanel() {
-    final index = selectedLetterOverlayIndex!;
-    final item = letterOverlays[index];
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final panelWidth = (screenWidth - 40).clamp(260.0, 360.0).toDouble();
-
-    final gap = canvasRatio >= 1.5
-        ? 22.0
-        : canvasRatio < 0.9
-            ? 52.0
-            : 36.0;
-
-    Widget directionButton(IconData icon, Offset delta, String label) {
-      return SizedBox(
-        width: 48,
-        height: 44,
-        child: Material(
-          color: const Color(0xFF252B3A),
-          borderRadius: BorderRadius.circular(10),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: () => _moveSelectedBStyle(delta),
-            child: Tooltip(
-              message: label,
-              child: Icon(icon, color: const Color(0xFFD6B5FF), size: 23),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: EdgeInsets.only(top: gap, bottom: 16),
-      child: Center(
-        child: Container(
-          width: panelWidth,
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF151D2C),
-            border: Border.all(color: gold, width: 1.5),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x55000000),
-                blurRadius: 14,
-                offset: Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildLetterStyleDeselectButton(),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'چھوٹا کریں',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _setSelectedBStyleScale(item.scale - 0.1),
-                    icon: const Icon(Icons.remove, color: Colors.white, size: 22),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: const Color(0xFFD0A5FF),
-                        inactiveTrackColor: Colors.white24,
-                        thumbColor: Colors.white,
-                        overlayColor: const Color(0x33D0A5FF),
-                        trackHeight: 5,
-                      ),
-                      child: Slider(
-                        min: 0.2,
-                        max: 5.0,
-                        value: item.scale.clamp(0.2, 5.0).toDouble(),
-                        onChanged: _setSelectedBStyleScale,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'بڑا کریں',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _setSelectedBStyleScale(item.scale + 0.1),
-                    icon: const Icon(Icons.add, color: Colors.white, size: 22),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  directionButton(Icons.arrow_upward, const Offset(0, -8), 'اوپر'),
-                  directionButton(Icons.arrow_back, const Offset(-8, 0), 'بائیں'),
-                  directionButton(Icons.arrow_downward, const Offset(0, 8), 'نیچے'),
-                  directionButton(Icons.arrow_forward, const Offset(8, 0), 'دائیں'),
-                  SizedBox(
-                    width: 48,
-                    height: 44,
-                    child: Material(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: deleteSelectedLetterOverlay,
-                        child: const Tooltip(
-                          message: 'Delete B Style',
-                          child: Icon(Icons.delete_outline, color: Colors.white, size: 23),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildBStyleControlPanel() => _buildCompactLetterStylePanel(false);
 
   Widget letterStyleTool(String asset, String title, VoidCallback tap) {
     return Container(
-      width: 112,
-      height: 80,
-      margin: const EdgeInsets.symmetric(horizontal: 5),
+      width: 94,
+      height: 68,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
         color: const Color(0xFF1B2638),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: tap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                height: 43,
-                width: 64,
+                height: 35,
+                width: 58,
                 child: Image.asset(asset, fit: BoxFit.contain),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -3961,11 +3862,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       originalTap();
     };
     return Container(
-      width: 112,
-      height: 80,
-      margin: const EdgeInsets.symmetric(horizontal: 5),
+      width: 94,
+      height: 68,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: isGlowTool
             ? const [
                 BoxShadow(
@@ -3982,13 +3883,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             : const Color(0xFF1B2638),
         elevation: isGlowTool ? 8 : 0,
         shadowColor: const Color(0xFF00E5FF),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: tap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: isGlowTool
                   ? Border.all(
                       color: const Color(0xFF00E5FF),
@@ -4005,7 +3906,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     color: isGlowTool
                         ? const Color(0xFF00E5FF)
                         : mint,
-                    fontSize: isGlowTool ? 27 : 23,
+                    fontSize: isGlowTool ? 24 : 21,
                     fontWeight: FontWeight.bold,
                     shadows: isGlowTool
                         ? const [
@@ -4017,7 +3918,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         : null,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 3),
                 Text(
                   title,
                   maxLines: 2,
@@ -4028,7 +3929,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     color: isGlowTool
                         ? const Color(0xFF00E5FF)
                         : Colors.white,
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -5001,7 +4902,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       _buildInlineGlowPanel(),
     if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
     Container(
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+      padding: const EdgeInsets.fromLTRB(6, 7, 6, 9),
       color: const Color(0xFF101827),
       child: selectedReadyMadeTemplate != null
           ? SingleChildScrollView(
