@@ -308,9 +308,9 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       widget.onOutlineToggle,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Text('Stroke width',
-            style: TextStyle(color: Colors.white70)),
-          const Spacer(),
+          const Expanded(child: Text('Stroke width',
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.white70))),
           IconButton(onPressed: widget.onOutlineDecrease,
             tooltip: 'Decrease outline',
             icon: const Icon(Icons.remove, color: _mint)),
