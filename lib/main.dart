@@ -2792,8 +2792,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void adjustSelectedTextCurve(double delta) {
     final index = _activeTextIndex;
     if (index == null) return;
-    if (_hasArabicScript(overlays[index]) || overlays[index].contains('\n')) {
-      msg('Curved Text فی الحال صرف ایک سطر کے English متن کے لیے ہے');
+    if (overlays[index].contains('\n')) {
+      msg('Curved Text کے لیے ایک سطر منتخب کریں (Urdu / English)');
       return;
     }
     _rememberTextEdit();
@@ -5476,8 +5476,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('⇧', 'Import TTF/OTF Font', importSelectedTextFont),
                       tool('↶', 'Undo Text', undoTextEdit),
                       tool('↷', 'Redo Text', redoTextEdit),
-                      tool('◠', 'Curve Up (English)', () => adjustSelectedTextCurve(0.2)),
-                      tool('◡', 'Curve Down (English)', () => adjustSelectedTextCurve(-0.2)),
+                      tool('◠', 'Curve Up (Urdu / English)', () => adjustSelectedTextCurve(0.2)),
+                      tool('◡', 'Curve Down (Urdu / English)', () => adjustSelectedTextCurve(-0.2)),
                       tool('🌈', 'Gradient Fill', toggleSelectedTextGradient),
                       tool('▣+', 'Outline Width +', () => adjustSelectedTextOutline(0.5)),
                       tool('▣−', 'Outline Width −', () => adjustSelectedTextOutline(-0.5)),
