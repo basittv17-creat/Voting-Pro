@@ -3211,6 +3211,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void zoomSelectedSticker(double factor) {
     final index = selectedStickerIndex;
     if (index == null || index < 0 || index >= overlays.length || stickerOverlayIds.contains(index) == false) return;
+    // Text snapshots also contain shared overlay indices/scales. A sticker edit
+    // must not later be rolled back by an unrelated text Undo.
+    _textUndoHistory.clear();
+    _textRedoHistory.clear();
     setState(() {
       textScales[index] = ((textScales[index] ?? 1.0) * factor).clamp(0.4, 4.0).toDouble();
     });
@@ -4746,7 +4750,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   }
                 },
                 onScaleStart: (details) {
-                  if (isText) _rememberTextEdit();
+                  if (isText) {
+                    _rememberTextEdit();
+                  } else {
+                    _textUndoHistory.clear();
+                    _textRedoHistory.clear();
+                  }
                   setState(() {
                     if (isText) {
                       _selectCanvasObject(textIndex: index);
@@ -4846,6 +4855,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
+                              _textUndoHistory.clear();
+                              _textRedoHistory.clear();
                               setState(() {
                                 _selectCanvasObject(stickerIndex: index);
                                 stickerGestureStartScale = textScales[index] ?? 1.0;
