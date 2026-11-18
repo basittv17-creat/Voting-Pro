@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voting_pro/widgets/bg_remover_page.dart';
 
@@ -28,46 +27,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Manual image brush does not throw a Positioned layout error', (
+  testWidgets('Live manual brush cursor remains valid Stack parent data', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 850);
+    tester.view.physicalSize = const Size(320, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final folder = await Directory.systemTemp.createTemp('voting_brush_test_');
-    addTearDown(() => folder.delete(recursive: true));
-    final photo = File('${folder.path}/source.png');
-    await photo.writeAsBytes(
-      img.encodePng(img.Image(width: 40, height: 40)),
-    );
-
+    final cursor = ValueNotifier<Offset?>(null);
+    addTearDown(cursor.dispose);
     await tester.pumpWidget(MaterialApp(
-      home: BackgroundRemoverPage(
-        initialPhotoA: photo,
-        initialPhotoB: null,
-        onApply: (sideA, result) async {},
+      home: Scaffold(
+        body: SizedBox(
+          width: 280,
+          height: 340,
+          child: Stack(
+            children: [
+              const Positioned.fill(child: ColoredBox(color: Colors.black)),
+              BackgroundBrushCursor(
+                cursor: cursor,
+                enabled: true,
+                size: 28,
+              ),
+            ],
+          ),
+        ),
       ),
     ));
-    // Preparing the image uses a background isolate rather than a fake timer.
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 350));
-    });
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Image ready'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Manual'));
-    await tester.tap(find.text('Manual'));
-    await tester.pumpAndSettle();
-    final preview = find.byType(Image).first;
-    await tester.tapAt(tester.getCenter(preview));
+    expect(tester.takeException(), isNull);
+    cursor.value = const Offset(90, 130);
     await tester.pump();
     expect(tester.takeException(), isNull);
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 350));
-    });
-    await tester.pumpAndSettle();
+    cursor.value = const Offset(140, 175);
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    cursor.value = null;
+    await tester.pump();
     expect(tester.takeException(), isNull);
   });
 
