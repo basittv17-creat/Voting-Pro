@@ -4285,6 +4285,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       onGradientToggle: toggleSelectedTextGradient,
       outlineWidth: active == null ? 0 :
           (textOutlineWidths[active] ?? 0),
+      onOutlineToggle: () => updateSelected(() {
+        if ((textOutlineWidths[active] ?? 0) > 0) {
+          textOutlineWidths.remove(active);
+        } else {
+          textOutlineWidths[active!] = 1.5;
+        }
+      }),
       onOutlineIncrease: () => adjustSelectedTextOutline(0.5),
       onOutlineDecrease: () => adjustSelectedTextOutline(-0.5),
       onOutlineColor: cycleTextOutlineColor,
