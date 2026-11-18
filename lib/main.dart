@@ -2831,9 +2831,99 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
+  // Choose the target in the import flow instead of showing
+  // "Select text first" when selection was cleared (e.g. after Save).
+  Future<int?> _chooseFontImportTarget() async {
+    final active = selectedTextIndex;
+    if (active != null && active >= 0 && active < overlays.length &&
+        textOverlayIds.contains(active)) {
+      return active;
+    }
+    final candidates = textOverlayIds.toList()
+      ..removeWhere((i) => i < 0 || i >= overlays.length)
+      ..sort();
+    if (candidates.isEmpty) {
+      final create = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Import Font'),
+          content: const Text(
+            'پہلے پوسٹر پر ٹیکسٹ شامل کریں۔ کیا آپ نیا ٹیکسٹ بنانا چاہتے ہیں؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Add Text'),
+            ),
+          ],
+        ),
+      );
+      if (create != true || !mounted) return null;
+      await addText();
+      if (!mounted) return null;
+      final newIndex = selectedTextIndex;
+      return newIndex != null && textOverlayIds.contains(newIndex)
+          ? newIndex : null;
+    }
+
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Choose Text for Font'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final i in candidates)
+                ListTile(
+                  leading: const Icon(Icons.text_fields),
+                  title: Text(
+                    overlays[i],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text('Text ${i + 1}'),
+                  onTap: () => Navigator.pop(dialogContext, i),
+                ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.add),
+                title: const Text('Add New Text'),
+                onTap: () => Navigator.pop(dialogContext, -1),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || picked == null) return null;
+    if (picked == -1) {
+      await addText();
+      if (!mounted) return null;
+      final newIndex = selectedTextIndex;
+      return newIndex != null && textOverlayIds.contains(newIndex)
+          ? newIndex : null;
+    }
+    if (!textOverlayIds.contains(picked) || picked >= overlays.length) {
+      return null;
+    }
+    setState(() => _selectCanvasObject(textIndex: picked));
+    return picked;
+  }
+
   Future<void> importSelectedTextFont() async {
-    final index = _activeTextIndex;
-    if (index == null) return;
+    final index = await _chooseFontImportTarget();
+    if (index == null || !mounted) return;
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
