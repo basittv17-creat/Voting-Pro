@@ -1252,9 +1252,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   Future<Uint8List?> capturePosterWithoutControls() async {
     if (!mounted) return null;
+    // Hide handles for export without permanently discarding the selection.
+    // Users can resume manipulating the same text after saving or sharing.
+    final previousText = selectedTextIndex;
+    final previousSticker = selectedStickerIndex;
+    final previousTagra = selectedTagraStickerIndex;
+    final previousLetter = selectedLetterOverlayIndex;
+    final previousVs = isVsSelected;
+    final previousPhoto = _selectedPhotoSideA;
+    final previousTemplatePhoto = _selectedTemplatePhotoSideA;
+    final previousADelete = showASideLabelDelete;
+    final previousBDelete = showBSideLabelDelete;
     setState(() {
-      // Clear all edit/delete/resize handles before capturing, including when
-      // the poster is shared rather than saved through the Save button.
       _clearCanvasSelection();
       isExportingPoster = true;
     });
@@ -1263,7 +1272,32 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return await shot.capture(pixelRatio: 2.5);
     } finally {
       if (mounted) {
-        setState(() => isExportingPoster = false);
+        setState(() {
+          isExportingPoster = false;
+          selectedTextIndex = previousText != null &&
+                  previousText >= 0 &&
+                  previousText < overlays.length &&
+                  textOverlayIds.contains(previousText)
+              ? previousText : null;
+          selectedStickerIndex = previousSticker != null &&
+                  previousSticker >= 0 &&
+                  previousSticker < overlays.length &&
+                  stickerOverlayIds.contains(previousSticker)
+              ? previousSticker : null;
+          selectedTagraStickerIndex = previousTagra != null &&
+                  previousTagra >= 0 &&
+                  previousTagra < tagraStickerOverlays.length
+              ? previousTagra : null;
+          selectedLetterOverlayIndex = previousLetter != null &&
+                  previousLetter >= 0 &&
+                  previousLetter < letterOverlays.length
+              ? previousLetter : null;
+          isVsSelected = previousVs;
+          _selectedPhotoSideA = previousPhoto;
+          _selectedTemplatePhotoSideA = previousTemplatePhoto;
+          showASideLabelDelete = previousADelete;
+          showBSideLabelDelete = previousBDelete;
+        });
       }
     }
   }
@@ -1286,7 +1320,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Future<void> save() async {
     if (busy) return;
     setState(() {
-      _clearCanvasSelection();
       busy = true;
     });
     try {
@@ -1310,7 +1343,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Future<void> share() async {
     if (busy) return;
     setState(() {
-      _clearCanvasSelection();
       busy = true;
     });
     try {
