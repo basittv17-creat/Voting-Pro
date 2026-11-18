@@ -14,6 +14,7 @@ import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
 import 'widgets/advanced_text_overlay.dart';
+import 'widgets/bg_remover_page.dart';
 import 'app_language.dart';
 
 Future<void> main() async {
@@ -3931,6 +3932,37 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
+  void openBackgroundRemover() {
+    if (busy) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BackgroundRemoverPage(
+          initialPhotoA: a,
+          initialPhotoB: b,
+          initialSideA: _selectedPhotoSideA ?? _selectedTemplatePhotoSideA ?? true,
+          onApply: (sideA, cutout) async {
+            if (!mounted) return;
+            setState(() {
+              // Replace only the requested picture. Keep text, stickers,
+              // poster layout, other photo and selection state unchanged.
+              if (sideA) {
+                a = cutout;
+              } else {
+                b = cutout;
+              }
+              _photoScales[sideA] = 1.0;
+              _photoOffsets[sideA] = Offset.zero;
+              _photoStartScales[sideA] = 1.0;
+              _templatePhotoScales[sideA] = 1.0;
+              _templatePhotoOffsets[sideA] = Offset.zero;
+              _templatePhotoStartScales[sideA] = 1.0;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   void openTextTools() {
     setState(() {
       showTextTools = !showTextTools;
@@ -5466,6 +5498,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tool('A', 'Change Photo A', () => pick(true)),
                 tool('B', 'Change Photo B', () => pick(false)),
                 tool('🎨', 'Templates', readyMadeTemplatesTool),
+                tool('✂', 'BG Remover', openBackgroundRemover),
                 tool('↩', 'Classic Editor', () => setState(() {
                   _clearCanvasSelection();
                   selectedReadyMadeTemplate = null;
@@ -5542,6 +5575,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('✎', 'Edit Text', editSelectedText),
                       tool('Aa', 'Font', chooseTextFont),
                       tool('⇧', 'Import TTF/OTF Font', importSelectedTextFont),
+                      tool('✂', 'BG Remover', openBackgroundRemover),
                       tool('↶', 'Undo Text', undoTextEdit),
                       tool('↷', 'Redo Text', redoTextEdit),
                       tool('◠', 'Curve Up (Urdu / English)', () => adjustSelectedTextCurve(0.2)),
@@ -5588,6 +5622,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 letterStyleTool('assets/a_letter_styles/A_Style_01.png', 'A Style', () => openLetterStyleGallery(true)),
                 letterStyleTool('assets/b_letter_styles/B_Style_01.png', 'B Style', () => openLetterStyleGallery(false)),
                 tool('T', 'Text', openTextTools),
+                tool('✂', 'BG Remover', openBackgroundRemover),
                 tool('🟥', 'A Side Label', aSideLabelTool),
                 tool('🟩', 'B Side Label', bSideLabelTool),
                 tool('✦', '3D Backgrounds', backgrounds),
