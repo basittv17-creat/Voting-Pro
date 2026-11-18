@@ -508,13 +508,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     return dir;
   }
 
+  // Source photo files are immutable per gallery import / cutout, so avoid
+  // copying multi-megabyte PNG/JPEG data on every text-slider autosave.
+  final Map<String, String> _lastPersistedPhotoSources = {};
+
   Future<String?> _persistProjectImage(File? source, String filename) async {
     if (source == null || !await source.exists()) return null;
     final dir = await _projectDirectory();
     final target = File('${dir.path}/$filename');
-    if (source.absolute.path != target.absolute.path) {
-      await source.copy(target.path);
+    final sourcePath = source.absolute.path;
+    if (sourcePath == target.absolute.path) {
+      _lastPersistedPhotoSources[filename] = sourcePath;
+      return target.path;
     }
+    if (_lastPersistedPhotoSources[filename] == sourcePath &&
+        await target.exists()) {
+      return target.path;
+    }
+    await source.copy(target.path);
+    _lastPersistedPhotoSources[filename] = sourcePath;
     return target.path;
   }
 
