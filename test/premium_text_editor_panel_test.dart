@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show debugDumpRenderTree;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voting_pro/widgets/premium_text_editor_panel.dart';
 
@@ -73,6 +74,7 @@ void main() {
     if (layoutError is FlutterError) {
       // Diagnose the exact constraint chain in CI on narrow devices.
       debugPrint(layoutError.toStringDeep());
+      debugDumpRenderTree();
     }
     expect(layoutError, isNull);
     expect(find.text('Text Editor'), findsOneWidget);
@@ -102,6 +104,7 @@ void main() {
     if (layoutError is FlutterError) {
       // Diagnose the exact constraint chain in CI on narrow devices.
       debugPrint(layoutError.toStringDeep());
+      debugDumpRenderTree();
     }
     expect(layoutError, isNull);
   });
