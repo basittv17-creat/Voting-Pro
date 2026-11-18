@@ -907,11 +907,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('نیا پروجیکٹ شروع کریں؟'),
-        content: const Text('موجودہ محفوظ پروجیکٹ صاف ہو جائے گا۔ کیا آپ جاری رکھنا چاہتے ہیں؟'),
+        title: Text(AppLanguage.tr('نیا پروجیکٹ شروع کریں؟')),
+        content: Text(AppLanguage.tr('موجودہ محفوظ پروجیکٹ صاف ہو جائے گا۔ کیا آپ جاری رکھنا چاہتے ہیں؟')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('منسوخ')),
-          ElevatedButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Restart')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(AppLanguage.tr('Cancel'))),
+          ElevatedButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(AppLanguage.tr('Restart'))),
         ],
       ),
     );
@@ -1165,7 +1165,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   void msg(String s) {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLanguage.tr(s), textDirection: AppLanguage.direction)));
   }
 
   Future<void> pick(bool sideA) async {
@@ -2065,9 +2065,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               children: [
                 const Icon(Icons.palette, color: Color(0xFFFFD84D), size: 22),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Ready-made Templates',
+                    AppLanguage.tr('Ready-made Templates'),
                     style: TextStyle(
                       color: Color(0xFFFFD84D),
                       fontSize: 16,
@@ -2075,12 +2075,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-                const Text(
-                  'ٹیمپلیٹس منتخب کریں',
+                Text(
+                  AppLanguage.tr('ٹیمپلیٹس منتخب کریں'),
                   style: TextStyle(color: Colors.white70, fontSize: 11),
                 ),
                 IconButton(
-                  tooltip: 'Close templates',
+                  tooltip: AppLanguage.tr('Close'),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => setState(() => showReadyMadeTemplateGallery = false),
                   icon: const Icon(Icons.close, color: Colors.white70),
@@ -2167,15 +2167,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       builder: (c, modalSet) => Padding(
         padding: const EdgeInsets.all(18),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Frame Color'),
+          Text(AppLanguage.tr('Frame Color')),
           Wrap(spacing: 12, children: [Colors.amber, Colors.white, Colors.pinkAccent, Colors.cyanAccent, Colors.redAccent, Colors.greenAccent].map((color) => InkWell(
             onTap: () { setState(() => frameColor = color); modalSet(() {}); },
             child: Container(width: 35, height: 35, decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: frameColor == color ? Colors.black : Colors.transparent, width: 3))),
           )).toList()),
           const SizedBox(height: 12),
-          const Text('Frame Thickness'),
+          Text(AppLanguage.tr('Frame Thickness')),
           Slider(value: frameWidth, min: 1, max: 10, divisions: 9, onChanged: (v) { setState(() => frameWidth = v); modalSet(() {}); }),
-          Align(alignment: Alignment.centerRight, child: FilledButton(onPressed: () => Navigator.pop(c), child: const Text('Done'))),
+          Align(alignment: Alignment.centerRight, child: FilledButton(onPressed: () => Navigator.pop(c), child: Text(AppLanguage.tr('Done')))),
         ]),
       ),
     ));
@@ -2480,7 +2480,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             children: [
               const Padding(
                 padding: EdgeInsets.only(bottom: 8),
-                child: Text('Typography Presets',
+                child: Text(AppLanguage.tr('Typography Presets'),
                   style: TextStyle(fontSize: 20, color: Colors.white,
                     fontWeight: FontWeight.bold)),
               ),
@@ -2687,7 +2687,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Future<void> addText() async {
     final controller = TextEditingController();
     final value = await showDialog<String>(context: context, builder: (c) => AlertDialog(
-      title: const Text('متن شامل کریں'),
+      title: Text(AppLanguage.tr('متن شامل کریں')),
       content: TextField(
         controller: controller,
         autofocus: true,
@@ -2700,7 +2700,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           border: OutlineInputBorder(),
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: const Text('Add'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(c), child: Text(AppLanguage.tr('Cancel'))), FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: Text(AppLanguage.tr('Add')))],
     ));
     controller.dispose();
     if (value != null && value.isNotEmpty && mounted) {
@@ -2738,7 +2738,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Text'),
+        title: Text(AppLanguage.tr('Edit Text')),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -2754,7 +2754,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(AppLanguage.tr('Cancel')),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(
@@ -2762,7 +2762,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               controller.text.trim(),
             ),
             icon: const Icon(Icons.check),
-            label: const Text('Save'),
+            label: Text(AppLanguage.tr('Save')),
           ),
         ],
       ),
@@ -2897,15 +2897,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                tooltip: 'Close Glow',
+                tooltip: AppLanguage.tr('Close Glow'),
                 onPressed: () => setState(() => showGlowPanel = false),
                 icon: const Icon(Icons.close, color: Colors.white70, size: 20),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Glow Color',
+          Text(
+            AppLanguage.tr('Glow Color'),
             style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -2956,8 +2956,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 size: 19,
               ),
               const SizedBox(width: 7),
-              const Text(
-                'Intensity',
+              Text(
+                AppLanguage.tr('Intensity'),
                 style: TextStyle(color: Colors.white, fontSize: 12),
               ),
               Expanded(
@@ -2975,7 +2975,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 ),
               ),
               IconButton(
-                tooltip: 'Reset Glow',
+                tooltip: AppLanguage.tr('Reset Glow'),
                 visualDensity: VisualDensity.compact,
                 onPressed: () {
                   _rememberTextEdit();
@@ -3056,8 +3056,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
             return AlertDialog(
               backgroundColor: const Color(0xFF101827),
-              title: const Text(
-                'Custom Color',
+              title: Text(
+                AppLanguage.tr('Custom Color'),
                 style: TextStyle(color: Colors.white),
               ),
               content: SingleChildScrollView(
@@ -3116,7 +3116,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Done'),
+                  child: Text(AppLanguage.tr('Done')),
                 ),
               ],
             );
@@ -3139,9 +3139,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Text Color Studio',
+                        AppLanguage.tr('Text Color Studio'),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 21,
@@ -3152,21 +3152,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     TextButton.icon(
                       onPressed: () => openCustomPicker(sheetContext),
                       icon: const Icon(Icons.colorize, color: Colors.white),
-                      label: const Text(
-                        'Custom',
+                      label: Text(
+                        AppLanguage.tr('Custom'),
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
                   ],
                 ),
-                const Text(
-                  'Premium • Gold • Neon • Pastel • 300+ Colors',
+                Text(
+                  AppLanguage.tr('Premium • Gold • Neon • Pastel • 300+ Colors'),
                   style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Text('Preview: ',
+                    Text(AppLanguage.tr('Preview: '),
                         style: TextStyle(color: Colors.white70)),
                     Expanded(
                       child: Text(
@@ -3237,7 +3237,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(sheetContext),
-                    child: const Text('Apply Color'),
+                    child: Text(AppLanguage.tr('Apply Color')),
                   ),
                 ),
               ],
@@ -3281,7 +3281,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isUrdu ? 'اردو فونٹس منتخب کریں' : 'Choose English Font',
+                AppLanguage.tr(isUrdu ? 'اردو فونٹس منتخب کریں' : 'Choose English Font'),
                 style: const TextStyle(
                   color: gold, fontSize: 20, fontWeight: FontWeight.bold,
                 ),
@@ -3292,7 +3292,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 runSpacing: 8,
                 children: fonts.map((font) => ActionChip(
                   label: Text(
-                    font.$2,
+                    AppLanguage.tr(font.$2),
                     style: TextStyle(
                       fontFamily: font.$1,
                       color: Colors.white,
@@ -3763,7 +3763,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return SizedBox(
         width: 42, height: 42,
         child: Tooltip(
-          message: tooltip,
+          message: AppLanguage.tr(tooltip),
           child: Material(
             color: danger ? const Color(0xFFCF393B) : const Color(0xFF263047),
             borderRadius: BorderRadius.circular(11),
@@ -3808,13 +3808,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         color: accent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(sideA ? 'A STYLE' : 'B STYLE',
+                      child: Text(AppLanguage.tr(sideA ? 'A STYLE' : 'B STYLE'),
+                        textDirection: AppLanguage.direction,
                         style: TextStyle(color: accent, fontSize: 11,
                             fontWeight: FontWeight.w800, letterSpacing: 1)),
                     ),
                     const SizedBox(width: 8),
                     const Expanded(
-                      child: Text('Drag • Pinch • Adjust', maxLines: 1,
+                      child: Text(AppLanguage.tr('Drag • Pinch • Adjust'), maxLines: 1,
+                          textDirection: AppLanguage.direction,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 10, color: Colors.white60)),
                     ),
@@ -3822,7 +3824,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       width: 36, height: 34,
                       child: IconButton(
                         padding: EdgeInsets.zero,
-                        tooltip: 'Deselect style',
+                        tooltip: AppLanguage.tr('Deselect style'),
                         onPressed: () => setState(_clearCanvasSelection),
                         icon: const Icon(Icons.close_rounded,
                             size: 19, color: Colors.white70),
@@ -3939,7 +3941,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 3),
               Text(
-                title,
+                AppLanguage.tr(title),
+                textDirection: AppLanguage.direction,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -4020,7 +4023,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  title,
+                  AppLanguage.tr(title),
+                  textDirection: AppLanguage.direction,
                   maxLines: 2,
                   softWrap: true,
                   overflow: TextOverflow.ellipsis,
@@ -4093,7 +4097,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(sideA ? 'Edit A Side Name' : 'Edit B Side Name'),
+        title: Text(AppLanguage.tr(sideA ? 'Edit A Side Name' : 'Edit B Side Name')),
         content: StatefulBuilder(
           builder: (context, setDialogState) => TextField(
             controller: controller,
@@ -4107,8 +4111,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 : TextAlign.left,
             textCapitalization: TextCapitalization.characters,
             decoration: InputDecoration(
-              labelText: sideA ? 'Enter A Side name' : 'Enter B Side name',
-              hintText: sideA ? 'Type A Side name' : 'Type B Side name',
+              labelText: AppLanguage.tr(sideA ? 'Enter A Side name' : 'Enter B Side name'),
+              hintText: AppLanguage.tr(sideA ? 'Type A Side name' : 'Type B Side name'),
             ),
             onChanged: (_) => setDialogState(() {}),
             onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
@@ -4117,14 +4121,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(AppLanguage.tr('Cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(
               dialogContext,
               controller.text.trim(),
             ),
-            child: const Text('Save'),
+            child: Text(AppLanguage.tr('Save')),
           ),
         ],
       ),
