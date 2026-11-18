@@ -14,8 +14,19 @@ import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
 import 'widgets/advanced_text_overlay.dart';
+import 'app_language.dart';
 
-void main() => runApp(const PosterApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    AppLanguage.current =
+        prefs.getString(AppLanguage.preferenceKey) == 'ur' ? 'ur' : 'en';
+  } catch (_) {
+    AppLanguage.current = 'en';
+  }
+  runApp(const PosterApp());
+}
 const mint = Color(0xFF79F0D6), gold = Color(0xFFFFD84D), dark = Color(0xFF080E19);
 
 class PosterApp extends StatelessWidget {
@@ -171,6 +182,7 @@ class Editor extends StatefulWidget {
 
 class _EditorState extends State<Editor> with WidgetsBindingObserver {
   static const String _projectSaveKey = 'voting_pro_project_v1';
+  final GlobalKey<ScaffoldState> _editorScaffoldKey = GlobalKey<ScaffoldState>();
   Timer? _autoSaveTimer;
   // Serialize disk writes so overlapping autosaves/lifecycle saves cannot race.
   Future<void> _saveQueue = Future<void>.value();
@@ -921,6 +933,116 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const Editor()),
       (_) => false,
+    );
+  }
+
+  Future<void> _changeAppLanguage(String language) async {
+    if (language != 'en' && language != 'ur') return;
+    if (AppLanguage.current != language && mounted) {
+      setState(() => AppLanguage.current = language);
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(AppLanguage.preferenceKey, language);
+    } catch (_) {
+      // The selected language remains active for the current session.
+    }
+  }
+
+  Future<void> _shareVotingProApp() async {
+    try {
+      // The project URL is public; do not imply a Play Store release exists.
+      await Share.share(
+        'Voting Pro — Poster Maker\n'
+        'https://github.com/basittv17-creat/Voting-Pro',
+        subject: 'Voting Pro',
+      );
+    } catch (error) {
+      msg(AppLanguage.isUrdu
+          ? 'ایپ شیئر نہیں ہو سکی: $error'
+          : 'Could not share the app: $error');
+    }
+  }
+
+  Widget _buildSettingsDrawer() {
+    return Directionality(
+      textDirection: AppLanguage.direction,
+      child: Drawer(
+        backgroundColor: const Color(0xFF101827),
+        width: (MediaQuery.sizeOf(context).width * 0.82)
+            .clamp(260.0, 340.0).toDouble(),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.workspace_premium, color: gold, size: 28),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text('Voting Pro',
+                      style: TextStyle(color: gold, fontSize: 20,
+                          fontWeight: FontWeight.w900)),
+                  ),
+                  IconButton(
+                    tooltip: AppLanguage.tr('Close'),
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, size: 21),
+                  ),
+                ],
+              ),
+              const Divider(color: Color(0xFF303B50), height: 26),
+              Text(AppLanguage.tr('App Language'),
+                style: const TextStyle(color: gold,
+                  fontWeight: FontWeight.bold, fontSize: 15)),
+              const SizedBox(height: 10),
+              _languageOption('ur', 'اردو'),
+              const SizedBox(height: 6),
+              _languageOption('en', 'English'),
+              const SizedBox(height: 20),
+              const Divider(color: Color(0xFF303B50)),
+              const SizedBox(height: 10),
+              Material(
+                color: const Color(0xFF26374D),
+                borderRadius: BorderRadius.circular(14),
+                child: ListTile(
+                  leading: const Icon(Icons.share_rounded, color: mint),
+                  title: Text(AppLanguage.tr('Share App'),
+                    textDirection: AppLanguage.direction,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                  trailing: const Icon(Icons.chevron_right_rounded,
+                    color: Colors.white70),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _shareVotingProApp();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _languageOption(String code, String label) {
+    final selected = AppLanguage.current == code;
+    return Material(
+      color: selected ? const Color(0xFF30334A) : const Color(0xFF1B2638),
+      borderRadius: BorderRadius.circular(12),
+      child: ListTile(
+        leading: Icon(Icons.language_rounded,
+          color: selected ? gold : Colors.white70),
+        title: Text(label, textDirection: code == 'ur'
+            ? TextDirection.rtl : TextDirection.ltr),
+        trailing: selected
+            ? const Icon(Icons.check_circle_rounded, color: mint)
+            : const Icon(Icons.circle_outlined, color: Colors.white38),
+        onTap: () async {
+          Navigator.of(context).pop();
+          await _changeAppLanguage(code);
+        },
+      ),
     );
   }
 
@@ -4193,13 +4315,37 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(body: SafeArea(child: Column(children: [
+  Widget build(BuildContext context) => Scaffold(
+    key: _editorScaffoldKey,
+    endDrawer: _buildSettingsDrawer(),
+    body: SafeArea(child: Column(children: [
     Padding(padding: const EdgeInsets.all(14), child: Column(children: [
-      const Row(children: [Icon(Icons.workspace_premium, color: gold, size: 34), SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Voting Pro', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: gold)), Text('P O S T E R   M A K E R', style: TextStyle(fontSize: 10, letterSpacing: 2))]))]),
+      Row(children: [
+        const Icon(Icons.workspace_premium, color: gold, size: 34),
+        const SizedBox(width: 8),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Voting Pro', style: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.w900, color: gold)),
+            Text(AppLanguage.isUrdu ? 'پوسٹر میکر' : 'P O S T E R   M A K E R',
+              textDirection: AppLanguage.direction,
+              style: const TextStyle(fontSize: 10, letterSpacing: 2)),
+          ])),
+        SizedBox(
+          width: 40, height: 40,
+          child: IconButton(
+            tooltip: AppLanguage.tr('Settings'),
+            padding: EdgeInsets.zero,
+            iconSize: 21,
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
+            onPressed: () => _editorScaffoldKey.currentState?.openEndDrawer(),
+          ),
+        ),
+      ]),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: ElevatedButton.icon(onPressed: busy ? null : save, icon: const Icon(Icons.download_rounded), label: Text(busy ? 'ذرا انتظار کریں…' : 'Save Poster ↓'))),
-        const SizedBox(width: 8), IconButton(onPressed: share, icon: const Icon(Icons.share)),
+        Expanded(child: ElevatedButton.icon(onPressed: busy ? null : save, icon: const Icon(Icons.download_rounded), label: Text(AppLanguage.tr(busy ? 'ذرا انتظار کریں…' : 'Save Poster ↓'), textDirection: AppLanguage.direction))),
+        const SizedBox(width: 8), IconButton(onPressed: busy ? null : share, tooltip: AppLanguage.tr('Share Poster'), icon: const Icon(Icons.share)),
       ]),
     ])),
     Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Column(children: [
