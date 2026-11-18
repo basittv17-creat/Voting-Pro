@@ -2,7 +2,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
+import 'widgets/advanced_text_overlay.dart';
 
 void main() => runApp(const PosterApp());
 const mint = Color(0xFF79F0D6), gold = Color(0xFFFFD84D), dark = Color(0xFF080E19);
@@ -384,6 +387,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<int, String> textFonts = {};
   final Map<int, Color> textColors = {};
   final Map<int, Color> textGlowColors = {};
+  final Map<int, String> textAlignments = {};
+  final Map<int, double> textLetterSpacings = {};
+  final Set<int> boldTextOverlayIds = {};
+  final Set<int> italicTextOverlayIds = {};
+  final Set<int> underlineTextOverlayIds = {};
+  final Set<int> strikeTextOverlayIds = {};
+  final Map<int, double> textOpacities = {};
+  final Map<int, double> textLineHeights = {};
+  final Map<int, double> textOutlineWidths = {};
+  final Map<int, Color> textOutlineColors = {};
+  final Map<int, double> textCurves = {};
+  final Set<int> gradientTextOverlayIds = {};
+  final Map<int, String> customFontPaths = {};
+  final Set<String> _loadedCustomFontFamilies = {};
+  final List<Map<String, Object>> _textUndoHistory = [];
+  final List<Map<String, Object>> _textRedoHistory = [];
   final Map<int, double> textGlowStrengths = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
@@ -517,6 +536,26 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     return save;
   }
 
+  Future<void> _loadSavedCustomFonts(Map<String, dynamic> data) async {
+    final storedFonts = data['textFonts'];
+    final storedPaths = data['customFontPaths'];
+    if (storedFonts is! Map || storedPaths is! Map) return;
+    for (final entry in storedPaths.entries) {
+      final family = storedFonts[entry.key];
+      if (family is! String || !family.startsWith('VotingCustomFont') ||
+          entry.value is! String || _loadedCustomFontFamilies.contains(family)) continue;
+      try {
+        final path = entry.value as String;
+        final dir = await _projectDirectory();
+        if (!path.startsWith('${dir.path}/custom_font_')) continue;
+        final file = File(path);
+        if (!await file.exists() || await file.length() > 5 * 1024 * 1024) continue;
+        await ui.loadFontFromList(await file.readAsBytes(), fontFamily: family);
+        _loadedCustomFontFamilies.add(family);
+      } catch (_) {}
+    }
+  }
+
   Future<void> _saveProjectSnapshot() async {
     if (_isRestoringProject || _isRestartingProject) return;
     try {
@@ -537,6 +576,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'textPositions': _offsetMapJson(textPositions),
         'textScales': _doubleMapJson(textScales),
         'textFonts': _stringMapJson(textFonts),
+        'textAlignments': _stringMapJson(textAlignments),
+        'textLetterSpacings': _doubleMapJson(textLetterSpacings),
+        'boldTextOverlayIds': boldTextOverlayIds.toList(),
+        'italicTextOverlayIds': italicTextOverlayIds.toList(),
+        'underlineTextOverlayIds': underlineTextOverlayIds.toList(),
+        'strikeTextOverlayIds': strikeTextOverlayIds.toList(),
+        'textOpacities': _doubleMapJson(textOpacities),
+        'textLineHeights': _doubleMapJson(textLineHeights),
+        'textOutlineWidths': _doubleMapJson(textOutlineWidths),
+        'textOutlineColors': _colorMapJson(textOutlineColors),
+        'textCurves': _doubleMapJson(textCurves),
+        'gradientTextOverlayIds': gradientTextOverlayIds.toList(),
+        'customFontPaths': _stringMapJson(customFontPaths),
         'textColors': _colorMapJson(textColors),
         'textGlowColors': _colorMapJson(textGlowColors),
         'textGlowStrengths': _doubleMapJson(textGlowStrengths),
@@ -593,6 +645,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final imageA = imageAPath == null ? null : File(imageAPath);
       final imageB = imageBPath == null ? null : File(imageBPath);
 
+      await _loadSavedCustomFonts(data);
+      if (!mounted) return;
       setState(() {
         a = imageA != null && imageA.existsSync() ? imageA : null;
         b = imageB != null && imageB.existsSync() ? imageB : null;
@@ -633,6 +687,105 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             if (index != null && entry.value is String) textFonts[index] = entry.value as String;
           }
         }
+        textAlignments.clear();
+        final savedAlignments = data['textAlignments'];
+        if (savedAlignments is Map) {
+          for (final entry in savedAlignments.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && (entry.value == 'left' || entry.value == 'center' || entry.value == 'right')) {
+              textAlignments[index] = entry.value as String;
+            }
+          }
+        }
+        textLetterSpacings.clear();
+        final savedSpacings = data['textLetterSpacings'];
+        if (savedSpacings is Map) {
+          for (final entry in savedSpacings.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textLetterSpacings[index] = (entry.value as num).toDouble().clamp(-1.0, 8.0).toDouble();
+            }
+          }
+        }
+        boldTextOverlayIds
+          ..clear()
+          ..addAll((data['boldTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+
+        italicTextOverlayIds
+          ..clear()
+          ..addAll((data['italicTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        underlineTextOverlayIds
+          ..clear()
+          ..addAll((data['underlineTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        strikeTextOverlayIds
+          ..clear()
+          ..addAll((data['strikeTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        textOpacities.clear();
+        final storedOpacities = data['textOpacities'];
+        if (storedOpacities is Map) {
+          for (final entry in storedOpacities.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textOpacities[index] = (entry.value as num).toDouble().clamp(0.1, 1.0).toDouble();
+            }
+          }
+        }
+        textLineHeights.clear();
+        final storedLineHeights = data['textLineHeights'];
+        if (storedLineHeights is Map) {
+          for (final entry in storedLineHeights.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textLineHeights[index] = (entry.value as num).toDouble().clamp(0.8, 2.5).toDouble();
+            }
+          }
+        }
+
+        textOutlineWidths.clear();
+        final savedStrokeWidths = data['textOutlineWidths'];
+        if (savedStrokeWidths is Map) {
+          for (final entry in savedStrokeWidths.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textOutlineWidths[index] = (entry.value as num).toDouble().clamp(0.0, 8.0).toDouble();
+            }
+          }
+        }
+        textOutlineColors.clear();
+        final savedStrokeColors = data['textOutlineColors'];
+        if (savedStrokeColors is Map) {
+          for (final entry in savedStrokeColors.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textOutlineColors[index] = Color((entry.value as num).toInt());
+            }
+          }
+        }
+        textCurves.clear();
+        final savedCurves = data['textCurves'];
+        if (savedCurves is Map) {
+          for (final entry in savedCurves.entries) {
+            final index = int.tryParse(entry.key.toString());
+            if (index != null && entry.value is num) {
+              textCurves[index] = (entry.value as num).toDouble().clamp(-1.0, 1.0).toDouble();
+            }
+          }
+        }
+        gradientTextOverlayIds
+          ..clear()
+          ..addAll((data['gradientTextOverlayIds'] as List? ?? const []).whereType<num>().map((v) => v.toInt()));
+        customFontPaths.clear();
+        final savedCustomFonts = data['customFontPaths'];
+        if (savedCustomFonts is Map) {
+          for (final entry in savedCustomFonts.entries) {
+            final index = int.tryParse(entry.key.toString());
+            final family = textFonts[index];
+            if (index != null && entry.value is String &&
+                family != null && _loadedCustomFontFamilies.contains(family)) {
+              customFontPaths[index] = entry.value as String;
+            }
+          }
+        }
         textColors.clear();
         final colors = data['textColors'];
         if (colors is Map) {
@@ -662,7 +815,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final index = int.tryParse(entry.key.toString());
             if (index != null && entry.value is num) {
               textGlowStrengths[index] =
-                  (entry.value as num).toDouble().clamp(0.0, 100.0).toDouble();
+                  (entry.value as num).toDouble().clamp(0.0, 200.0).toDouble();
             }
           }
         }
@@ -2004,20 +2157,422 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     showModalBottomSheet<void>(context: context, builder: (c) => Padding(
       padding: const EdgeInsets.all(18),
       child: Wrap(spacing: 12, runSpacing: 12, children: emojis.map((e) => InkWell(
-        onTap: () { setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
+        onTap: () { _textUndoHistory.clear(); _textRedoHistory.clear(); setState(() { overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
         child: Container(width: 52, height: 52, alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
       )).toList()),
     ));
   }
 
+  bool _hasArabicScript(String value) => RegExp(r'[\u0600-\u06FF]').hasMatch(value);
+
+  TextAlign _overlayTextAlign(int index) {
+    switch (textAlignments[index]) {
+      case 'left':
+        return TextAlign.left;
+      case 'right':
+        return TextAlign.right;
+      default:
+        return TextAlign.center;
+    }
+  }
+
+  void cycleSelectedTextAlignment() {
+    final index = selectedTextIndex;
+    if (index == null || !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+    _rememberTextEdit();
+    setState(() {
+      textAlignments[index] = switch (textAlignments[index]) {
+        'left' => 'center',
+        'center' => 'right',
+        _ => 'left',
+      };
+    });
+  }
+
+  void toggleSelectedTextBold() {
+    final index = selectedTextIndex;
+    if (index == null || !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+    _rememberTextEdit();
+    setState(() {
+      if (!boldTextOverlayIds.add(index)) boldTextOverlayIds.remove(index);
+    });
+  }
+
+  void adjustSelectedTextSpacing(double delta) {
+    final index = selectedTextIndex;
+    if (index == null || !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return;
+    }
+    _rememberTextEdit();
+    setState(() {
+      textLetterSpacings[index] =
+          ((textLetterSpacings[index] ?? 0.0) + delta).clamp(-1.0, 8.0).toDouble();
+    });
+  }
+
+  int? get _activeTextIndex {
+    final index = selectedTextIndex;
+    if (index == null || index < 0 || index >= overlays.length ||
+        !textOverlayIds.contains(index)) {
+      msg('پہلے ٹیکسٹ منتخب کریں');
+      return null;
+    }
+    return index;
+  }
+
+  void toggleTextItalic() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      if (!italicTextOverlayIds.add(index)) italicTextOverlayIds.remove(index);
+    });
+  }
+
+  void toggleTextUnderline() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      if (!underlineTextOverlayIds.add(index)) underlineTextOverlayIds.remove(index);
+    });
+  }
+
+  void toggleTextStrikethrough() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      if (!strikeTextOverlayIds.add(index)) strikeTextOverlayIds.remove(index);
+    });
+  }
+
+  void adjustTextOpacity(double delta) {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      textOpacities[index] =
+          ((textOpacities[index] ?? 1.0) + delta).clamp(0.1, 1.0).toDouble();
+    });
+  }
+
+  void adjustTextLineHeight(double delta) {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      textLineHeights[index] =
+          ((textLineHeights[index] ?? 1.2) + delta).clamp(0.8, 2.5).toDouble();
+    });
+  }
+
+  void resetSelectedTextStyle() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      textFonts.remove(index);
+      textColors.remove(index);
+      textGlowColors.remove(index);
+      textGlowStrengths.remove(index);
+      textAlignments.remove(index);
+      textLetterSpacings.remove(index);
+      textOpacities.remove(index);
+      textLineHeights.remove(index);
+      textOutlineWidths.remove(index);
+      textOutlineColors.remove(index);
+      textCurves.remove(index);
+      gradientTextOverlayIds.remove(index);
+      customFontPaths.remove(index);
+      boldTextOverlayIds.remove(index);
+      italicTextOverlayIds.remove(index);
+      underlineTextOverlayIds.remove(index);
+      strikeTextOverlayIds.remove(index);
+      textScales[index] = 1.0;
+    });
+  }
+
+  void duplicateSelectedText() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      final next = overlays.length;
+      overlays.add(overlays[index]);
+      textOverlayIds.add(next);
+      textPositions[next] = (textPositions[index] ??
+          Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0)) +
+          const Offset(24, 24);
+      textScales[next] = textScales[index] ?? 1.0;
+      if (textFonts.containsKey(index)) textFonts[next] = textFonts[index]!;
+      if (textColors.containsKey(index)) textColors[next] = textColors[index]!;
+      if (textGlowColors.containsKey(index)) textGlowColors[next] = textGlowColors[index]!;
+      if (textGlowStrengths.containsKey(index)) textGlowStrengths[next] = textGlowStrengths[index]!;
+      if (textAlignments.containsKey(index)) textAlignments[next] = textAlignments[index]!;
+      if (textLetterSpacings.containsKey(index)) textLetterSpacings[next] = textLetterSpacings[index]!;
+      if (textOpacities.containsKey(index)) textOpacities[next] = textOpacities[index]!;
+      if (textLineHeights.containsKey(index)) textLineHeights[next] = textLineHeights[index]!;
+      if (textOutlineWidths.containsKey(index)) textOutlineWidths[next] = textOutlineWidths[index]!;
+      if (textOutlineColors.containsKey(index)) textOutlineColors[next] = textOutlineColors[index]!;
+      if (textCurves.containsKey(index)) textCurves[next] = textCurves[index]!;
+      if (gradientTextOverlayIds.contains(index)) gradientTextOverlayIds.add(next);
+      if (customFontPaths.containsKey(index)) customFontPaths[next] = customFontPaths[index]!;
+      if (boldTextOverlayIds.contains(index)) boldTextOverlayIds.add(next);
+      if (italicTextOverlayIds.contains(index)) italicTextOverlayIds.add(next);
+      if (underlineTextOverlayIds.contains(index)) underlineTextOverlayIds.add(next);
+      if (strikeTextOverlayIds.contains(index)) strikeTextOverlayIds.add(next);
+      _selectCanvasObject(textIndex: next);
+    });
+  }
+
+  void chooseTextPreset() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF101827),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            runSpacing: 10,
+            spacing: 10,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text('Typography Presets',
+                  style: TextStyle(fontSize: 20, color: Colors.white,
+                    fontWeight: FontWeight.bold)),
+              ),
+              for (final preset in const <String>['Headline', 'Caption', 'Neon', 'Elegant'])
+                ActionChip(
+                  label: Text(preset, style: const TextStyle(color: Colors.white)),
+                  backgroundColor: const Color(0xFF263247),
+                  onPressed: () {
+                    setState(() {
+                      if (preset == 'Headline') {
+                        boldTextOverlayIds.add(index);
+                        textScales[index] = 1.5;
+                        textLetterSpacings[index] = 1.2;
+                        textGlowStrengths[index] = 0;
+                      } else if (preset == 'Caption') {
+                        boldTextOverlayIds.remove(index);
+                        textScales[index] = 0.75;
+                        textLetterSpacings[index] = 0;
+                        textGlowStrengths[index] = 0;
+                      } else if (preset == 'Neon') {
+                        boldTextOverlayIds.add(index);
+                        textColors[index] = const Color(0xFF00E5FF);
+                        textGlowColors[index] = const Color(0xFF00E5FF);
+                        textGlowStrengths[index] = 110;
+                      } else {
+                        boldTextOverlayIds.remove(index);
+                        italicTextOverlayIds.add(index);
+                        textColors[index] = const Color(0xFFFFD700);
+                        textGlowStrengths[index] = 0;
+                        if (!_hasArabicScript(overlays[index])) {
+                          customFontPaths.remove(index);
+                          textFonts[index] = 'PlayfairDisplayLocal';
+                        }
+                      }
+                    });
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Map<String, Object> _captureTextSnapshot() => <String, Object>{
+    'overlays': List<String>.from(overlays),
+    'textOverlayIds': Set<int>.from(textOverlayIds),
+    'stickerOverlayIds': Set<int>.from(stickerOverlayIds),
+    'textPositions': Map<int, Offset>.from(textPositions),
+    'textScales': Map<int, double>.from(textScales),
+    'textGlowStrengths': Map<int, double>.from(textGlowStrengths),
+    'textLetterSpacings': Map<int, double>.from(textLetterSpacings),
+    'textOpacities': Map<int, double>.from(textOpacities),
+    'textLineHeights': Map<int, double>.from(textLineHeights),
+    'textOutlineWidths': Map<int, double>.from(textOutlineWidths),
+    'textCurves': Map<int, double>.from(textCurves),
+    'textFonts': Map<int, String>.from(textFonts),
+    'textAlignments': Map<int, String>.from(textAlignments),
+    'customFontPaths': Map<int, String>.from(customFontPaths),
+    'textColors': Map<int, Color>.from(textColors),
+    'textGlowColors': Map<int, Color>.from(textGlowColors),
+    'textOutlineColors': Map<int, Color>.from(textOutlineColors),
+    'boldTextOverlayIds': Set<int>.from(boldTextOverlayIds),
+    'italicTextOverlayIds': Set<int>.from(italicTextOverlayIds),
+    'underlineTextOverlayIds': Set<int>.from(underlineTextOverlayIds),
+    'strikeTextOverlayIds': Set<int>.from(strikeTextOverlayIds),
+    'gradientTextOverlayIds': Set<int>.from(gradientTextOverlayIds),
+  };
+
+  void _restoreTextSnapshot(Map<String, Object> snapshot) {
+    overlays..clear()..addAll(snapshot['overlays'] as List<String>);
+    textOverlayIds..clear()..addAll(snapshot['textOverlayIds'] as Set<int>);
+    stickerOverlayIds..clear()..addAll(snapshot['stickerOverlayIds'] as Set<int>);
+    textPositions..clear()..addAll(snapshot['textPositions'] as Map<int, Offset>);
+    textScales..clear()..addAll(snapshot['textScales'] as Map<int, double>);
+    textGlowStrengths..clear()..addAll(snapshot['textGlowStrengths'] as Map<int, double>);
+    textLetterSpacings..clear()..addAll(snapshot['textLetterSpacings'] as Map<int, double>);
+    textOpacities..clear()..addAll(snapshot['textOpacities'] as Map<int, double>);
+    textLineHeights..clear()..addAll(snapshot['textLineHeights'] as Map<int, double>);
+    textOutlineWidths..clear()..addAll(snapshot['textOutlineWidths'] as Map<int, double>);
+    textCurves..clear()..addAll(snapshot['textCurves'] as Map<int, double>);
+    textFonts..clear()..addAll(snapshot['textFonts'] as Map<int, String>);
+    textAlignments..clear()..addAll(snapshot['textAlignments'] as Map<int, String>);
+    customFontPaths..clear()..addAll(snapshot['customFontPaths'] as Map<int, String>);
+    textColors..clear()..addAll(snapshot['textColors'] as Map<int, Color>);
+    textGlowColors..clear()..addAll(snapshot['textGlowColors'] as Map<int, Color>);
+    textOutlineColors..clear()..addAll(snapshot['textOutlineColors'] as Map<int, Color>);
+    boldTextOverlayIds..clear()..addAll(snapshot['boldTextOverlayIds'] as Set<int>);
+    italicTextOverlayIds..clear()..addAll(snapshot['italicTextOverlayIds'] as Set<int>);
+    underlineTextOverlayIds..clear()..addAll(snapshot['underlineTextOverlayIds'] as Set<int>);
+    strikeTextOverlayIds..clear()..addAll(snapshot['strikeTextOverlayIds'] as Set<int>);
+    gradientTextOverlayIds..clear()..addAll(snapshot['gradientTextOverlayIds'] as Set<int>);
+    _clearCanvasSelection();
+  }
+
+  void _rememberTextEdit() {
+    _textUndoHistory.add(_captureTextSnapshot());
+    if (_textUndoHistory.length > 25) _textUndoHistory.removeAt(0);
+    _textRedoHistory.clear();
+  }
+
+  void undoTextEdit() {
+    if (_textUndoHistory.isEmpty) { msg('Undo history خالی ہے'); return; }
+    final previous = _textUndoHistory.removeLast();
+    _textRedoHistory.add(_captureTextSnapshot());
+    setState(() => _restoreTextSnapshot(previous));
+  }
+
+  void redoTextEdit() {
+    if (_textRedoHistory.isEmpty) { msg('Redo history خالی ہے'); return; }
+    final next = _textRedoHistory.removeLast();
+    _textUndoHistory.add(_captureTextSnapshot());
+    setState(() => _restoreTextSnapshot(next));
+  }
+
+  void adjustSelectedTextCurve(double delta) {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    if (_hasArabicScript(overlays[index]) || overlays[index].contains('\n')) {
+      msg('Curved Text فی الحال صرف ایک سطر کے English متن کے لیے ہے');
+      return;
+    }
+    _rememberTextEdit();
+    setState(() => textCurves[index] =
+      ((textCurves[index] ?? 0.0) + delta).clamp(-1.0, 1.0).toDouble());
+  }
+
+  void toggleSelectedTextGradient() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() {
+      if (!gradientTextOverlayIds.add(index)) gradientTextOverlayIds.remove(index);
+    });
+  }
+
+  void adjustSelectedTextOutline(double delta) {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    _rememberTextEdit();
+    setState(() => textOutlineWidths[index] =
+      ((textOutlineWidths[index] ?? 0.0) + delta).clamp(0.0, 8.0).toDouble());
+  }
+
+  void cycleTextOutlineColor() {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    const colors = [Colors.black, Colors.white, Color(0xFFFFD700),
+      Color(0xFF00E5FF), Color(0xFFFF1744)];
+    _rememberTextEdit();
+    setState(() {
+      final current = textOutlineColors[index] ?? colors.first;
+      final i = colors.indexOf(current);
+      textOutlineColors[index] = colors[(i + 1) % colors.length];
+    });
+  }
+
+  Future<void> importSelectedTextFont() async {
+    final index = _activeTextIndex;
+    if (index == null) return;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['ttf', 'otf'],
+        withData: true,
+      );
+      if (result == null || !mounted) return;
+      final chosen = result.files.single;
+      final bytes = chosen.bytes;
+      if (bytes == null || bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
+        msg('صرف 5MB تک TTF/OTF font منتخب کریں');
+        return;
+      }
+      if (bytes.length < 4) { msg('غلط فونٹ فائل'); return; }
+      final signature = bytes.sublist(0, 4);
+      final isTrueType = signature[0] == 0 && signature[1] == 1 &&
+          signature[2] == 0 && signature[3] == 0;
+      final isOpenType = String.fromCharCodes(signature) == 'OTTO';
+      if (!isTrueType && !isOpenType) {
+        msg('یہ درست TTF/OTF font فائل نہیں ہے');
+        return;
+      }
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final family = 'VotingCustomFont$stamp';
+      final dir = await _projectDirectory();
+      final extension = isOpenType ? 'otf' : 'ttf';
+      final path = '${dir.path}/custom_font_$stamp.$extension';
+      await File(path).writeAsBytes(bytes, flush: true);
+      await ui.loadFontFromList(bytes, fontFamily: family);
+      if (!mounted || index >= overlays.length || !textOverlayIds.contains(index)) return;
+      _rememberTextEdit();
+      setState(() {
+        _loadedCustomFontFamilies.add(family);
+        customFontPaths[index] = path;
+        textFonts[index] = family;
+      });
+      msg('Custom font منتخب ٹیکسٹ پر لاگو ہوگیا');
+    } catch (e) {
+      msg('Font import ناکام: $e');
+    }
+  }
+
   Future<void> addText() async {
     final controller = TextEditingController();
     final value = await showDialog<String>(context: context, builder: (c) => AlertDialog(
-      title: const Text('متن شامل کریں'), content: TextField(controller: controller, maxLines: 3),
+      title: const Text('متن شامل کریں'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        keyboardType: TextInputType.multiline,
+        textCapitalization: TextCapitalization.sentences,
+        minLines: 2,
+        maxLines: 6,
+        decoration: const InputDecoration(
+          hintText: 'اردو یا English میں ٹیکسٹ لکھیں',
+          border: OutlineInputBorder(),
+        ),
+      ),
       actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: const Text('Add'))],
     ));
     controller.dispose();
     if (value != null && value.isNotEmpty && mounted) {
+      _rememberTextEdit();
       setState(() {
         overlays.add(value);
         final index = overlays.length - 1;
@@ -2055,7 +2610,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         content: TextField(
           controller: controller,
           autofocus: true,
-          maxLines: 4,
+          keyboardType: TextInputType.multiline,
+          textCapitalization: TextCapitalization.sentences,
+          minLines: 2,
+          maxLines: 6,
           decoration: const InputDecoration(
             hintText: 'اپنا ٹیکسٹ یہاں تبدیل کریں',
             border: OutlineInputBorder(),
@@ -2081,6 +2639,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     controller.dispose();
 
     if (value != null && value.isNotEmpty && mounted) {
+      _rememberTextEdit();
       setState(() {
         overlays[index] = value;
         selectedTextIndex = index;
@@ -2225,6 +2784,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               for (final color in palette)
                 GestureDetector(
                   onTap: () {
+                    _rememberTextEdit();
                     setState(() => textGlowColors[index] = color);
                   },
                   child: Container(
@@ -2276,6 +2836,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   divisions: 200,
                   activeColor: const Color(0xFF00E5FF),
                   inactiveColor: Colors.white24,
+                  onChangeStart: (_) => _rememberTextEdit(),
                   onChanged: (value) {
                     setState(() => textGlowStrengths[index] = value);
                   },
@@ -2285,6 +2846,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tooltip: 'Reset Glow',
                 visualDensity: VisualDensity.compact,
                 onPressed: () {
+                  _rememberTextEdit();
                   setState(() => textGlowStrengths[index] = 0.0);
                 },
                 icon: const Icon(
@@ -2349,6 +2911,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       var saturation = hsv.saturation;
       var value = hsv.value;
 
+      _rememberTextEdit();
       await showDialog<void>(
         context: sheetContext,
         builder: (dialogContext) => StatefulBuilder(
@@ -2487,8 +3050,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     ),
                     IconButton(
                       tooltip: 'Reset to white',
-                      onPressed: () => setState(
-                          () => textColors[index] = Colors.white),
+                      onPressed: () {
+                        _rememberTextEdit();
+                        setState(() => textColors[index] = Colors.white);
+                      },
                       icon: const Icon(Icons.refresh, color: Colors.white),
                     ),
                   ],
@@ -2502,7 +3067,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       children: palette.map((color) {
                         final selected = (textColors[index] ?? Colors.white) == color;
                         return GestureDetector(
-                          onTap: () => setState(() => textColors[index] = color),
+                          onTap: () {
+                            _rememberTextEdit();
+                            setState(() => textColors[index] = color);
+                          },
                           child: Container(
                             width: 36,
                             height: 36,
@@ -2562,14 +3130,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final fonts = isUrdu
         ? <(String, String)>[
             ('NotoNastaliqUrdu', 'اردو نستعلیق'),
-            ('NotoNastaliqUrdu', 'عربی خطاطی'),
-            ('NotoNastaliqUrdu', 'ماڈرن اردو'),
           ]
         : <(String, String)>[
             ('RobotoLocal', 'Modern'),
             ('OswaldLocal', 'Bold'),
             ('PlayfairDisplayLocal', 'Elegant'),
-            ('RobotoLocal', 'Clean'),
             ('PacificoLocal', 'Handwriting'),
           ];
 
@@ -2606,7 +3171,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ? const Color(0xFF087B65)
                       : const Color(0xFF263247),
                   onPressed: () {
-                    setState(() => textFonts[index] = font.$1);
+                    _rememberTextEdit();
+                    setState(() {
+                      customFontPaths.remove(index);
+                      textFonts[index] = font.$1;
+                    });
                     Navigator.pop(sheetContext);
                   },
                 )).toList(),
@@ -2622,6 +3191,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void zoomSelectedText(double factor) {
     final index = selectedTextIndex;
     if (index == null || index < 0 || index >= overlays.length || !textOverlayIds.contains(index)) return;
+    _rememberTextEdit();
     setState(() {
       textScales[index] = ((textScales[index] ?? 1.0) * factor)
           .clamp(0.4, 4.0).toDouble();
@@ -2645,6 +3215,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
 
+    _rememberTextEdit();
     setState(() {
       overlays.removeAt(index);
 
@@ -2654,6 +3225,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldColors = Map<int, Color>.from(textColors);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
+      final oldAlignments = Map<int, String>.from(textAlignments);
+      final oldSpacings = Map<int, double>.from(textLetterSpacings);
+      final oldBoldIds = Set<int>.from(boldTextOverlayIds);
+      final oldItalicIds = Set<int>.from(italicTextOverlayIds);
+      final oldUnderlineIds = Set<int>.from(underlineTextOverlayIds);
+      final oldStrikeIds = Set<int>.from(strikeTextOverlayIds);
+      final oldOpacities = Map<int, double>.from(textOpacities);
+      final oldLineHeights = Map<int, double>.from(textLineHeights);
+      final oldOutlineWidths = Map<int, double>.from(textOutlineWidths);
+      final oldOutlineColors = Map<int, Color>.from(textOutlineColors);
+      final oldCurves = Map<int, double>.from(textCurves);
+      final oldGradients = Set<int>.from(gradientTextOverlayIds);
+      final oldCustomPaths = Map<int, String>.from(customFontPaths);
 
       textPositions.clear();
       textScales.clear();
@@ -2661,6 +3245,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textColors.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
+      textAlignments.clear();
+      textLetterSpacings.clear();
+      boldTextOverlayIds.clear();
+      italicTextOverlayIds.clear();
+      underlineTextOverlayIds.clear();
+      strikeTextOverlayIds.clear();
+      textOpacities.clear();
+      textLineHeights.clear();
+      textOutlineWidths.clear();
+      textOutlineColors.clear();
+      textCurves.clear();
+      gradientTextOverlayIds.clear();
+      customFontPaths.clear();
 
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
@@ -2684,6 +3281,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldGlowStrengths.containsKey(sourceIndex)) {
           textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
         }
+        if (oldAlignments.containsKey(sourceIndex)) textAlignments[i] = oldAlignments[sourceIndex]!;
+        if (oldSpacings.containsKey(sourceIndex)) textLetterSpacings[i] = oldSpacings[sourceIndex]!;
+        if (oldBoldIds.contains(sourceIndex)) boldTextOverlayIds.add(i);
+        if (oldItalicIds.contains(sourceIndex)) italicTextOverlayIds.add(i);
+        if (oldUnderlineIds.contains(sourceIndex)) underlineTextOverlayIds.add(i);
+        if (oldStrikeIds.contains(sourceIndex)) strikeTextOverlayIds.add(i);
+        if (oldOpacities.containsKey(sourceIndex)) textOpacities[i] = oldOpacities[sourceIndex]!;
+        if (oldLineHeights.containsKey(sourceIndex)) textLineHeights[i] = oldLineHeights[sourceIndex]!;
+        if (oldOutlineWidths.containsKey(sourceIndex)) textOutlineWidths[i] = oldOutlineWidths[sourceIndex]!;
+        if (oldOutlineColors.containsKey(sourceIndex)) textOutlineColors[i] = oldOutlineColors[sourceIndex]!;
+        if (oldCurves.containsKey(sourceIndex)) textCurves[i] = oldCurves[sourceIndex]!;
+        if (oldGradients.contains(sourceIndex)) gradientTextOverlayIds.add(i);
+        if (oldCustomPaths.containsKey(sourceIndex)) customFontPaths[i] = oldCustomPaths[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) {
           textOverlayIds.add(i);
         }
@@ -2719,6 +3329,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
 
+    _textUndoHistory.clear();
+    _textRedoHistory.clear();
     setState(() {
       overlays.removeAt(index);
 
@@ -2728,6 +3340,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldColors = Map<int, Color>.from(textColors);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
+      final oldAlignments = Map<int, String>.from(textAlignments);
+      final oldSpacings = Map<int, double>.from(textLetterSpacings);
+      final oldBoldIds = Set<int>.from(boldTextOverlayIds);
+      final oldItalicIds = Set<int>.from(italicTextOverlayIds);
+      final oldUnderlineIds = Set<int>.from(underlineTextOverlayIds);
+      final oldStrikeIds = Set<int>.from(strikeTextOverlayIds);
+      final oldOpacities = Map<int, double>.from(textOpacities);
+      final oldLineHeights = Map<int, double>.from(textLineHeights);
+      final oldOutlineWidths = Map<int, double>.from(textOutlineWidths);
+      final oldOutlineColors = Map<int, Color>.from(textOutlineColors);
+      final oldCurves = Map<int, double>.from(textCurves);
+      final oldGradients = Set<int>.from(gradientTextOverlayIds);
+      final oldCustomPaths = Map<int, String>.from(customFontPaths);
       final oldTextIds = Set<int>.from(textOverlayIds);
       final oldStickerIds = Set<int>.from(stickerOverlayIds);
 
@@ -2737,6 +3362,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textColors.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
+      textAlignments.clear();
+      textLetterSpacings.clear();
+      boldTextOverlayIds.clear();
+      italicTextOverlayIds.clear();
+      underlineTextOverlayIds.clear();
+      strikeTextOverlayIds.clear();
+      textOpacities.clear();
+      textLineHeights.clear();
+      textOutlineWidths.clear();
+      textOutlineColors.clear();
+      textCurves.clear();
+      gradientTextOverlayIds.clear();
+      customFontPaths.clear();
       textOverlayIds.clear();
       stickerOverlayIds.clear();
 
@@ -2756,6 +3394,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldGlowStrengths.containsKey(sourceIndex)) {
           textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
         }
+        if (oldAlignments.containsKey(sourceIndex)) textAlignments[i] = oldAlignments[sourceIndex]!;
+        if (oldSpacings.containsKey(sourceIndex)) textLetterSpacings[i] = oldSpacings[sourceIndex]!;
+        if (oldBoldIds.contains(sourceIndex)) boldTextOverlayIds.add(i);
+        if (oldItalicIds.contains(sourceIndex)) italicTextOverlayIds.add(i);
+        if (oldUnderlineIds.contains(sourceIndex)) underlineTextOverlayIds.add(i);
+        if (oldStrikeIds.contains(sourceIndex)) strikeTextOverlayIds.add(i);
+        if (oldOpacities.containsKey(sourceIndex)) textOpacities[i] = oldOpacities[sourceIndex]!;
+        if (oldLineHeights.containsKey(sourceIndex)) textLineHeights[i] = oldLineHeights[sourceIndex]!;
+        if (oldOutlineWidths.containsKey(sourceIndex)) textOutlineWidths[i] = oldOutlineWidths[sourceIndex]!;
+        if (oldOutlineColors.containsKey(sourceIndex)) textOutlineColors[i] = oldOutlineColors[sourceIndex]!;
+        if (oldCurves.containsKey(sourceIndex)) textCurves[i] = oldCurves[sourceIndex]!;
+        if (oldGradients.contains(sourceIndex)) gradientTextOverlayIds.add(i);
+        if (oldCustomPaths.containsKey(sourceIndex)) customFontPaths[i] = oldCustomPaths[sourceIndex]!;
         if (oldTextIds.contains(sourceIndex)) textOverlayIds.add(i);
         if (oldStickerIds.contains(sourceIndex)) stickerOverlayIds.add(i);
       }
@@ -4075,10 +4726,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 }),
                 onDoubleTap: () {
                   if (isText) {
-                    deleteSelectedText(targetIndex: index);
+                    setState(() => _selectCanvasObject(textIndex: index));
+                    editSelectedText();
                   }
                 },
                 onScaleStart: (details) {
+                  if (isText) _rememberTextEdit();
                   setState(() {
                     if (isText) {
                       _selectCanvasObject(textIndex: index);
@@ -4124,15 +4777,31 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                 borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
                               )
                             : null,
-                        child: Text(
-                          entry.value,
+                        child: AdvancedTextOverlay(
+                          text: entry.value,
+                          alignment: _overlayTextAlign(index),
+                          direction: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
+                          gradient: gradientTextOverlayIds.contains(index),
+                          outlineWidth: textOutlineWidths[index] ?? 0.0,
+                          outlineColor: textOutlineColors[index] ?? Colors.black,
+                          curve: textCurves[index] ?? 0.0,
                           style: TextStyle(
                             fontFamily: textFonts[index] ??
                                 (RegExp(r'[\u0600-\u06FF]').hasMatch(entry.value)
                                     ? 'NotoNastaliqUrdu'
                                     : 'RobotoLocal'),
                             fontSize: 28,
-                            color: textColors[index] ?? Colors.white,
+                            fontWeight: boldTextOverlayIds.contains(index) ? FontWeight.w900 : FontWeight.normal,
+                            fontStyle: italicTextOverlayIds.contains(index) ? FontStyle.italic : FontStyle.normal,
+                            decoration: TextDecoration.combine([
+                              if (underlineTextOverlayIds.contains(index)) TextDecoration.underline,
+                              if (strikeTextOverlayIds.contains(index)) TextDecoration.lineThrough,
+                            ]),
+                            decorationColor: textColors[index] ?? Colors.white,
+                            height: textLineHeights[index] ?? 1.2,
+                            letterSpacing: textLetterSpacings[index] ?? 0.0,
+                            color: (textColors[index] ?? Colors.white)
+                                .withOpacity(textOpacities[index] ?? 1.0),
                             shadows: _textGlowShadows(index),
                           ),
                         ),
@@ -4235,6 +4904,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onPanStart: (details) {
+                              _rememberTextEdit();
                               setState(() {
                                 _selectCanvasObject(textIndex: index);
                                 textGestureStartScale = textScales[index] ?? 1.0;
@@ -4389,6 +5059,29 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('+', 'Add Text', addText),
                       tool('✎', 'Edit Text', editSelectedText),
                       tool('Aa', 'Font', chooseTextFont),
+                      tool('⇧', 'Import TTF/OTF Font', importSelectedTextFont),
+                      tool('↶', 'Undo Text', undoTextEdit),
+                      tool('↷', 'Redo Text', redoTextEdit),
+                      tool('◠', 'Curve Up (English)', () => adjustSelectedTextCurve(0.2)),
+                      tool('◡', 'Curve Down (English)', () => adjustSelectedTextCurve(-0.2)),
+                      tool('🌈', 'Gradient Fill', toggleSelectedTextGradient),
+                      tool('▣+', 'Outline Width +', () => adjustSelectedTextOutline(0.5)),
+                      tool('▣−', 'Outline Width −', () => adjustSelectedTextOutline(-0.5)),
+                      tool('▣', 'Outline Color', cycleTextOutlineColor),
+                      tool('B', 'Bold On/Off', toggleSelectedTextBold),
+                      tool('I', 'Italic On/Off', toggleTextItalic),
+                      tool('U̲', 'Underline On/Off', toggleTextUnderline),
+                      tool('S̶', 'Strikethrough On/Off', toggleTextStrikethrough),
+                      tool('▤', 'Text Presets', chooseTextPreset),
+                      tool('⧉', 'Duplicate Text', duplicateSelectedText),
+                      tool('≡', 'Align Left / Center / Right', cycleSelectedTextAlignment),
+                      tool('↔+', 'Letter Spacing +', () => adjustSelectedTextSpacing(0.5)),
+                      tool('↔−', 'Letter Spacing −', () => adjustSelectedTextSpacing(-0.5)),
+                      tool('↕+', 'Line Height +', () => adjustTextLineHeight(0.1)),
+                      tool('↕−', 'Line Height −', () => adjustTextLineHeight(-0.1)),
+                      tool('◉+', 'Opacity +', () => adjustTextOpacity(0.1)),
+                      tool('◉−', 'Opacity −', () => adjustTextOpacity(-0.1)),
+                      tool('↺', 'Reset Text Style', resetSelectedTextStyle),
                       tool('🎨', 'Color', chooseTextColor),
                       tool(
                         '✨',

@@ -407,6 +407,14 @@ jobs:
       - name: Build debug APK
         run: flutter build apk --debug
 
+      - name: Upload Text Studio debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voting-pro-text-studio-debug-apk-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Build Web
         run: flutter build web --release
 
