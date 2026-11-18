@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show debugDumpRenderTree;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voting_pro/widgets/premium_text_editor_panel.dart';
 
@@ -70,13 +69,7 @@ void main() {
 
     await tester.pumpWidget(makeEditor());
     await tester.pumpAndSettle();
-    final layoutError = tester.takeException();
-    if (layoutError is FlutterError) {
-      // Diagnose the exact constraint chain in CI on narrow devices.
-      debugPrint(layoutError.toStringDeep());
-      debugDumpRenderTree();
-    }
-    expect(layoutError, isNull);
+    expect(tester.takeException(), isNull);
     expect(find.text('Text Editor'), findsOneWidget);
     expect(find.text('Selected: علی اور ولی'), findsOneWidget);
     expect(find.text('Effects'), findsOneWidget);
@@ -100,12 +93,6 @@ void main() {
     await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
     expect(find.text('Delete Text'), findsOneWidget);
-    final layoutError = tester.takeException();
-    if (layoutError is FlutterError) {
-      // Diagnose the exact constraint chain in CI on narrow devices.
-      debugPrint(layoutError.toStringDeep());
-      debugDumpRenderTree();
-    }
-    expect(layoutError, isNull);
+    expect(tester.takeException(), isNull);
   });
 }
