@@ -15,6 +15,11 @@ class AdvancedTextOverlay extends StatelessWidget {
     this.outlineWidth = 0,
     this.outlineColor = Colors.black,
     this.curve = 0,
+    this.backgroundColor,
+    this.backgroundOpacity = 0.8,
+    this.backgroundExpansion = 0,
+    this.backgroundGradient = false,
+    this.backgroundShadowBlur = 0,
   });
 
   final String text;
@@ -25,6 +30,11 @@ class AdvancedTextOverlay extends StatelessWidget {
   final double outlineWidth;
   final Color outlineColor;
   final double curve;
+  final Color? backgroundColor;
+  final double backgroundOpacity;
+  final double backgroundExpansion;
+  final bool backgroundGradient;
+  final double backgroundShadowBlur;
 
   static const LinearGradient _fill = LinearGradient(
     colors: [Color(0xFFFFD700), Color(0xFFFF478B), Color(0xFF00E5FF)],
@@ -61,6 +71,11 @@ class AdvancedTextOverlay extends StatelessWidget {
           outlineColor: outlineColor,
           gradient: gradient,
           direction: direction,
+          backgroundColor: backgroundColor,
+          backgroundOpacity: backgroundOpacity,
+          backgroundExpansion: backgroundExpansion,
+          backgroundGradient: backgroundGradient,
+          backgroundShadowBlur: backgroundShadowBlur,
         ),
       );
     }
@@ -78,11 +93,40 @@ class AdvancedTextOverlay extends StatelessWidget {
         child: fill,
       );
     }
-    if (outlineWidth <= 0) return fill;
+    // Match the actual shaped letter outlines, never a rectangular strip.
+    final hasBg = backgroundColor != null && backgroundOpacity > 0;
+    if (outlineWidth <= 0 && !hasBg) return fill;
+    final bgPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = backgroundExpansion.clamp(0.0, 24.0).toDouble() * 2 + 2
+      ..color = (backgroundColor ?? Colors.transparent)
+          .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble());
+    if (backgroundGradient && backgroundColor != null) {
+      bgPaint.shader = LinearGradient(colors: [
+        backgroundColor!.withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
+        Color.lerp(backgroundColor!, Colors.purpleAccent, 0.55)!
+            .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
+      ]).createShader(const Rect.fromLTWH(0, 0, 500, 120));
+    }
+    if (backgroundShadowBlur > 0) {
+      bgPaint.maskFilter = MaskFilter.blur(
+        BlurStyle.normal, backgroundShadowBlur.clamp(0.0, 24.0).toDouble());
+    }
     return Stack(
       alignment: Alignment.center,
       children: [
-        Text(
+        if (hasBg) Text(
+          text,
+          textAlign: alignment,
+          textDirection: direction,
+          style: style.copyWith(
+            shadows: const <Shadow>[],
+            foreground: bgPaint,
+          ),
+        ),
+        if (outlineWidth > 0) Text(
           text,
           textAlign: alignment,
           textDirection: direction,
@@ -110,6 +154,11 @@ class _CurvedTextPainter extends CustomPainter {
     required this.outlineColor,
     required this.gradient,
     required this.direction,
+    this.backgroundColor,
+    this.backgroundOpacity = 0.8,
+    this.backgroundExpansion = 0,
+    this.backgroundGradient = false,
+    this.backgroundShadowBlur = 0,
   });
 
   final String text;
@@ -119,6 +168,11 @@ class _CurvedTextPainter extends CustomPainter {
   final Color outlineColor;
   final bool gradient;
   final TextDirection direction;
+  final Color? backgroundColor;
+  final double backgroundOpacity;
+  final double backgroundExpansion;
+  final bool backgroundGradient;
+  final double backgroundShadowBlur;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -162,6 +216,33 @@ class _CurvedTextPainter extends CustomPainter {
       canvas.translate(mid, positionY + painter.height / 2);
       canvas.rotate(angle);
       final origin = Offset(-painter.width / 2, -painter.height / 2);
+      if (backgroundColor != null && backgroundOpacity > 0) {
+        final paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeJoin = StrokeJoin.round
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = backgroundExpansion.clamp(0.0, 24.0).toDouble() * 2 + 2
+          ..color = backgroundColor!.withOpacity(
+              backgroundOpacity.clamp(0.0, 1.0).toDouble());
+        if (backgroundGradient) {
+          paint.shader = LinearGradient(colors: [
+            backgroundColor!.withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
+            Color.lerp(backgroundColor!, Colors.purpleAccent, 0.55)!
+                .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
+          ]).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+        }
+        if (backgroundShadowBlur > 0) {
+          paint.maskFilter = MaskFilter.blur(BlurStyle.normal,
+              backgroundShadowBlur.clamp(0.0, 24.0).toDouble());
+        }
+        final bgPainter = TextPainter(
+          text: TextSpan(text: characters[i], style: style.copyWith(
+            shadows: const <Shadow>[], foreground: paint)),
+          textDirection: direction,
+        )..layout();
+        bgPainter.paint(canvas, origin);
+        bgPainter.dispose();
+      }
       if (outlineWidth > 0) {
         final strokeStyle = style.copyWith(
           shadows: const <Shadow>[],
@@ -202,5 +283,10 @@ class _CurvedTextPainter extends CustomPainter {
   bool shouldRepaint(covariant _CurvedTextPainter old) =>
       text != old.text || style != old.style || curve != old.curve ||
       outlineWidth != old.outlineWidth || outlineColor != old.outlineColor ||
-      gradient != old.gradient || direction != old.direction;
+      gradient != old.gradient || direction != old.direction ||
+      backgroundColor != old.backgroundColor ||
+      backgroundOpacity != old.backgroundOpacity ||
+      backgroundExpansion != old.backgroundExpansion ||
+      backgroundGradient != old.backgroundGradient ||
+      backgroundShadowBlur != old.backgroundShadowBlur;
 }
