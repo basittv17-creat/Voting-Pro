@@ -34,6 +34,21 @@ void main() {
     expect(find.text('Add Photo A'), findsNothing);
     expect(tester.getRect(text), toolbarBounds);
     expect(find.byType(PremiumTextEditorPanel), findsNothing);
+
+    // Back is pinned to the RIGHT, outside the horizontally scrolling tools.
+    final textScroll = find.byKey(const ValueKey('text-tool-scroll'));
+    final back = find.descendant(of: text, matching: find.text('Back'));
+    expect(textScroll, findsOneWidget);
+    expect(back, findsOneWidget);
+    expect(
+      tester.getRect(back).left,
+      greaterThanOrEqualTo(tester.getRect(textScroll).right),
+    );
+    final fixedBackPosition = tester.getRect(back);
+    final delete = find.descendant(of: text, matching: find.text('Delete Text'));
+    await tester.ensureVisible(delete);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(back), fixedBackPosition);
     expect(
       tester.getCenter(find.text('Back')).dy,
       tester.getCenter(find.text('Add Text')).dy,
