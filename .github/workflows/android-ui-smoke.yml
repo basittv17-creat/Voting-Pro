@@ -41,17 +41,26 @@ jobs:
             manager="$RUNNER_TEMP/android-command-line-tools/cmdline-tools/bin/sdkmanager"
           fi
           "$manager" --sdk_root="$ANDROID_HOME" 'emulator' 'platform-tools' "$image"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/voting-pro-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           echo no | "$(dirname "$manager")/avdmanager" create avd --force \
-            --name voting_pro_ci --package "$image" --device pixel_2
+            --name voting_pro_ci --package "$image" --device pixel_2 \
+            --path "$ANDROID_AVD_HOME/voting_pro_ci.avd"
+          test -f "$ANDROID_AVD_HOME/voting_pro_ci.ini"
+          printf 'ANDROID_AVD_HOME=%s\n' "$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           printf '%s\n' "$ANDROID_HOME/emulator" "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           test -c /dev/kvm
           sudo chmod a+rw /dev/kvm
 
       - name: Verify VS Styles and capture Android screenshots
         run: |
+          adb start-server
+          emulator -list-avds | grep -Fx voting_pro_ci
           emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect -port 5554 > "$RUNNER_TEMP/voting-pro-emulator.log" 2>&1 &
           emulator_pid=$!
           trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
+          sleep 2
+          kill -0 "$emulator_pid"
           timeout 90 adb -s emulator-5554 wait-for-device
           timeout 180 bash -c 'until [ "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d "\r")" = "1" ]; do sleep 2; done'
           adb -s emulator-5554 shell wm size 786x1704
