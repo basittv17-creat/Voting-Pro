@@ -206,7 +206,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   double stickerGestureStartScale = 1.0;
   double stickerScaleStartY = 0.0;
   bool showTextTools = false;
-  bool showGlowPanel = false;
+  TextToolSection _activeTextSection = TextToolSection.none;
   bool showStickerTools = false;
   bool showCanvasTools = false;
   bool showVotingStickerTools = false;
@@ -416,6 +416,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final List<Map<String, Object>> _textUndoHistory = [];
   final List<Map<String, Object>> _textRedoHistory = [];
   final Map<int, double> textGlowStrengths = {};
+  final Map<int, double> textShadowStrengths = {};
   double textGestureStartScale = 1.0;
   Offset textGestureStartPosition = Offset.zero;
   Offset textGestureStartFocalPoint = Offset.zero;
@@ -622,6 +623,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'textBgShadows': _doubleMapJson(textBgShadows),
         'textBgGradients': textBgGradients.toList(),
         'textGlowColors': _colorMapJson(textGlowColors),
+        'textShadowStrengths': _doubleMapJson(textShadowStrengths),
         'textGlowStrengths': _doubleMapJson(textGlowStrengths),
         'tagraStickerOverlays': [
           for (final item in tagraStickerOverlays)
@@ -844,6 +846,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         readBgValues('textBgPaddings', textBgPaddings, 24);
         readBgValues('textBgRadii', textBgRadii, 36);
         readBgValues('textBgBorders', textBgBorders, 6);
+        readBgValues('textShadowStrengths', textShadowStrengths, 1);
         readBgValues('textBgShadows', textBgShadows, 24);
         textBgGradients..clear()..addAll(
           (data['textBgGradients'] as List? ?? const []).whereType<num>().map((e) => e.toInt()));
@@ -2531,6 +2534,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textBgGradients.remove(index);
       textGlowColors.remove(index);
       textGlowStrengths.remove(index);
+      textShadowStrengths.remove(index);
       textAlignments.remove(index);
       textLetterSpacings.remove(index);
       textOpacities.remove(index);
@@ -2570,6 +2574,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (textBgShadows.containsKey(index)) textBgShadows[next] = textBgShadows[index]!;
       if (textBgGradients.contains(index)) textBgGradients.add(next);
       if (textGlowColors.containsKey(index)) textGlowColors[next] = textGlowColors[index]!;
+      if (textShadowStrengths.containsKey(index)) {
+        textShadowStrengths[next] = textShadowStrengths[index]!;
+      }
       if (textGlowStrengths.containsKey(index)) textGlowStrengths[next] = textGlowStrengths[index]!;
       if (textAlignments.containsKey(index)) textAlignments[next] = textAlignments[index]!;
       if (textLetterSpacings.containsKey(index)) textLetterSpacings[next] = textLetterSpacings[index]!;
@@ -2656,6 +2663,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     'stickerOverlayIds': Set<int>.from(stickerOverlayIds),
     'textPositions': Map<int, Offset>.from(textPositions),
     'textScales': Map<int, double>.from(textScales),
+    'textShadowStrengths': Map<int, double>.from(textShadowStrengths),
     'textGlowStrengths': Map<int, double>.from(textGlowStrengths),
     'textLetterSpacings': Map<int, double>.from(textLetterSpacings),
     'textOpacities': Map<int, double>.from(textOpacities),
@@ -2690,6 +2698,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     stickerOverlayIds..clear()..addAll(snapshot['stickerOverlayIds'] as Set<int>);
     textPositions..clear()..addAll(snapshot['textPositions'] as Map<int, Offset>);
     textScales..clear()..addAll(snapshot['textScales'] as Map<int, double>);
+    textShadowStrengths
+      ..clear()
+      ..addAll(snapshot['textShadowStrengths'] as Map<int, double>);
     textGlowStrengths..clear()..addAll(snapshot['textGlowStrengths'] as Map<int, double>);
     textLetterSpacings..clear()..addAll(snapshot['textLetterSpacings'] as Map<int, double>);
     textOpacities..clear()..addAll(snapshot['textOpacities'] as Map<int, double>);
@@ -3043,22 +3054,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         blurRadius: 10.0 + 30.0 * power,
       ),
     ];
-  }
-
-  void textGlowTool() {
-    final index = selectedTextIndex;
-
-    if (index == null ||
-        index < 0 ||
-        index >= overlays.length ||
-        !textOverlayIds.contains(index)) {
-      msg('پہلے ٹیکسٹ منتخب کریں، پھر Glow کھولیں۔');
-      return;
-    }
-
-    setState(() {
-      showGlowPanel = !showGlowPanel;
-    });
   }
 
   void chooseTextColor() {
@@ -3434,6 +3429,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldBgShadows = Map<int, double>.from(textBgShadows);
       final oldBgGradients = Set<int>.from(textBgGradients);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
+      final oldShadowStrengths = Map<int, double>.from(textShadowStrengths);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
       final oldAlignments = Map<int, String>.from(textAlignments);
       final oldSpacings = Map<int, double>.from(textLetterSpacings);
@@ -3462,6 +3458,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textBgGradients.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
+      textShadowStrengths.clear();
       textAlignments.clear();
       textLetterSpacings.clear();
       boldTextOverlayIds.clear();
@@ -3501,6 +3498,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldBgGradients.contains(sourceIndex)) textBgGradients.add(i);
         if (oldGlowColors.containsKey(sourceIndex)) {
           textGlowColors[i] = oldGlowColors[sourceIndex]!;
+        }
+        if (oldShadowStrengths.containsKey(sourceIndex)) {
+          textShadowStrengths[i] = oldShadowStrengths[sourceIndex]!;
         }
         if (oldGlowStrengths.containsKey(sourceIndex)) {
           textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
@@ -3570,6 +3570,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldBgShadows = Map<int, double>.from(textBgShadows);
       final oldBgGradients = Set<int>.from(textBgGradients);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
+      final oldShadowStrengths = Map<int, double>.from(textShadowStrengths);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
       final oldAlignments = Map<int, String>.from(textAlignments);
       final oldSpacings = Map<int, double>.from(textLetterSpacings);
@@ -3600,6 +3601,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textBgGradients.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
+      textShadowStrengths.clear();
       textAlignments.clear();
       textLetterSpacings.clear();
       boldTextOverlayIds.clear();
@@ -3635,6 +3637,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldBgGradients.contains(sourceIndex)) textBgGradients.add(i);
         if (oldGlowColors.containsKey(sourceIndex)) {
           textGlowColors[i] = oldGlowColors[sourceIndex]!;
+        }
+        if (oldShadowStrengths.containsKey(sourceIndex)) {
+          textShadowStrengths[i] = oldShadowStrengths[sourceIndex]!;
         }
         if (oldGlowStrengths.containsKey(sourceIndex)) {
           textGlowStrengths[i] = oldGlowStrengths[sourceIndex]!;
@@ -3710,8 +3715,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void openTextTools() {
     setState(() {
       showTextTools = !showTextTools;
+      showReadyMadeTemplateGallery = false;
+      _activeTextSection = TextToolSection.none;
       showStickerTools = false;
       showCanvasTools = false;
+    });
+  }
+
+  void _selectTextSection(TextToolSection section) {
+    setState(() {
+      _activeTextSection = _activeTextSection == section
+          ? TextToolSection.none
+          : section;
     });
   }
 
@@ -4106,7 +4121,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   Widget _buildPremiumTextPanel() {
     final index = selectedTextIndex;
-    final valid = index != null &&
+    final valid =
+        index != null &&
         index >= 0 &&
         index < overlays.length &&
         textOverlayIds.contains(index);
@@ -4122,41 +4138,75 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
 
     return PremiumTextEditorPanel(
+      section: _activeTextSection,
       selectedText: active == null ? null : overlays[active],
-      onClose: () => setState(() {
-        showTextTools = false;
-        showGlowPanel = false;
-      }),
       onAddText: addText,
       onEditText: editSelectedText,
       onDeleteText: deleteSelectedText,
       styleActions: [
         TextPanelAction('Font', Icons.font_download_outlined, chooseTextFont),
-        TextPanelAction('Import TTF/OTF', Icons.upload_file, importSelectedTextFont),
+        TextPanelAction(
+          'Import TTF/OTF',
+          Icons.upload_file,
+          importSelectedTextFont,
+        ),
         TextPanelAction('Zoom +', Icons.zoom_in, () => zoomSelectedText(1.2)),
         TextPanelAction('Zoom −', Icons.zoom_out, () => zoomSelectedText(0.8)),
         TextPanelAction('Bold', Icons.format_bold, toggleSelectedTextBold),
         TextPanelAction('Italic', Icons.format_italic, toggleTextItalic),
-        TextPanelAction('Underline', Icons.format_underline, toggleTextUnderline),
-        TextPanelAction('Strike', Icons.strikethrough_s, toggleTextStrikethrough),
+        TextPanelAction(
+          'Underline',
+          Icons.format_underline,
+          toggleTextUnderline,
+        ),
+        TextPanelAction(
+          'Strike',
+          Icons.strikethrough_s,
+          toggleTextStrikethrough,
+        ),
         TextPanelAction('Presets', Icons.style_outlined, chooseTextPreset),
-        TextPanelAction('Reset Style', Icons.restart_alt, resetSelectedTextStyle),
+        TextPanelAction(
+          'Reset Style',
+          Icons.restart_alt,
+          resetSelectedTextStyle,
+        ),
       ],
       layoutActions: [
-        TextPanelAction('Alignment', Icons.format_align_center,
-          cycleSelectedTextAlignment),
-        TextPanelAction('Line Height +', Icons.height,
-          () => adjustTextLineHeight(0.1)),
-        TextPanelAction('Line Height −', Icons.compress,
-          () => adjustTextLineHeight(-0.1)),
-        TextPanelAction('Letter Space +', Icons.space_bar,
-          () => adjustSelectedTextSpacing(0.5)),
-        TextPanelAction('Letter Space −', Icons.space_bar,
-          () => adjustSelectedTextSpacing(-0.5)),
-        TextPanelAction('Curve Up', Icons.keyboard_arrow_up,
-          () => adjustSelectedTextCurve(0.2)),
-        TextPanelAction('Curve Down', Icons.keyboard_arrow_down,
-          () => adjustSelectedTextCurve(-0.2)),
+        TextPanelAction(
+          'Alignment',
+          Icons.format_align_center,
+          cycleSelectedTextAlignment,
+        ),
+        TextPanelAction(
+          'Line Height +',
+          Icons.height,
+          () => adjustTextLineHeight(0.1),
+        ),
+        TextPanelAction(
+          'Line Height −',
+          Icons.compress,
+          () => adjustTextLineHeight(-0.1),
+        ),
+        TextPanelAction(
+          'Letter Space +',
+          Icons.space_bar,
+          () => adjustSelectedTextSpacing(0.5),
+        ),
+        TextPanelAction(
+          'Letter Space −',
+          Icons.space_bar,
+          () => adjustSelectedTextSpacing(-0.5),
+        ),
+        TextPanelAction(
+          'Curve Up',
+          Icons.keyboard_arrow_up,
+          () => adjustSelectedTextCurve(0.2),
+        ),
+        TextPanelAction(
+          'Curve Down',
+          Icons.keyboard_arrow_down,
+          () => adjustSelectedTextCurve(-0.2),
+        ),
         TextPanelAction('Duplicate', Icons.copy, duplicateSelectedText),
       ],
       moreActions: [
@@ -4164,47 +4214,72 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         TextPanelAction('Redo Text', Icons.redo, redoTextEdit),
         TextPanelAction('BG Remover', Icons.content_cut, openBackgroundRemover),
         TextPanelAction('Color Palette', Icons.palette, chooseTextColor),
-        TextPanelAction('Text Background', Icons.format_color_fill,
-          editTextBackground),
-        TextPanelAction('Reset Style', Icons.restart_alt,
-          resetSelectedTextStyle),
+        TextPanelAction(
+          'Text Background',
+          Icons.format_color_fill,
+          editTextBackground,
+        ),
+        TextPanelAction(
+          'Reset Style',
+          Icons.restart_alt,
+          resetSelectedTextStyle,
+        ),
       ],
-      textColor: active == null ? Colors.white :
-          (textColors[active] ?? Colors.white),
-      onTextColor: (color) => updateSelected(
-        () => textColors[active!] = color),
+      textColor: active == null
+          ? Colors.white
+          : (textColors[active] ?? Colors.white),
+      onTextColor: (color) => updateSelected(() => textColors[active!] = color),
       onMoreColors: chooseTextColor,
       textOpacity: active == null ? 1 : (textOpacities[active] ?? 1),
-      onOpacityStart: () { if (active != null) _rememberTextEdit(); },
+      onOpacityStart: () {
+        if (active != null) _rememberTextEdit();
+      },
       onTextOpacity: (value) {
         if (active == null) return;
         setState(() => textOpacities[active] = value);
       },
       glowEnabled: active != null && (textGlowStrengths[active] ?? 0) > 0,
       onGlowToggle: () => updateSelected(() {
-        textGlowStrengths[active!] =
-            (textGlowStrengths[active] ?? 0) > 0 ? 0 : 100;
+        textGlowStrengths[active!] = (textGlowStrengths[active] ?? 0) > 0
+            ? 0
+            : 100;
       }),
-      glowStrength: active == null ? 0 :
-          (textGlowStrengths[active] ?? 0),
-      onGlowStart: () { if (active != null) _rememberTextEdit(); },
+      glowStrength: active == null ? 0 : (textGlowStrengths[active] ?? 0),
+      onGlowStart: () {
+        if (active != null) _rememberTextEdit();
+      },
       onGlowStrength: (value) {
         if (active == null) return;
         setState(() => textGlowStrengths[active] = value);
       },
-      glowColor: active == null ? const Color(0xFFFF1744) :
-          (textGlowColors[active] ?? const Color(0xFFFF1744)),
+      glowColor: active == null
+          ? const Color(0xFFFF1744)
+          : (textGlowColors[active] ?? const Color(0xFFFF1744)),
       onGlowColor: (color) => updateSelected(() {
         textGlowColors[active!] = color;
         if ((textGlowStrengths[active] ?? 0) <= 0) {
           textGlowStrengths[active] = 100;
         }
       }),
-      gradientEnabled: active != null &&
-          gradientTextOverlayIds.contains(active),
+      shadowStrength: active == null ? 0 : (textShadowStrengths[active] ?? 0),
+      onShadowToggle: () => updateSelected(() {
+        if ((textShadowStrengths[active] ?? 0) > 0) {
+          textShadowStrengths.remove(active);
+        } else {
+          textShadowStrengths[active!] = 0.75;
+        }
+      }),
+      onShadowStart: () {
+        if (active != null) _rememberTextEdit();
+      },
+      onShadowStrength: (value) {
+        if (active == null) return;
+        setState(() => textShadowStrengths[active] = value);
+      },
+      gradientEnabled:
+          active != null && gradientTextOverlayIds.contains(active),
       onGradientToggle: toggleSelectedTextGradient,
-      outlineWidth: active == null ? 0 :
-          (textOutlineWidths[active] ?? 0),
+      outlineWidth: active == null ? 0 : (textOutlineWidths[active] ?? 0),
       onOutlineToggle: () => updateSelected(() {
         if ((textOutlineWidths[active] ?? 0) > 0) {
           textOutlineWidths.remove(active);
@@ -4212,11 +4287,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           textOutlineWidths[active!] = 1.5;
         }
       }),
-      onOutlineIncrease: () => adjustSelectedTextOutline(0.5),
-      onOutlineDecrease: () => adjustSelectedTextOutline(-0.5),
-      onOutlineColor: cycleTextOutlineColor,
-      backgroundEnabled: active != null &&
-          textBgColors.containsKey(active),
+      outlineColor: textOutlineColors[active] ?? Colors.black,
+      onOutlineStart: () {
+        if (active != null) _rememberTextEdit();
+      },
+      onOutlineWidth: (value) {
+        if (active == null) return;
+        setState(() => textOutlineWidths[active] = value);
+      },
+      onOutlineColor: (color) => updateSelected(() {
+        textOutlineColors[active!] = color;
+        if ((textOutlineWidths[active] ?? 0) == 0) {
+          textOutlineWidths[active] = 1.5;
+        }
+      }),
+      backgroundEnabled: active != null && textBgColors.containsKey(active),
       onBackgroundToggle: () => updateSelected(() {
         if (textBgColors.containsKey(active)) {
           textBgColors.remove(active);
@@ -4225,22 +4310,23 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           textBgOpacities[active] = 0.85;
         }
       }),
-      backgroundColor: active == null ? const Color(0xFF0C1430) :
-          (textBgColors[active] ?? const Color(0xFF0C1430)),
+      backgroundColor: active == null
+          ? const Color(0xFF0C1430)
+          : (textBgColors[active] ?? const Color(0xFF0C1430)),
       onBackgroundColor: (color) => updateSelected(() {
         textBgColors[active!] = color;
         textBgOpacities.putIfAbsent(active, () => 0.85);
       }),
-      backgroundOpacity: active == null ? 0.85 :
-          (textBgOpacities[active] ?? 0.85),
+      backgroundOpacity: active == null
+          ? 0.85
+          : (textBgOpacities[active] ?? 0.85),
       onBackgroundOpacityStart: () {
         if (active != null) _rememberTextEdit();
       },
       onBackgroundOpacity: (value) {
         if (active == null) return;
         setState(() {
-          textBgColors.putIfAbsent(
-            active, () => const Color(0xFF0C1430));
+          textBgColors.putIfAbsent(active, () => const Color(0xFF0C1430));
           textBgOpacities[active] = value;
         });
       },
@@ -4337,6 +4423,246 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ),
     );
   }
+
+  // Text mode REPLACES the main toolbar at exactly the same bottom slot.
+  // Cards retain the 94 x 68 dimensions used by the existing toolbar.
+  Widget _textToolbarButton(
+    IconData icon,
+    String title,
+    VoidCallback tap, {
+    TextToolSection? section,
+  }) {
+    final selected = section != null && _activeTextSection == section;
+    return Container(
+      width: 94,
+      height: 68,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2638),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected ? gold : const Color(0xFF39566D),
+          width: selected ? 2 : 1,
+        ),
+        boxShadow: selected
+            ? const [BoxShadow(color: Color(0x55FFD84D), blurRadius: 10)]
+            : null,
+      ),
+      child: Semantics(
+        selected: section == null ? null : selected,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: tap,
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: selected ? gold : mint, size: 23),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      AppLanguage.tr(title),
+                      textDirection: AppLanguage.direction,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: selected ? gold : Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextToolbar() => SingleChildScrollView(
+    key: const ValueKey('text-toolbar'),
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        _textToolbarButton(Icons.arrow_back, 'Back', openTextTools),
+        _textToolbarButton(Icons.add, 'Add Text', addText),
+        _textToolbarButton(Icons.edit, 'Text Editor', editSelectedText),
+        _textToolbarButton(
+          Icons.format_color_fill,
+          'Text Background',
+          () => _selectTextSection(TextToolSection.background),
+          section: TextToolSection.background,
+        ),
+        _textToolbarButton(
+          Icons.auto_awesome,
+          'Glow',
+          () => _selectTextSection(TextToolSection.glow),
+          section: TextToolSection.glow,
+        ),
+        _textToolbarButton(
+          Icons.layers_outlined,
+          'Shadow',
+          () => _selectTextSection(TextToolSection.shadow),
+          section: TextToolSection.shadow,
+        ),
+        _textToolbarButton(
+          Icons.border_outer,
+          'Outline',
+          () => _selectTextSection(TextToolSection.outline),
+          section: TextToolSection.outline,
+        ),
+        _textToolbarButton(
+          Icons.gradient,
+          'Gradient',
+          () => _selectTextSection(TextToolSection.gradient),
+          section: TextToolSection.gradient,
+        ),
+        _textToolbarButton(
+          Icons.palette_outlined,
+          'Color',
+          () => _selectTextSection(TextToolSection.color),
+          section: TextToolSection.color,
+        ),
+        _textToolbarButton(
+          Icons.text_fields,
+          'Style',
+          () => _selectTextSection(TextToolSection.style),
+          section: TextToolSection.style,
+        ),
+        _textToolbarButton(
+          Icons.dashboard_outlined,
+          'Layout',
+          () => _selectTextSection(TextToolSection.layout),
+          section: TextToolSection.layout,
+        ),
+        _textToolbarButton(
+          Icons.more_horiz,
+          'More',
+          () => _selectTextSection(TextToolSection.more),
+          section: TextToolSection.more,
+        ),
+        // Keep all existing legacy text actions directly reachable
+        // by scrolling further along the same bottom toolbar.
+        _textToolbarButton(
+          Icons.font_download_outlined,
+          'Font',
+          chooseTextFont,
+        ),
+        _textToolbarButton(
+          Icons.upload_file,
+          'Import TTF/OTF',
+          importSelectedTextFont,
+        ),
+        _textToolbarButton(Icons.format_bold, 'Bold', toggleSelectedTextBold),
+        _textToolbarButton(Icons.format_italic, 'Italic', toggleTextItalic),
+        _textToolbarButton(
+          Icons.format_underline,
+          'Underline',
+          toggleTextUnderline,
+        ),
+        _textToolbarButton(
+          Icons.strikethrough_s,
+          'Strikethrough',
+          toggleTextStrikethrough,
+        ),
+        _textToolbarButton(Icons.style, 'Text Presets', chooseTextPreset),
+        _textToolbarButton(Icons.copy, 'Duplicate', duplicateSelectedText),
+        _textToolbarButton(Icons.undo, 'Undo Text', undoTextEdit),
+        _textToolbarButton(Icons.redo, 'Redo Text', redoTextEdit),
+        _textToolbarButton(
+          Icons.format_align_center,
+          'Alignment',
+          cycleSelectedTextAlignment,
+        ),
+        _textToolbarButton(
+          Icons.keyboard_arrow_up,
+          'Curve Up',
+          () => adjustSelectedTextCurve(0.2),
+        ),
+        _textToolbarButton(
+          Icons.keyboard_arrow_down,
+          'Curve Down',
+          () => adjustSelectedTextCurve(-0.2),
+        ),
+        _textToolbarButton(
+          Icons.zoom_in,
+          'Zoom +',
+          () => zoomSelectedText(1.2),
+        ),
+        _textToolbarButton(
+          Icons.zoom_out,
+          'Zoom −',
+          () => zoomSelectedText(0.8),
+        ),
+        _textToolbarButton(
+          Icons.space_bar,
+          'Letter Space +',
+          () => adjustSelectedTextSpacing(0.5),
+        ),
+        _textToolbarButton(
+          Icons.space_bar,
+          'Letter Space −',
+          () => adjustSelectedTextSpacing(-0.5),
+        ),
+        _textToolbarButton(
+          Icons.height,
+          'Line Height +',
+          () => adjustTextLineHeight(0.1),
+        ),
+        _textToolbarButton(
+          Icons.compress,
+          'Line Height −',
+          () => adjustTextLineHeight(-0.1),
+        ),
+        _textToolbarButton(
+          Icons.opacity,
+          'Opacity +',
+          () => adjustTextOpacity(0.1),
+        ),
+        _textToolbarButton(
+          Icons.opacity,
+          'Opacity −',
+          () => adjustTextOpacity(-0.1),
+        ),
+        _textToolbarButton(
+          Icons.add,
+          'Outline +',
+          () => adjustSelectedTextOutline(0.5),
+        ),
+        _textToolbarButton(
+          Icons.remove,
+          'Outline −',
+          () => adjustSelectedTextOutline(-0.5),
+        ),
+        _textToolbarButton(
+          Icons.palette,
+          'Outline Color',
+          cycleTextOutlineColor,
+        ),
+        _textToolbarButton(
+          Icons.restart_alt,
+          'Reset Style',
+          resetSelectedTextStyle,
+        ),
+        _textToolbarButton(
+          Icons.content_cut,
+          'BG Remover',
+          openBackgroundRemover,
+        ),
+        _textToolbarButton(
+          Icons.delete_outline,
+          'Delete Text',
+          deleteSelectedText,
+        ),
+      ],
+    ),
+  );
 
   final Map<bool, double> _photoScales = {true: 1.0, false: 1.0};
   final Map<bool, Offset> _photoOffsets = {true: Offset.zero, false: Offset.zero};
@@ -5189,6 +5515,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           direction: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
                           gradient: gradientTextOverlayIds.contains(index),
                           outlineWidth: textOutlineWidths[index] ?? 0.0,
+                          shadow: (textShadowStrengths[index] ?? 0) > 0
+                              ? Shadow(
+                                  color: Colors.black.withValues(
+                                    alpha: textShadowStrengths[index]!,
+                                  ),
+                                  offset: const Offset(3, 3),
+                                  blurRadius: 5,
+                                )
+                              : null,
                           outlineColor: textOutlineColors[index] ?? Colors.black,
                           curve: textCurves[index] ?? 0.0,
                           style: TextStyle(
@@ -5378,12 +5713,19 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         _buildAStyleControlPanel(),
       if (!isExportingPoster && _hasSelectedBStyle)
         _buildBStyleControlPanel(),
+      // Compact controls scroll directly beneath the poster, in unused space.
+      if (showTextTools &&
+          !isExportingPoster &&
+          selectedReadyMadeTemplate == null &&
+          _activeTextSection != TextToolSection.none)
+        KeyedSubtree(
+          key: ValueKey(_activeTextSection),
+          child: _buildPremiumTextPanel(),
+        ),
 
     ]))),
     if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
-    if (showTextTools && selectedReadyMadeTemplate == null)
-      _buildPremiumTextPanel(),
-    if (!showTextTools || selectedReadyMadeTemplate != null) Container(
+    Container(
       padding: const EdgeInsets.fromLTRB(6, 7, 6, 9),
       color: const Color(0xFF101827),
       child: selectedReadyMadeTemplate != null
@@ -5406,7 +5748,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 })),
               ]),
             )
-          : (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery || showTagraStickerGallery)
+          : showTextTools
+          ? _buildTextToolbar()
+          : (showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery || showTagraStickerGallery)
           ? Row(
               children: [
                 tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; showTagraStickerGallery = false; selectedLetterOverlayIndex = null; selectedTagraStickerIndex = null; })),
@@ -5460,55 +5804,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ('Banner 2:1', 2),
                       ])
                         tool(canvasRatio == opt.$2 ? '✓' : '▱', opt.$1, () => setState(() => canvasRatio = opt.$2)),
-                    ] : showStickerTools ? [
+                    ] : [
                       tool('+', 'Add Sticker', emojiTool),
                       tool('+', 'Zoom +', () => zoomSelectedSticker(1.2)),
                       tool('−', 'Zoom −', () => zoomSelectedSticker(0.8)),
                       tool('🗑', 'Delete', deleteSelectedSticker),
-                    ] : [
-                      tool('+', 'Add Text', addText),
-                      tool('✎', 'Edit Text', editSelectedText),
-                      tool('Aa', 'Font', chooseTextFont),
-                      tool('⇧', 'Import TTF/OTF Font', importSelectedTextFont),
-                      tool('✂', 'BG Remover', openBackgroundRemover),
-                      tool('↶', 'Undo Text', undoTextEdit),
-                      tool('↷', 'Redo Text', redoTextEdit),
-                      tool('◠', 'Curve Up (Urdu / English)', () => adjustSelectedTextCurve(0.2)),
-                      tool('◡', 'Curve Down (Urdu / English)', () => adjustSelectedTextCurve(-0.2)),
-                      tool('🌈', 'Gradient Fill', toggleSelectedTextGradient),
-                      tool('▣+', 'Outline Width +', () => adjustSelectedTextOutline(0.5)),
-                      tool('▣−', 'Outline Width −', () => adjustSelectedTextOutline(-0.5)),
-                      tool('▣', 'Outline Color', cycleTextOutlineColor),
-                      tool('B', 'Bold On/Off', toggleSelectedTextBold),
-                      tool('I', 'Italic On/Off', toggleTextItalic),
-                      tool('U̲', 'Underline On/Off', toggleTextUnderline),
-                      tool('S̶', 'Strikethrough On/Off', toggleTextStrikethrough),
-                      tool('▤', 'Text Presets', chooseTextPreset),
-                      tool('⧉', 'Duplicate Text', duplicateSelectedText),
-                      tool('≡', 'Align Left / Center / Right', cycleSelectedTextAlignment),
-                      tool('↔+', 'Letter Spacing +', () => adjustSelectedTextSpacing(0.5)),
-                      tool('↔−', 'Letter Spacing −', () => adjustSelectedTextSpacing(-0.5)),
-                      tool('↕+', 'Line Height +', () => adjustTextLineHeight(0.1)),
-                      tool('↕−', 'Line Height −', () => adjustTextLineHeight(-0.1)),
-                      tool('◉+', 'Opacity +', () => adjustTextOpacity(0.1)),
-                      tool('◉−', 'Opacity −', () => adjustTextOpacity(-0.1)),
-                      tool('↺', 'Reset Text Style', resetSelectedTextStyle),
-                      tool('🎨', 'Color', chooseTextColor),
-                      tool('▰', 'Text Background', editTextBackground),
-                      tool(
-                        '✨',
-                        'Glow',
-                        textGlowTool,
-                      ),
-                      tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
-                      tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
-                      tool('🗑', 'Delete', deleteSelectedText),
                     ]),
                   ),
                 ),
               ],
             )
           : SingleChildScrollView(
+              key: const PageStorageKey('main-toolbar'),
               scrollDirection: Axis.horizontal,
               child: Row(children: [
                 tool('A', 'Add Photo A', () => pick(true)),
