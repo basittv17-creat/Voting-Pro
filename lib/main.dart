@@ -413,8 +413,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Set<int> gradientTextOverlayIds = {};
   final Map<int, String> customFontPaths = {};
   final Set<String> _loadedCustomFontFamilies = {};
-  final List<Map<String, Object>> _textUndoHistory = [];
-  final List<Map<String, Object>> _textRedoHistory = [];
+  final List<Map<String, Object?>> _textUndoHistory = [];
+  final List<Map<String, Object?>> _textRedoHistory = [];
   final Map<int, double> textGlowStrengths = {};
   final Map<int, double> textShadowStrengths = {};
   double textGestureStartScale = 1.0;
@@ -2657,7 +2657,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  Map<String, Object> _captureTextSnapshot() => <String, Object>{
+  Map<String, Object?> _captureTextSnapshot() => <String, Object?>{
+    'selectedTextIndex': selectedTextIndex,
     'overlays': List<String>.from(overlays),
     'textOverlayIds': Set<int>.from(textOverlayIds),
     'stickerOverlayIds': Set<int>.from(stickerOverlayIds),
@@ -2690,9 +2691,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     'gradientTextOverlayIds': Set<int>.from(gradientTextOverlayIds),
   };
 
-  void _restoreTextSnapshot(Map<String, Object> snapshot) {
-    // Undo/Redo must not accidentally deselect a text that still exists.
-    final previousSelectedText = selectedTextIndex;
+  void _restoreTextSnapshot(Map<String, Object?> snapshot) {
+    final restoredTextIndex = snapshot['selectedTextIndex'] as int?;
     overlays..clear()..addAll(snapshot['overlays'] as List<String>);
     textOverlayIds..clear()..addAll(snapshot['textOverlayIds'] as Set<int>);
     stickerOverlayIds..clear()..addAll(snapshot['stickerOverlayIds'] as Set<int>);
@@ -2726,11 +2726,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     strikeTextOverlayIds..clear()..addAll(snapshot['strikeTextOverlayIds'] as Set<int>);
     gradientTextOverlayIds..clear()..addAll(snapshot['gradientTextOverlayIds'] as Set<int>);
     _clearCanvasSelection();
-    if (previousSelectedText != null &&
-        previousSelectedText >= 0 &&
-        previousSelectedText < overlays.length &&
-        textOverlayIds.contains(previousSelectedText)) {
-      selectedTextIndex = previousSelectedText;
+    if (restoredTextIndex != null &&
+        restoredTextIndex >= 0 &&
+        restoredTextIndex < overlays.length &&
+        textOverlayIds.contains(restoredTextIndex)) {
+      selectedTextIndex = restoredTextIndex;
     }
   }
 
