@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:voting_pro/app_language.dart';
 import 'package:voting_pro/main.dart';
 import 'package:voting_pro/widgets/advanced_text_overlay.dart';
 import 'package:voting_pro/widgets/premium_text_editor_panel.dart';
@@ -90,6 +91,112 @@ void main() {
     expect(tester.getRect(main), toolbarBounds);
     expect(tester.takeException(), isNull);
   });
+  for (final width in [320.0, 360.0, 393.0, 412.0]) {
+    testWidgets('All text actions remain reachable at $width dp in Urdu', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      AppLanguage.current = 'ur';
+      addTearDown(() => AppLanguage.current = 'en');
+      tester.view.physicalSize = Size(width, 700);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await tester.pumpWidget(const MaterialApp(home: Editor()));
+      await tester.pumpAndSettle();
+      final main = find.byKey(const PageStorageKey('main-toolbar'));
+      final tools = find.byKey(const ValueKey('text-tool-scroll'));
+      final back = find.text(AppLanguage.tr('Back'));
+      for (var cycle = 0; cycle < 2; cycle++) {
+        final entry = find.text(AppLanguage.tr('Text'));
+        await tester.ensureVisible(entry);
+        await tester.tap(entry);
+        await tester.pumpAndSettle();
+
+        expect(main, findsNothing);
+        final backPosition = tester.getRect(back);
+        expect(backPosition.center.dx, greaterThan(width / 2));
+        final cards =
+            find.descendant(of: tools, matching: find.byType(InkWell));
+        expect(cards, findsNWidgets(38));
+        for (final index in [0, 18, 37, 0]) {
+          await tester.ensureVisible(cards.at(index));
+          await tester.pumpAndSettle();
+          final hitPoint = tester.getCenter(cards.at(index));
+          expect(tester.getRect(tools).contains(hitPoint), isTrue);
+          expect(tester.getRect(back), backPosition);
+        }
+
+        if (cycle == 0) {
+          for (var index = 0; index < 38; index++) {
+            await tester.ensureVisible(cards.at(index));
+            await tester.pump();
+            expect(
+                tester
+                    .getRect(tools)
+                    .contains(tester.getCenter(cards.at(index))),
+                isTrue);
+          }
+        }
+        await tester.tap(back);
+        await tester.pumpAndSettle();
+        expect(main, findsOneWidget);
+        expect(tools, findsNothing);
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
+
+  testWidgets('Delete with no text selection explains what to do',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'voting_pro_project_v1': jsonEncode({
+        'overlays': ['★'],
+        'stickerOverlayIds': [0],
+      }),
+    });
+    await tester.pumpWidget(const MaterialApp(home: Editor()));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Text'));
+    await tester.tap(find.text('Text'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Delete Text'));
+    await tester.tap(find.text('Delete Text'));
+    await tester.pumpAndSettle();
+    expect(find.text('Select text to delete'), findsOneWidget);
+    expect(find.text('★'), findsOneWidget);
+  });
+
+  testWidgets('Opening text settings reveals controls on a short viewport',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(320, 450);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const MaterialApp(home: Editor()));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Text'));
+    await tester.tap(find.text('Text'));
+    await tester.pumpAndSettle();
+    final toolbar = find.byKey(const ValueKey('text-toolbar'));
+    final bounds = tester.getRect(toolbar);
+    for (final (section, control) in [
+      ('Glow', 'Glow intensity'),
+      ('Text Background', 'Background opacity'),
+    ]) {
+      await tester.ensureVisible(find.text(section));
+      await tester.tap(find.text(section));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.text(control)).bottom, lessThan(bounds.top));
+      expect(tester.getRect(toolbar), bounds);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Shadow changes the poster overlay and supports undo', (
     tester,
   ) async {

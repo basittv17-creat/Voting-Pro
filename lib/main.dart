@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gal/gal.dart';
@@ -207,6 +208,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   double stickerScaleStartY = 0.0;
   bool showTextTools = false;
   TextToolSection _activeTextSection = TextToolSection.none;
+  final _textSettingsKey = GlobalKey();
   bool showStickerTools = false;
   bool showCanvasTools = false;
   bool showVotingStickerTools = false;
@@ -3410,6 +3412,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         index < 0 ||
         index >= overlays.length ||
         !textOverlayIds.contains(index)) {
+      if (targetIndex == null) msg('Select text to delete');
       return;
     }
 
@@ -3715,6 +3718,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void openTextTools() {
     setState(() {
       showTextTools = !showTextTools;
+      if (!showTextTools) _clearCanvasSelection();
       showReadyMadeTemplateGallery = false;
       _activeTextSection = TextToolSection.none;
       showStickerTools = false;
@@ -3724,9 +3728,43 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void _selectTextSection(TextToolSection section) {
     setState(() {
-      _activeTextSection = _activeTextSection == section
-          ? TextToolSection.none
-          : section;
+      _activeTextSection =
+          _activeTextSection == section ? TextToolSection.none : section;
+    });
+    if (_activeTextSection == TextToolSection.none) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final panelContext = _textSettingsKey.currentContext;
+      if (!mounted ||
+          !showTextTools ||
+          _activeTextSection != section ||
+          panelContext == null) {
+        return;
+      }
+      final panel = panelContext.findRenderObject() as RenderBox?;
+      final position = Scrollable.maybeOf(panelContext)?.position;
+      final viewport = RenderAbstractViewport.maybeOf(panel);
+      if (panel == null ||
+          !panel.hasSize ||
+          position == null ||
+          viewport == null ||
+          !position.hasContentDimensions) {
+        return;
+      }
+
+      // Reveal the first controls while leaving as much poster visible as possible.
+      final top = viewport.getOffsetToReveal(panel, 0).offset;
+      final visibleControls = panel.size.height
+          .clamp(0.0, position.viewportDimension.clamp(0.0, 150.0));
+      final destination = (top + visibleControls - position.viewportDimension)
+          .clamp(position.minScrollExtent, position.maxScrollExtent);
+      if (destination > position.pixels) {
+        unawaited(position.animateTo(
+          destination,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        ));
+      }
     });
   }
 
@@ -4360,9 +4398,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             : null,
       ),
       child: Material(
-        color: isGlowTool
-            ? const Color(0xFF063747)
-            : const Color(0xFF1B2638),
+        color: isGlowTool ? const Color(0xFF063747) : const Color(0xFF1B2638),
         elevation: isGlowTool ? 8 : 0,
         shadowColor: const Color(0xFF00E5FF),
         borderRadius: BorderRadius.circular(14),
@@ -4384,10 +4420,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               children: [
                 Text(
                   icon,
+                  textScaler: TextScaler.noScaling,
+                  maxLines: 1,
                   style: TextStyle(
-                    color: isGlowTool
-                        ? const Color(0xFF00E5FF)
-                        : mint,
+                    color: isGlowTool ? const Color(0xFF00E5FF) : mint,
                     fontSize: isGlowTool ? 24 : 21,
                     fontWeight: FontWeight.bold,
                     shadows: isGlowTool
@@ -4401,19 +4437,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  AppLanguage.tr(title),
-                  textDirection: AppLanguage.direction,
-                  maxLines: 2,
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isGlowTool
-                        ? const Color(0xFF00E5FF)
-                        : Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                Flexible(
+                  child: Text(
+                    AppLanguage.tr(title),
+                    textDirection: AppLanguage.direction,
+                    maxLines: 2,
+                    softWrap: true,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color:
+                          isGlowTool ? const Color(0xFF00E5FF) : Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -4429,16 +4466,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Widget _textToolbarButton(
     IconData icon,
     String title,
-    VoidCallback tap, {
+    VoidCallback? tap, {
     TextToolSection? section,
   }) {
     final selected = section != null && _activeTextSection == section;
+    final label = AppLanguage.tr(title);
+    final iconColor = tap == null ? Colors.white38 : (selected ? gold : mint);
+    final labelColor =
+        tap == null ? Colors.white38 : (selected ? gold : Colors.white);
     return Container(
       width: 94,
       height: 68,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B2638),
+        color: selected ? const Color(0xFF4A3C21) : const Color(0xFF1B2638),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: selected ? gold : const Color(0xFF39566D),
@@ -4450,33 +4491,39 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ),
       child: Semantics(
         selected: section == null ? null : selected,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: tap,
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: selected ? gold : mint, size: 23),
-                  const SizedBox(height: 4),
-                  Flexible(
-                    child: Text(
-                      AppLanguage.tr(title),
-                      textDirection: AppLanguage.direction,
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: selected ? gold : Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+        button: true,
+        enabled: tap != null,
+        child: Tooltip(
+          message: label,
+          excludeFromSemantics: true,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: tap,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: iconColor, size: 23),
+                    const SizedBox(height: 4),
+                    Flexible(
+                      child: Text(
+                        label,
+                        textDirection: AppLanguage.direction,
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: labelColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -4578,8 +4625,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         ),
         _textToolbarButton(Icons.style, 'Text Presets', chooseTextPreset),
         _textToolbarButton(Icons.copy, 'Duplicate', duplicateSelectedText),
-        _textToolbarButton(Icons.undo, 'Undo Text', undoTextEdit),
-        _textToolbarButton(Icons.redo, 'Redo Text', redoTextEdit),
+        _textToolbarButton(
+          Icons.undo,
+          'Undo Text',
+          _textUndoHistory.isEmpty ? null : undoTextEdit,
+        ),
+        _textToolbarButton(
+          Icons.redo,
+          'Redo Text',
+          _textRedoHistory.isEmpty ? null : redoTextEdit,
+        ),
         _textToolbarButton(
           Icons.format_align_center,
           'Alignment',
@@ -4857,7 +4912,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               children: [
                 Icon(Icons.add_photo_alternate_outlined, color: mint, size: 34),
                 SizedBox(height: 8),
-                Text("تصویر شامل کریں", textAlign: TextAlign.center),
+                Flexible(
+                  child: Text(
+                    "تصویر شامل کریں",
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             )),
           if (label != null)
@@ -5728,8 +5790,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           selectedReadyMadeTemplate == null &&
           _activeTextSection != TextToolSection.none)
         KeyedSubtree(
-          key: ValueKey(_activeTextSection),
-          child: _buildPremiumTextPanel(),
+          key: _textSettingsKey,
+          child: KeyedSubtree(
+            key: ValueKey(_activeTextSection),
+            child: _buildPremiumTextPanel(),
+          ),
         ),
 
     ]))),

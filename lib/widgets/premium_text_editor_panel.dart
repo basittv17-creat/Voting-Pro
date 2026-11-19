@@ -295,8 +295,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     widget.onGlowToggle,
     child: Column(
       children: [
-        _palette(widget.glowColor, widget.onGlowColor),
-        _slider(
+          _slider(
           'Glow intensity',
           widget.glowStrength,
           0,
@@ -304,6 +303,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
           widget.onGlowStart,
           widget.onGlowStrength,
         ),
+      _palette(widget.glowColor, widget.onGlowColor),
       ],
     ),
   );
@@ -358,8 +358,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     widget.onBackgroundToggle,
     child: Column(
       children: [
-        _palette(widget.backgroundColor, widget.onBackgroundColor),
-        _slider(
+          _slider(
           'Background opacity',
           widget.backgroundOpacity,
           0,
@@ -368,6 +367,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
           widget.onBackgroundOpacity,
           percentage: true,
         ),
+      _palette(widget.backgroundColor, widget.onBackgroundColor),
         TextButton.icon(
           onPressed: widget.onBackgroundSettings,
           icon: const Icon(Icons.tune),
@@ -437,47 +437,50 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     ),
   );
 
-  Widget _palette(Color selected, ValueChanged<Color> callback) =>
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _colors.map((color) {
-            final hex = color
-                .toARGB32()
-                .toRadixString(16)
-                .substring(2)
-                .toUpperCase();
-            final isSelected = selected == color;
-            return Semantics(
-              selected: isSelected,
-              child: Tooltip(
-                message: 'Color #$hex',
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(7),
-                  onTap: () => callback(color),
-                  child: SizedBox.square(
-                    dimension: 48,
-                    child: Center(
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(
-                            color: isSelected ? _gold : Colors.white24,
-                            width: isSelected ? 3 : 1,
-                          ),
-                        ),
-                      ),
+  Widget _palette(Color selected, ValueChanged<Color> callback) {
+    final swatches = _colors.map((color) {
+      final hex = color.toARGB32().toRadixString(16).substring(2).toUpperCase();
+      final isSelected = selected == color;
+      return Semantics(
+        selected: isSelected,
+        child: Tooltip(
+          message: 'Color #$hex',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(7),
+            onTap: () => callback(color),
+            child: SizedBox.square(
+              dimension: 44,
+              child: Center(
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(
+                      color: isSelected ? _gold : Colors.white24,
+                      width: isSelected ? 3 : 1,
                     ),
                   ),
                 ),
               ),
-            );
-          }).toList(),
+            ),
+          ),
         ),
       );
+    }).toList();
+    final rowSize = (swatches.length + 1) ~/ 2;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: swatches.take(rowSize).toList()),
+          Row(children: swatches.skip(rowSize).toList()),
+        ],
+      ),
+    );
+  }
 
   Widget _slider(
     String label,
