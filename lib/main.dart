@@ -206,6 +206,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   double stickerGestureStartScale = 1.0;
   double stickerScaleStartY = 0.0;
   bool showTextTools = false;
+  TextToolSection _activeTextSection = TextToolSection.none;
   bool showGlowPanel = false;
   bool showStickerTools = false;
   bool showCanvasTools = false;
@@ -3168,21 +3169,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     ];
   }
 
-  void textGlowTool() {
-    final index = selectedTextIndex;
-
-    if (index == null ||
-        index < 0 ||
-        index >= overlays.length ||
-        !textOverlayIds.contains(index)) {
-      msg('پہلے ٹیکسٹ منتخب کریں، پھر Glow کھولیں۔');
-      return;
-    }
-
-    setState(() {
-      showGlowPanel = !showGlowPanel;
-    });
-  }
+  void textGlowTool() => _selectTextSection(TextToolSection.glow);
 
   void chooseTextColor() {
     final index = selectedTextIndex;
@@ -3833,8 +3820,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void openTextTools() {
     setState(() {
       showTextTools = !showTextTools;
+      _activeTextSection = TextToolSection.none;
       showStickerTools = false;
       showCanvasTools = false;
+    });
+  }
+
+  void _selectTextSection(TextToolSection section) {
+    setState(() {
+      _activeTextSection = _activeTextSection == section
+          ? TextToolSection.none
+          : section;
     });
   }
 
@@ -4245,9 +4241,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
 
     return PremiumTextEditorPanel(
+      section: _activeTextSection,
       selectedText: active == null ? null : overlays[active],
       onClose: () => setState(() {
         showTextTools = false;
+        _activeTextSection = TextToolSection.none;
         showGlowPanel = false;
       }),
       onAddText: addText,
@@ -4455,6 +4453,55 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Text mode REPLACES the main toolbar at exactly the same bottom slot.
+  // Cards retain the 94 x 68 dimensions used by the existing toolbar.
+  Widget _textToolbarButton(IconData icon, String title, VoidCallback tap,
+      {TextToolSection? section}) {
+    final selected = section != null && _activeTextSection == section;
+    return Container(
+      width: 94,
+      height: 68,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFF40340A) : const Color(0xFF1B2638),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected ? gold : const Color(0xFF39566D),
+          width: selected ? 2 : 1,
+        ),
+        boxShadow: selected
+            ? const [BoxShadow(color: Color(0x55FFD84D), blurRadius: 10)]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: tap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, color: selected ? gold : mint, size: 23),
+              const SizedBox(height: 4),
+              Text(
+                AppLanguage.tr(title),
+                textDirection: AppLanguage.direction,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? gold : Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ]),
           ),
         ),
       ),
@@ -5501,12 +5548,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         _buildAStyleControlPanel(),
       if (!isExportingPoster && _hasSelectedBStyle)
         _buildBStyleControlPanel(),
+      // Compact controls scroll directly beneath the poster, in unused space.
+      if (showTextTools && selectedReadyMadeTemplate == null)
+        _buildPremiumTextPanel(),
 
     ]))),
     if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
-    if (showTextTools && selectedReadyMadeTemplate == null)
-      _buildPremiumTextPanel(),
-    if (!showTextTools || selectedReadyMadeTemplate != null) Container(
+    Container(
       padding: const EdgeInsets.fromLTRB(6, 7, 6, 9),
       color: const Color(0xFF101827),
       child: selectedReadyMadeTemplate != null
@@ -5532,7 +5580,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           : (showTextTools || showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery || showTagraStickerGallery)
           ? Row(
               children: [
-                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; showTagraStickerGallery = false; selectedLetterOverlayIndex = null; selectedTagraStickerIndex = null; })),
+                tool('←', 'Back', () => setState(() { showTextTools = false; _activeTextSection = TextToolSection.none; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; showTagraStickerGallery = false; selectedLetterOverlayIndex = null; selectedTagraStickerIndex = null; })),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -5589,43 +5637,70 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       tool('−', 'Zoom −', () => zoomSelectedSticker(0.8)),
                       tool('🗑', 'Delete', deleteSelectedSticker),
                     ] : [
-                      tool('+', 'Add Text', addText),
-                      tool('✎', 'Edit Text', editSelectedText),
-                      tool('Aa', 'Font', chooseTextFont),
-                      tool('⇧', 'Import TTF/OTF Font', importSelectedTextFont),
-                      tool('✂', 'BG Remover', openBackgroundRemover),
-                      tool('↶', 'Undo Text', undoTextEdit),
-                      tool('↷', 'Redo Text', redoTextEdit),
-                      tool('◠', 'Curve Up (Urdu / English)', () => adjustSelectedTextCurve(0.2)),
-                      tool('◡', 'Curve Down (Urdu / English)', () => adjustSelectedTextCurve(-0.2)),
-                      tool('🌈', 'Gradient Fill', toggleSelectedTextGradient),
-                      tool('▣+', 'Outline Width +', () => adjustSelectedTextOutline(0.5)),
-                      tool('▣−', 'Outline Width −', () => adjustSelectedTextOutline(-0.5)),
-                      tool('▣', 'Outline Color', cycleTextOutlineColor),
-                      tool('B', 'Bold On/Off', toggleSelectedTextBold),
-                      tool('I', 'Italic On/Off', toggleTextItalic),
-                      tool('U̲', 'Underline On/Off', toggleTextUnderline),
-                      tool('S̶', 'Strikethrough On/Off', toggleTextStrikethrough),
-                      tool('▤', 'Text Presets', chooseTextPreset),
-                      tool('⧉', 'Duplicate Text', duplicateSelectedText),
-                      tool('≡', 'Align Left / Center / Right', cycleSelectedTextAlignment),
-                      tool('↔+', 'Letter Spacing +', () => adjustSelectedTextSpacing(0.5)),
-                      tool('↔−', 'Letter Spacing −', () => adjustSelectedTextSpacing(-0.5)),
-                      tool('↕+', 'Line Height +', () => adjustTextLineHeight(0.1)),
-                      tool('↕−', 'Line Height −', () => adjustTextLineHeight(-0.1)),
-                      tool('◉+', 'Opacity +', () => adjustTextOpacity(0.1)),
-                      tool('◉−', 'Opacity −', () => adjustTextOpacity(-0.1)),
-                      tool('↺', 'Reset Text Style', resetSelectedTextStyle),
-                      tool('🎨', 'Color', chooseTextColor),
-                      tool('▰', 'Text Background', editTextBackground),
-                      tool(
-                        '✨',
-                        'Glow',
-                        textGlowTool,
-                      ),
-                      tool('＋', 'Zoom +', () => zoomSelectedText(1.2)),
-                      tool('−', 'Zoom −', () => zoomSelectedText(0.8)),
-                      tool('🗑', 'Delete', deleteSelectedText),
+                      // The original main toolbar is hidden while in Text mode.
+                      // This SAME row (not a second row) contains the text tools.
+                      _textToolbarButton(Icons.add, 'Add Text', addText),
+                      _textToolbarButton(Icons.edit, 'Text Editor', editSelectedText),
+                      _textToolbarButton(Icons.format_color_fill, 'Text Background',
+                        () => _selectTextSection(TextToolSection.background),
+                        section: TextToolSection.background),
+                      _textToolbarButton(Icons.auto_awesome, 'Glow', textGlowTool,
+                        section: TextToolSection.glow),
+                      _textToolbarButton(Icons.border_outer, 'Outline',
+                        () => _selectTextSection(TextToolSection.outline),
+                        section: TextToolSection.outline),
+                      _textToolbarButton(Icons.gradient, 'Gradient',
+                        () => _selectTextSection(TextToolSection.gradient),
+                        section: TextToolSection.gradient),
+                      _textToolbarButton(Icons.palette_outlined, 'Color',
+                        () => _selectTextSection(TextToolSection.color),
+                        section: TextToolSection.color),
+                      _textToolbarButton(Icons.text_fields, 'Style',
+                        () => _selectTextSection(TextToolSection.style),
+                        section: TextToolSection.style),
+                      _textToolbarButton(Icons.dashboard_outlined, 'Layout',
+                        () => _selectTextSection(TextToolSection.layout),
+                        section: TextToolSection.layout),
+                      _textToolbarButton(Icons.more_horiz, 'More',
+                        () => _selectTextSection(TextToolSection.more),
+                        section: TextToolSection.more),
+                      // Keep all existing legacy text actions directly reachable
+                      // by scrolling further along the same bottom toolbar.
+                      _textToolbarButton(Icons.font_download_outlined, 'Font', chooseTextFont),
+                      _textToolbarButton(Icons.upload_file, 'Import TTF/OTF', importSelectedTextFont),
+                      _textToolbarButton(Icons.format_bold, 'Bold', toggleSelectedTextBold),
+                      _textToolbarButton(Icons.format_italic, 'Italic', toggleTextItalic),
+                      _textToolbarButton(Icons.format_underline, 'Underline', toggleTextUnderline),
+                      _textToolbarButton(Icons.strikethrough_s, 'Strikethrough', toggleTextStrikethrough),
+                      _textToolbarButton(Icons.style, 'Text Presets', chooseTextPreset),
+                      _textToolbarButton(Icons.copy, 'Duplicate', duplicateSelectedText),
+                      _textToolbarButton(Icons.undo, 'Undo Text', undoTextEdit),
+                      _textToolbarButton(Icons.redo, 'Redo Text', redoTextEdit),
+                      _textToolbarButton(Icons.format_align_center, 'Alignment', cycleSelectedTextAlignment),
+                      _textToolbarButton(Icons.keyboard_arrow_up, 'Curve Up',
+                        () => adjustSelectedTextCurve(0.2)),
+                      _textToolbarButton(Icons.keyboard_arrow_down, 'Curve Down',
+                        () => adjustSelectedTextCurve(-0.2)),
+                      _textToolbarButton(Icons.zoom_in, 'Zoom +',
+                        () => zoomSelectedText(1.2)),
+                      _textToolbarButton(Icons.zoom_out, 'Zoom −',
+                        () => zoomSelectedText(0.8)),
+                      _textToolbarButton(Icons.space_bar, 'Letter Space +',
+                        () => adjustSelectedTextSpacing(0.5)),
+                      _textToolbarButton(Icons.space_bar, 'Letter Space −',
+                        () => adjustSelectedTextSpacing(-0.5)),
+                      _textToolbarButton(Icons.height, 'Line Height +',
+                        () => adjustTextLineHeight(0.1)),
+                      _textToolbarButton(Icons.compress, 'Line Height −',
+                        () => adjustTextLineHeight(-0.1)),
+                      _textToolbarButton(Icons.opacity, 'Opacity +',
+                        () => adjustTextOpacity(0.1)),
+                      _textToolbarButton(Icons.opacity, 'Opacity −',
+                        () => adjustTextOpacity(-0.1)),
+                      _textToolbarButton(Icons.palette, 'Outline Color', cycleTextOutlineColor),
+                      _textToolbarButton(Icons.restart_alt, 'Reset Style', resetSelectedTextStyle),
+                      _textToolbarButton(Icons.content_cut, 'BG Remover', openBackgroundRemover),
+                      _textToolbarButton(Icons.delete_outline, 'Delete Text', deleteSelectedText),
                     ]),
                   ),
                 ),
