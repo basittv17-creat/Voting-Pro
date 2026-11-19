@@ -248,16 +248,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       vs: '',
     ),
     (
-      key: 'neon_vs_duel',
-      name: 'Neon VS Duel',
-      base: Color(0xFF080E19),
-      accent: Color(0xFFFF4FCB),
-      frame: '',
-      aLabel: '',
-      bLabel: '',
-      vs: '',
-    ),
-    (
       key: 'neon_purple_showdown',
       name: 'Neon Purple VS',
       base: Color(0xFF080E19),
@@ -947,6 +937,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               _offsetFromJson(templatePhotoOffsets['b']);
         }
 
+        // Old saved projects may refer to templates no longer installed.
+        // Return to the classic canvas without clearing either saved photo,
+        // text, or any data for templates that still exist.
+        if (selectedReadyMadeTemplate != null &&
+            !_readyTemplateOptions.any(
+              (template) => template.key == selectedReadyMadeTemplate)) {
+          selectedReadyMadeTemplate = null;
+          _templateANameEdited = false;
+          _templateBNameEdited = false;
+          canvasRatio = 4 / 3;
+          background = dark;
+          frameColor = gold;
+          frameWidth = 3;
+        }
+
         showTextTools = false;
         showStickerTools = false;
         showCanvasTools = false;
@@ -1485,9 +1490,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         },
       );
     }
-    if (selectedReadyMadeTemplate == 'neon_vs_duel') {
-      return _buildNeonVsDuelArtwork(preview: preview);
-    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -1865,122 +1867,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
 
 
-  Widget _buildNeonVsDuelArtwork({bool preview = false}) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const ColoredBox(color: Color(0xFF080E19)),
-        Center(
-          // Preserve the source 4:3 artwork ratio on every canvas size.
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: SizedBox(
-              width: 1448,
-              height: 1086,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const ColoredBox(color: Color(0xFF080E19)),
-                  Positioned(left: 64, top: 105, width: 591, height: 639,
-                    child: _neonDuelPhotoLayer(true, preview: preview)),
-                  Positioned(left: 752, top: 105, width: 590, height: 639,
-                    child: _neonDuelPhotoLayer(false, preview: preview)),
-                  // Keep the original A/B badges and VS shield entirely visible.
-                  // Editable name panels start below the badges, not across them.
-                  IgnorePointer(child: Image.asset('assets/templates/Neon_VS_Duel_Template.png',
-                    fit: BoxFit.fill, filterQuality: FilterQuality.high, gaplessPlayback: true)),
-                  if (!preview && _templateANameEdited)
-                    Positioned(left: 95, top: 900, width: 515, height: 78,
-                      child: DecoratedBox(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            Color(0xFF07356E), Color(0xFF041B3D)])),
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => editSideLabelText(true),
-                          child: _neonDuelName(aSideLabelText, sideA: true)))),
-                  if (!preview && _templateBNameEdited)
-                    Positioned(left: 840, top: 900, width: 515, height: 78,
-                      child: DecoratedBox(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            Color(0xFF710B45), Color(0xFF350024)])),
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => editSideLabelText(false),
-                          child: _neonDuelName(bSideLabelText, sideA: false)))),
-                  if (!preview)
-                    Positioned(left: 64, top: 105, width: 591, height: 639,
-                      child: _neonDuelPhotoGesture(true)),
-                  if (!preview)
-                    Positioned(left: 752, top: 105, width: 590, height: 639,
-                      child: _neonDuelPhotoGesture(false)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _neonDuelPhotoLayer(bool sideA, {required bool preview}) {
-    final photo = preview ? null : (sideA ? a : b);
-    return ClipRect(child: Stack(fit: StackFit.expand, children: [
-      const ColoredBox(color: Color(0xFF17191F)),
-      if (photo != null)
-        Transform.translate(
-          offset: _templatePhotoOffsets[sideA] ?? Offset.zero,
-          child: Transform.scale(
-            scale: _templatePhotoScales[sideA] ?? 1.0,
-            child: Image.file(photo,
-              key: ValueKey('neon-photo-' + (sideA ? 'A-' : 'B-') + photo.path),
-              fit: BoxFit.contain, width: double.infinity, height: double.infinity,
-              filterQuality: FilterQuality.high, gaplessPlayback: true),
-          ),
-        )
-      else if (!isExportingPoster && !preview)
-        const Center(child: Icon(Icons.add_photo_alternate_outlined,
-          color: Colors.white70, size: 72)),
-    ]));
-  }
-
-  Widget _neonDuelPhotoGesture(bool sideA) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => pick(sideA),
-      onScaleStart: (_) {
-        _selectCanvasObject(templatePhotoSideA: sideA);
-        _templatePhotoStartScales[sideA] = _templatePhotoScales[sideA] ?? 1.0;
-      },
-      onScaleUpdate: (details) {
-        if (_selectedTemplatePhotoSideA != sideA) return;
-        setState(() {
-          _templatePhotoScales[sideA] =
-            ((_templatePhotoStartScales[sideA] ?? 1.0) * details.scale).clamp(0.8, 8.0).toDouble();
-          _templatePhotoOffsets[sideA] =
-            (_templatePhotoOffsets[sideA] ?? Offset.zero) + details.focalPointDelta;
-        });
-      },
-      child: const SizedBox.expand(),
-    );
-  }
-
-  Widget _neonDuelName(String value, {required bool sideA}) {
-    return Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text(
-      value, maxLines: 1, softWrap: false, textDirection: TextDirection.rtl,
-      textAlign: TextAlign.center,
-      style: TextStyle(fontFamily: 'NotoNastaliqUrdu', fontSize: 38.95,
-        height: 1, fontWeight: FontWeight.w900, color: Colors.white,
-        shadows: sideA
-          ? const [Shadow(color: Color(0xFF061A3B), blurRadius: 3, offset: Offset(2, 3)),
-              Shadow(color: Color(0xFF69DFFF), blurRadius: 7)]
-          : const [Shadow(color: Color(0xFF390027), blurRadius: 3, offset: Offset(2, 3)),
-              Shadow(color: Color(0xFFFF3BCB), blurRadius: 7)],
-      ),
-    )));
-  }
-
   void readyMadeTemplatesTool() {
     setState(() {
       showReadyMadeTemplateGallery = !showReadyMadeTemplateGallery;
@@ -2015,7 +1901,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
       if (templateKey == 'royal_a_vs_b_battle' ||
           templateKey == 'tagra_muqabla' ||
-          templateKey == 'neon_vs_duel' ||
           templateKey == 'neon_purple_showdown' ||
           templateKey == 'metallic_vs_battle') {
         selectedReadyMadeTemplate = templateKey;
@@ -2025,12 +1910,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         selectedStylishFrame = null;
         selectedASideLabel = null;
         selectedBSideLabel = null;
-        aSideLabelText = templateKey == 'neon_vs_duel' ? 'علی' : templateKey == 'neon_purple_showdown' ? 'رائے اویس' : 'اسد';
-        bSideLabelText = templateKey == 'neon_vs_duel' ? 'ولی' : templateKey == 'neon_purple_showdown' ? 'شہزاد بھٹی برانڈ' : 'رقیہ';
-        if (templateKey == 'neon_vs_duel') {
-          _templateANameEdited = true;
-          _templateBNameEdited = true;
-        }
+        aSideLabelText = templateKey == 'neon_purple_showdown' ? 'رائے اویس' : 'اسد';
+        bSideLabelText = templateKey == 'neon_purple_showdown' ? 'شہزاد بھٹی برانڈ' : 'رقیہ';
         selectedTextIndex = null;
         selectedStickerIndex = null;
         selectedTagraStickerIndex = null;
@@ -2061,7 +1942,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   ) {
     final isRoyal = template.key == 'royal_a_vs_b_battle';
     final isTagra = template.key == 'tagra_muqabla';
-    final isNeonDuel = template.key == 'neon_vs_duel';
     final isNeonPurple = template.key == 'neon_purple_showdown';
     final isMetallic = template.key == 'metallic_vs_battle';
 
@@ -2085,9 +1965,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           else if (isNeonPurple)
             Image.asset('assets/templates/Neon_Purple_VS_Template.png',
               fit: BoxFit.contain, filterQuality: FilterQuality.medium)
-          else if (isNeonDuel)
-            Image.asset('assets/templates/Neon_VS_Duel_Template.png', fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium)
           else if (isRoyal)
             Image.asset(
               'assets/templates/Royal_A_vs_B_Battle_Template.png',
