@@ -366,8 +366,8 @@ jobs:
       - name: Verify VS styles and poster behavior
         run: flutter test test/vs_styles_test.dart test/premium_vs_golden_test.dart
 
-      - name: Verify inline toolbar options and template selection
-        run: flutter test test/inline_editor_options_test.dart
+      - name: Verify inline toolbar, template, and typography options
+        run: flutter test test/inline_editor_options_test.dart test/inline_typography_options_test.dart
 
       - name: Analyze Dart code
         run: flutter analyze lib/main.dart --no-fatal-infos
