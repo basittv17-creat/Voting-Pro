@@ -295,7 +295,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     widget.onGlowToggle,
     child: Column(
       children: [
-          _slider(
+        _slider(
           'Glow intensity',
           widget.glowStrength,
           0,
@@ -303,7 +303,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
           widget.onGlowStart,
           widget.onGlowStrength,
         ),
-      _palette(widget.glowColor, widget.onGlowColor),
+        _palette(widget.glowColor, widget.onGlowColor),
       ],
     ),
   );
@@ -358,7 +358,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     widget.onBackgroundToggle,
     child: Column(
       children: [
-          _slider(
+        _slider(
           'Background opacity',
           widget.backgroundOpacity,
           0,
@@ -367,7 +367,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
           widget.onBackgroundOpacity,
           percentage: true,
         ),
-      _palette(widget.backgroundColor, widget.onBackgroundColor),
+        _palette(widget.backgroundColor, widget.onBackgroundColor),
         TextButton.icon(
           onPressed: widget.onBackgroundSettings,
           icon: const Icon(Icons.tune),
