@@ -16,6 +16,7 @@ import 'widgets/metallic_vs_battle_template.dart';
 import 'widgets/advanced_text_overlay.dart';
 import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
+import 'services/poster_share_cache.dart';
 import 'app_language.dart';
 
 Future<void> main() async {
@@ -1376,6 +1377,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         return;
       }
       final dir = await getTemporaryDirectory();
+      // Share receivers may read the image after the share sheet closes.
+      // Remove only expired files from previous shares, never the current PNG.
+      try {
+        await PosterShareCache.removeExpired(dir);
+      } on FileSystemException {
+        // Cache cleanup must not interrupt sharing.
+      }
       final file = File(
         '${dir.path}/voting_pro_poster_${DateTime.now().microsecondsSinceEpoch}.png',
       );
