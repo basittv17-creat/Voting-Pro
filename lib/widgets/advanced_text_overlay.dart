@@ -12,6 +12,7 @@ class AdvancedTextOverlay extends StatelessWidget {
     required this.alignment,
     required this.direction,
     this.gradient = false,
+    this.shadow,
     this.outlineWidth = 0,
     this.outlineColor = Colors.black,
     this.curve = 0,
@@ -28,6 +29,7 @@ class AdvancedTextOverlay extends StatelessWidget {
   final TextAlign alignment;
   final TextDirection direction;
   final bool gradient;
+  final Shadow? shadow;
   final double outlineWidth;
   final Color outlineColor;
   final double curve;
@@ -72,6 +74,7 @@ class AdvancedTextOverlay extends StatelessWidget {
           outlineWidth: outlineWidth,
           outlineColor: outlineColor,
           gradient: gradient,
+          shadow: shadow,
           direction: direction,
           backgroundColor: backgroundColor,
           backgroundOpacity: backgroundOpacity,
@@ -98,7 +101,7 @@ class AdvancedTextOverlay extends StatelessWidget {
     }
     // Match the actual shaped letter outlines, never a rectangular strip.
     final hasBg = backgroundColor != null && backgroundOpacity > 0;
-    if (outlineWidth <= 0 && !hasBg) return fill;
+    if (outlineWidth <= 0 && !hasBg && shadow == null) return fill;
     final bgPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeJoin = StrokeJoin.round
@@ -119,7 +122,20 @@ class AdvancedTextOverlay extends StatelessWidget {
     }
     return Stack(
       alignment: Alignment.center,
+      clipBehavior: Clip.none,
       children: [
+        if (shadow case final shadow?)
+          ExcludeSemantics(
+            child: Text(
+              text,
+              textAlign: alignment,
+              textDirection: direction,
+              style: style.copyWith(
+                foreground: Paint()..color = Colors.transparent,
+                shadows: [shadow],
+              ),
+            ),
+          ),
         // Keep the border wrapped around the actual shaped text glyphs.
         if (hasBg && backgroundBorderWidth > 0) Text(
           text,
@@ -172,6 +188,7 @@ class _CurvedTextPainter extends CustomPainter {
     required this.outlineWidth,
     required this.outlineColor,
     required this.gradient,
+    required this.shadow,
     required this.direction,
     this.backgroundColor,
     this.backgroundOpacity = 0.8,
@@ -187,6 +204,7 @@ class _CurvedTextPainter extends CustomPainter {
   final double outlineWidth;
   final Color outlineColor;
   final bool gradient;
+  final Shadow? shadow;
   final TextDirection direction;
   final Color? backgroundColor;
   final double backgroundOpacity;
@@ -281,6 +299,20 @@ class _CurvedTextPainter extends CustomPainter {
         bgPainter.paint(canvas, origin);
         bgPainter.dispose();
       }
+      if (shadow case final shadow?) {
+        final shadowPainter = TextPainter(
+          text: TextSpan(
+            text: characters[i],
+            style: style.copyWith(
+              foreground: Paint()..color = Colors.transparent,
+              shadows: [shadow],
+            ),
+          ),
+          textDirection: direction,
+        )..layout();
+        shadowPainter.paint(canvas, origin);
+        shadowPainter.dispose();
+      }
       if (outlineWidth > 0) {
         final strokeStyle = style.copyWith(
           shadows: const <Shadow>[],
@@ -321,7 +353,7 @@ class _CurvedTextPainter extends CustomPainter {
   bool shouldRepaint(covariant _CurvedTextPainter old) =>
       text != old.text || style != old.style || curve != old.curve ||
       outlineWidth != old.outlineWidth || outlineColor != old.outlineColor ||
-      gradient != old.gradient || direction != old.direction ||
+      gradient != old.gradient || direction != old.direction || shadow != old.shadow ||
       backgroundColor != old.backgroundColor ||
       backgroundOpacity != old.backgroundOpacity ||
       backgroundExpansion != old.backgroundExpansion ||

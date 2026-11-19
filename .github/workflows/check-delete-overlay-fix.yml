@@ -464,7 +464,7 @@ jobs:
               "textColors[index]",
               "textGlowColors",
               "textGlowStrengths",
-              "showGlowPanel",
+              "TextToolSection.glow",
               "selectedTextIndex",
               "selectedStickerIndex",
               "void _selectCanvasObject(",
@@ -546,7 +546,7 @@ jobs:
               "showAStyleGallery",
               "showBStyleGallery",
               "showTagraStickerGallery",
-              "showGlowPanel",
+              "TextToolSection.glow",
           ]
           for item in required:
               if item not in source:

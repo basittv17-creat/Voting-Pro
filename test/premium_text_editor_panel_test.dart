@@ -14,7 +14,6 @@ void main() {
           child: PremiumTextEditorPanel(
             selectedText: text,
             section: section,
-            onClose: () {},
             onAddText: () {},
             onEditText: () {},
             onDeleteText: () {},
@@ -26,9 +25,7 @@ void main() {
               TextPanelAction('Curve Up', Icons.arrow_upward, () {}),
               TextPanelAction('Curve Down', Icons.arrow_downward, () {}),
             ],
-            moreActions: [
-              TextPanelAction('Undo Text', Icons.undo, () {}),
-            ],
+            moreActions: [TextPanelAction('Undo Text', Icons.undo, () {})],
             textColor: Colors.white,
             onTextColor: (_) {},
             onMoreColors: () {},
@@ -42,13 +39,18 @@ void main() {
             onGlowStrength: (_) {},
             glowColor: Colors.cyan,
             onGlowColor: (_) {},
+            shadowStrength: 0.75,
+            onShadowToggle: () {},
+            onShadowStart: () {},
+            onShadowStrength: (_) {},
             gradientEnabled: true,
             onGradientToggle: () {},
             outlineWidth: 1.5,
             onOutlineToggle: () {},
-            onOutlineIncrease: () {},
-            onOutlineDecrease: () {},
-            onOutlineColor: () {},
+            outlineColor: Colors.black,
+            onOutlineStart: () {},
+            onOutlineWidth: (_) {},
+            onOutlineColor: (_) {},
             backgroundEnabled: true,
             onBackgroundToggle: () {},
             backgroundColor: Colors.red,
@@ -88,17 +90,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      makeEditor(section: TextToolSection.background),
-    );
+    await tester.pumpWidget(makeEditor(section: TextToolSection.background));
     await tester.pumpAndSettle();
     expect(find.text('Text Background'), findsOneWidget);
     expect(find.text('Background opacity'), findsOneWidget);
     expect(find.text('Glow'), findsNothing);
 
-    await tester.pumpWidget(
-      makeEditor(section: TextToolSection.outline),
-    );
+    await tester.pumpWidget(makeEditor(section: TextToolSection.outline));
     await tester.pumpAndSettle();
     expect(find.text('Outline (Stroke)'), findsOneWidget);
     expect(find.text('Stroke width'), findsOneWidget);
@@ -114,10 +112,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(makeEditor(
-      text: 'Voting Pro',
-      section: TextToolSection.layout,
-    ));
+    await tester.pumpWidget(
+      makeEditor(text: 'Voting Pro', section: TextToolSection.layout),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Curve Up'), findsOneWidget);
 
@@ -134,9 +131,7 @@ void main() {
   testWidgets('No compact controls panel before a text tool is selected', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      makeEditor(section: TextToolSection.none),
-    );
+    await tester.pumpWidget(makeEditor(section: TextToolSection.none));
     expect(find.text('Glow'), findsNothing);
     expect(find.byType(Slider), findsNothing);
     expect(tester.takeException(), isNull);
