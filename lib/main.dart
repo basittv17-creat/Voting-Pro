@@ -15,6 +15,7 @@ import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
 import 'widgets/advanced_text_overlay.dart';
+import 'widgets/scaled_overlay.dart';
 import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
 import 'services/poster_share_cache.dart';
@@ -5487,9 +5488,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final isSelectedSticker = !isExportingPoster && isSticker && selectedStickerIndex == index;
             final position = textPositions[index] ??
                 Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
-            final scale = textScales[index] ?? 1.0;
+            final scale = (textScales[index] ?? 1.0).clamp(0.4, 4.0);
             // Enlarge the hit target without changing the painted text position.
-            final textTouchInset = isText && !isExportingPoster ? 12.0 : 0.0;
+            final textTouchInset = isText && !isExportingPoster ? 15.0 : 0.0;
             return Positioned(
               left: position.dx - textTouchInset,
               top: position.dy - textTouchInset,
@@ -5557,151 +5558,321 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     }
                   });
                 },
-                child: Padding(
-                  padding: EdgeInsets.all(textTouchInset),
-                  child: Transform.scale(
-                  scale: (isText || isSticker) ? scale : 1.0,
+                child: Transform.scale(
+                  scale: isSticker ? scale : 1.0,
                   alignment: Alignment.topLeft,
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        padding: const EdgeInsets.all(5),
-                        decoration: (!isExportingPoster && isText && selectedTextIndex == index) || isSelectedSticker
-                            ? BoxDecoration(
-                                border: Border.all(color: gold, width: 2),
-                                borderRadius: BorderRadius.circular(isSticker ? 12 : 3),
-                              )
-                            : null,
-                        child: AdvancedTextOverlay(
-                          text: entry.value,
-                          backgroundColor: isText ? textBgColors[index] : null,
-                          backgroundOpacity: textBgOpacities[index] ?? 0.8,
-                          backgroundExpansion: textBgPaddings[index] ?? 0,
-                          backgroundGradient: textBgGradients.contains(index),
-                          backgroundShadowBlur: textBgShadows[index] ?? 0,
-                          backgroundBorderWidth: textBgBorders[index] ?? 0,
-                          alignment: _overlayTextAlign(index),
-                          direction: _hasArabicScript(entry.value) ? TextDirection.rtl : TextDirection.ltr,
-                          gradient: gradientTextOverlayIds.contains(index),
-                          outlineWidth: textOutlineWidths[index] ?? 0.0,
-                          shadow: (textShadowStrengths[index] ?? 0) > 0
-                              ? Shadow(
-                                  color: Colors.black.withValues(
-                                    alpha: textShadowStrengths[index]!,
-                                  ),
-                                  offset: const Offset(3, 3),
-                                  blurRadius: 5,
-                                )
-                              : null,
-                          outlineColor: textOutlineColors[index] ?? Colors.black,
-                          curve: textCurves[index] ?? 0.0,
-                          style: TextStyle(
-                            fontFamily: textFonts[index] ??
-                                (RegExp(r'[\u0600-\u06FF]').hasMatch(entry.value)
-                                    ? 'NotoNastaliqUrdu'
-                                    : 'RobotoLocal'),
-                            fontSize: 28,
-                            fontWeight: boldTextOverlayIds.contains(index) ? FontWeight.w900 : FontWeight.normal,
-                            fontStyle: italicTextOverlayIds.contains(index) ? FontStyle.italic : FontStyle.normal,
-                            decoration: TextDecoration.combine([
-                              if (underlineTextOverlayIds.contains(index)) TextDecoration.underline,
-                              if (strikeTextOverlayIds.contains(index)) TextDecoration.lineThrough,
-                            ]),
-                            decorationColor: textColors[index] ?? Colors.white,
-                            height: textLineHeights[index] ?? 1.2,
-                            letterSpacing: textLetterSpacings[index] ?? 0.0,
-                            color: (textColors[index] ?? Colors.white)
-                                .withOpacity(textOpacities[index] ?? 1.0),
-                            shadows: _textGlowShadows(index),
+                      Padding(
+                        padding: EdgeInsets.all(
+                            textTouchInset),
+                        child: ScaledOverlay(
+                          scale: isText ? scale : 1.0,
+                          child: AnimatedContainer(
+                            duration: const Duration(
+                                milliseconds: 220),
+                            padding:
+                                const EdgeInsets.all(
+                                    5),
+                            decoration: (!isExportingPoster &&
+                                        isText &&
+                                        selectedTextIndex ==
+                                            index) ||
+                                    isSelectedSticker
+                                ? BoxDecoration(
+                                    border:
+                                        Border.all(
+                                            color:
+                                                gold,
+                                            width: 2),
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            isSticker
+                                                ? 12
+                                                : 3),
+                                  )
+                                : null,
+                            child:
+                                AdvancedTextOverlay(
+                              text: entry.value,
+                              backgroundColor: isText
+                                  ? textBgColors[
+                                      index]
+                                  : null,
+                              backgroundOpacity:
+                                  textBgOpacities[
+                                          index] ??
+                                      0.8,
+                              backgroundExpansion:
+                                  textBgPaddings[
+                                          index] ??
+                                      0,
+                              backgroundGradient:
+                                  textBgGradients
+                                      .contains(
+                                          index),
+                              backgroundShadowBlur:
+                                  textBgShadows[
+                                          index] ??
+                                      0,
+                              backgroundBorderWidth:
+                                  textBgBorders[
+                                          index] ??
+                                      0,
+                              alignment:
+                                  _overlayTextAlign(
+                                      index),
+                              direction:
+                                  _hasArabicScript(
+                                          entry.value)
+                                      ? TextDirection
+                                          .rtl
+                                      : TextDirection
+                                          .ltr,
+                              gradient:
+                                  gradientTextOverlayIds
+                                      .contains(
+                                          index),
+                              outlineWidth:
+                                  textOutlineWidths[
+                                          index] ??
+                                      0.0,
+                              shadow: (textShadowStrengths[
+                                              index] ??
+                                          0) >
+                                      0
+                                  ? Shadow(
+                                      color: Colors
+                                          .black
+                                          .withValues(
+                                        alpha:
+                                            textShadowStrengths[
+                                                index]!,
+                                      ),
+                                      offset:
+                                          const Offset(
+                                              3, 3),
+                                      blurRadius: 5,
+                                    )
+                                  : null,
+                              outlineColor:
+                                  textOutlineColors[
+                                          index] ??
+                                      Colors.black,
+                              curve:
+                                  textCurves[index] ??
+                                      0.0,
+                              style: TextStyle(
+                                fontFamily: textFonts[
+                                        index] ??
+                                    (RegExp(r'[\u0600-\u06FF]')
+                                            .hasMatch(
+                                                entry
+                                                    .value)
+                                        ? 'NotoNastaliqUrdu'
+                                        : 'RobotoLocal'),
+                                fontSize: 28,
+                                fontWeight:
+                                    boldTextOverlayIds
+                                            .contains(
+                                                index)
+                                        ? FontWeight
+                                            .w900
+                                        : FontWeight
+                                            .normal,
+                                fontStyle:
+                                    italicTextOverlayIds
+                                            .contains(
+                                                index)
+                                        ? FontStyle
+                                            .italic
+                                        : FontStyle
+                                            .normal,
+                                decoration:
+                                    TextDecoration
+                                        .combine([
+                                  if (underlineTextOverlayIds
+                                      .contains(
+                                          index))
+                                    TextDecoration
+                                        .underline,
+                                  if (strikeTextOverlayIds
+                                      .contains(
+                                          index))
+                                    TextDecoration
+                                        .lineThrough,
+                                ]),
+                                decorationColor:
+                                    textColors[
+                                            index] ??
+                                        Colors.white,
+                                height:
+                                    textLineHeights[
+                                            index] ??
+                                        1.2,
+                                letterSpacing:
+                                    textLetterSpacings[
+                                            index] ??
+                                        0.0,
+                                color: (textColors[
+                                            index] ??
+                                        Colors.white)
+                                    .withOpacity(
+                                        textOpacities[
+                                                index] ??
+                                            1.0),
+                                shadows:
+                                    _textGlowShadows(
+                                        index),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                      if (isSticker && isSelectedSticker)
+                      if (isSticker &&
+                          isSelectedSticker)
                         Positioned(
                           right: -13,
                           top: -13,
                           child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: deleteSelectedSticker,
+                            behavior: HitTestBehavior
+                                .opaque,
+                            onTap:
+                                deleteSelectedSticker,
                             child: Container(
                               width: 26,
                               height: 26,
-                              decoration: const BoxDecoration(
+                              decoration:
+                                  const BoxDecoration(
                                 color: Colors.red,
-                                shape: BoxShape.circle,
+                                shape:
+                                    BoxShape.circle,
                               ),
-                              child: const Icon(Icons.delete, size: 15, color: Colors.white),
+                              child: const Icon(
+                                  Icons.delete,
+                                  size: 15,
+                                  color:
+                                      Colors.white),
                             ),
                           ),
                         ),
-                      if (isSticker && isSelectedSticker)
+                      if (isSticker &&
+                          isSelectedSticker)
                         Positioned(
                           right: -13,
                           bottom: -13,
                           child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
+                            behavior: HitTestBehavior
+                                .opaque,
                             onPanStart: (details) {
-                              _textUndoHistory.clear();
-                              _textRedoHistory.clear();
+                              _textUndoHistory
+                                  .clear();
+                              _textRedoHistory
+                                  .clear();
                               setState(() {
-                                _selectCanvasObject(stickerIndex: index);
-                                stickerGestureStartScale = textScales[index] ?? 1.0;
-                                stickerScaleStartY = details.globalPosition.dy;
+                                _selectCanvasObject(
+                                    stickerIndex:
+                                        index);
+                                stickerGestureStartScale =
+                                    textScales[
+                                            index] ??
+                                        1.0;
+                                stickerScaleStartY =
+                                    details
+                                        .globalPosition
+                                        .dy;
                               });
                             },
                             onPanUpdate: (details) {
-                              if (selectedStickerIndex != index) return;
+                              if (selectedStickerIndex !=
+                                  index) return;
                               setState(() {
-                                final deltaY = details.globalPosition.dy - stickerScaleStartY;
-                                textScales[index] = (stickerGestureStartScale + deltaY * 0.01).clamp(0.4, 4.0).toDouble();
+                                final deltaY = details
+                                        .globalPosition
+                                        .dy -
+                                    stickerScaleStartY;
+                                textScales[index] =
+                                    (stickerGestureStartScale +
+                                            deltaY *
+                                                0.01)
+                                        .clamp(
+                                            0.4, 4.0)
+                                        .toDouble();
                               });
                             },
                             child: Container(
                               width: 26,
                               height: 26,
-                              decoration: BoxDecoration(
+                              decoration:
+                                  BoxDecoration(
                                 color: gold,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
+                                shape:
+                                    BoxShape.circle,
+                                border: Border.all(
+                                    color:
+                                        Colors.white,
+                                    width: 1.5),
                               ),
-                              child: const Icon(Icons.open_in_full, size: 14, color: Colors.white),
+                              child: const Icon(
+                                  Icons.open_in_full,
+                                  size: 14,
+                                  color:
+                                      Colors.white),
                             ),
                           ),
                         ),
-                      if (!isExportingPoster && isText && selectedTextIndex == index)
+                      if (!isExportingPoster &&
+                          isText &&
+                          selectedTextIndex == index)
                         Positioned(
-                          right: -15,
-                          top: -15,
+                          right: 0,
+                          top: 0,
                           child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => deleteSelectedText(targetIndex: index),
+                            behavior: HitTestBehavior
+                                .opaque,
+                            onTap: () =>
+                                deleteSelectedText(
+                                    targetIndex:
+                                        index),
                             child: Container(
                               width: 30,
                               height: 30,
-                              decoration: const BoxDecoration(
+                              decoration:
+                                  const BoxDecoration(
                                 color: Colors.red,
-                                shape: BoxShape.circle,
+                                shape:
+                                    BoxShape.circle,
                               ),
-                              child: const Icon(Icons.delete, size: 17, color: Colors.white),
+                              child: const Icon(
+                                  Icons.delete,
+                                  size: 17,
+                                  color:
+                                      Colors.white),
                             ),
                           ),
                         ),
-                      if (!isExportingPoster && isText && selectedTextIndex == index)
+                      if (!isExportingPoster &&
+                          isText &&
+                          selectedTextIndex == index)
                         Positioned(
-                          left: -15,
-                          top: -15,
+                          left: 0,
+                          top: 0,
                           child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
+                            behavior: HitTestBehavior
+                                .opaque,
                             onTap: editSelectedText,
                             child: Container(
                               width: 30,
                               height: 30,
-                              alignment: Alignment.center,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF00A6A6),
-                                shape: BoxShape.circle,
+                              alignment:
+                                  Alignment.center,
+                              decoration:
+                                  const BoxDecoration(
+                                color:
+                                    Color(0xFF00A6A6),
+                                shape:
+                                    BoxShape.circle,
                               ),
                               child: const Icon(
                                 Icons.edit,
@@ -5711,37 +5882,59 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      if (!isExportingPoster && isText && selectedTextIndex == index)
+                      if (!isExportingPoster &&
+                          isText &&
+                          selectedTextIndex == index)
                         Positioned(
-                          right: -13,
-                          bottom: -13,
+                          right: 2,
+                          bottom: 2,
                           child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onPanStart: (details) {
+                            behavior: HitTestBehavior
+                                .opaque,
+                            onVerticalDragStart: (details) {
                               _rememberTextEdit();
                               setState(() {
-                                _selectCanvasObject(textIndex: index);
-                                textGestureStartScale = textScales[index] ?? 1.0;
-                                textGestureStartFocalPoint = details.globalPosition;
+                                _selectCanvasObject(
+                                    textIndex: index);
+                                textGestureStartScale =
+                                    textScales[
+                                            index] ??
+                                        1.0;
+                                textGestureStartFocalPoint =
+                                    details
+                                        .globalPosition;
                               });
                             },
-                            onPanUpdate: (details) {
-                              if (selectedTextIndex != index) return;
+                            onVerticalDragUpdate: (details) {
+                              if (selectedTextIndex !=
+                                  index) return;
                               setState(() {
-                                final deltaY = details.globalPosition.dy -
-                                    textGestureStartFocalPoint.dy;
-                                textScales[index] = (textGestureStartScale +
-                                    deltaY * 0.015)
-                                    .clamp(0.4, 4.0).toDouble();
+                                final deltaY = details
+                                        .globalPosition
+                                        .dy -
+                                    textGestureStartFocalPoint
+                                        .dy;
+                                textScales[index] =
+                                    (textGestureStartScale +
+                                            deltaY *
+                                                0.015)
+                                        .clamp(
+                                            0.4, 4.0)
+                                        .toDouble();
                               });
                             },
                             child: Container(
                               width: 26,
                               height: 26,
-                              decoration: BoxDecoration(
+                              decoration:
+                                  BoxDecoration(
                                 color: gold,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
+                                shape:
+                                    BoxShape.circle,
+                                border: Border.all(
+                                    color:
+                                        Colors.white,
+                                    width: 1.5),
                               ),
                               child: const Icon(
                                 Icons.open_in_full,
@@ -5753,7 +5946,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         ),
                     ],
                   ),
-                ),
                 ),
               ),
             );

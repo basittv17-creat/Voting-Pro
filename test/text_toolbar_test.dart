@@ -241,6 +241,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Text resize and delete handles work after zooming', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'voting_pro_project_v1': jsonEncode({
+        'overlays': ['Delete me', 'Keep me'],
+        'textOverlayIds': [0, 1],
+        'textPositions': {
+          '0': [40, 40],
+          '1': [40, 140],
+        },
+      }),
+    });
+    await tester.pumpWidget(const MaterialApp(home: Editor()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete me'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    final resize = find.descendant(
+      of: find.byType(Screenshot),
+      matching: find.byIcon(Icons.open_in_full),
+    );
+    final originalWidth = tester.getRect(find.text('Delete me')).width;
+    final drag = await tester.startGesture(
+      tester.getCenter(resize) + const Offset(4, 4),
+    );
+    await drag.moveBy(const Offset(0, 25));
+    await tester.pump();
+    await drag.moveBy(const Offset(0, 30));
+    await tester.pump();
+    await drag.up();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.text('Delete me')).width,
+        greaterThan(originalWidth));
+
+    final handle = find.descendant(
+      of: find.byType(Screenshot),
+      matching: find.byIcon(Icons.delete),
+    );
+    expect(handle, findsOneWidget);
+    await tester.tapAt(tester.getCenter(handle) + const Offset(5, -5));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete me'), findsNothing);
+    expect(find.text('Keep me'), findsOneWidget);
+  });
+
   for (final index in [0, 2, 3]) {
     testWidgets('Deleting overlay $index restores its editing target on Undo', (
       tester,
