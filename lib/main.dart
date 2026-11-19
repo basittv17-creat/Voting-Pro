@@ -4485,12 +4485,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildTextToolbar() => SingleChildScrollView(
+  // Exactly one bottom toolbar: the text tools scroll on the left,
+  // while Back stays visible at the right edge, even after scrolling.
+  Widget _buildTextToolbar() => Row(
     key: const ValueKey('text-toolbar'),
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: [
-        _textToolbarButton(Icons.arrow_back, 'Back', openTextTools),
+    children: [
+      Expanded(
+        child: SingleChildScrollView(
+          key: const ValueKey('text-tool-scroll'),
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
         _textToolbarButton(Icons.add, 'Add Text', addText),
         _textToolbarButton(Icons.edit, 'Text Editor', editSelectedText),
         _textToolbarButton(
@@ -4660,8 +4665,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           'Delete Text',
           deleteSelectedText,
         ),
-      ],
-    ),
+            ],
+          ),
+        ),
+      ),
+      _textToolbarButton(Icons.arrow_back, 'Back', openTextTools),
+    ],
   );
 
   final Map<bool, double> _photoScales = {true: 1.0, false: 1.0};
