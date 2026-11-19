@@ -998,12 +998,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       // Wait for pending autosaves before removing the old project.
       await _saveQueue;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_projectSaveKey);
+      if (!await prefs.remove(_projectSaveKey)) {
+        throw StateError('Could not remove the saved project');
+      }
+    } catch (_) {
+      _isRestartingProject = false;
+      _scheduleProjectSave();
+      msg('Could not restart. Your current poster is still open.');
+      return;
+    }
+
+    try {
       final dir = await _projectDirectory();
       if (await dir.exists()) await dir.delete(recursive: true);
     } catch (_) {
-      // The next editor still starts from its default in-memory state.
-      // Do not restore the old project if clearing its files fails.
+      // The saved project was cleared. Leftover files cannot restore it.
     }
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

@@ -33,6 +33,8 @@ class AppLanguage {
     "Background": "پس منظر",
     "Stylish Frames": "اسٹائلش فریم",
     "VS Styles": "مقابلہ اسٹائلز",
+    "Could not restart. Your current poster is still open.":
+        "نیا پروجیکٹ شروع نہیں ہو سکا۔ آپ کا موجودہ پوسٹر کھلا ہے۔",
     "Restart Project": "نیا پروجیکٹ",
     "Back": "واپس",
     "Add Text": "متن شامل کریں",

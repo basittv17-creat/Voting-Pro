@@ -241,6 +241,49 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Text Back releases the selection lock for sticker editing', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'voting_pro_project_v1': jsonEncode({
+        'overlays': ['Vote', '★'],
+        'textOverlayIds': [0],
+        'stickerOverlayIds': [1],
+        'textPositions': {
+          '0': [45, 45],
+          '1': [45, 145],
+        },
+      }),
+    });
+    await tester.pumpWidget(const MaterialApp(home: Editor()));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Text'));
+    await tester.tap(find.text('Text'));
+    await tester.pumpAndSettle();
+
+    Future<void> tapCanvas(String label) async {
+      await tester.tap(find.text(label));
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+    }
+
+    final textEdit = find.descendant(
+      of: find.byType(Screenshot),
+      matching: find.byIcon(Icons.edit),
+    );
+    await tapCanvas('Vote');
+    expect(textEdit, findsOneWidget);
+    await tapCanvas('★');
+    expect(textEdit, findsOneWidget);
+
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(textEdit, findsNothing);
+    await tapCanvas('★');
+    expect(textEdit, findsNothing);
+    expect(find.byIcon(Icons.delete), findsOneWidget);
+  });
+
   testWidgets('Text resize and delete handles work after zooming', (
     tester,
   ) async {
