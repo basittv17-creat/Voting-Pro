@@ -45,7 +45,10 @@ void main() {
       greaterThanOrEqualTo(tester.getRect(textScroll).right),
     );
     final fixedBackPosition = tester.getRect(back);
-    final delete = find.descendant(of: text, matching: find.text('Delete Text'));
+    final delete = find.descendant(
+      of: text,
+      matching: find.text('Delete Text'),
+    );
     await tester.ensureVisible(delete);
     await tester.pumpAndSettle();
     expect(tester.getRect(back), fixedBackPosition);
