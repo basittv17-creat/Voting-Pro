@@ -33,7 +33,8 @@ void main() {
     Future<Uint8List> save() async {
       final state = tester.state(find.byType(Editor)) as dynamic;
       final result = await tester.runAsync(() async {
-        final Future<Uint8List?> capture = state.capturePosterWithoutControls();
+        final capture =
+            state.capturePosterWithoutControls() as Future<Uint8List?>;
         await tester.pump();
         return capture.timeout(const Duration(seconds: 8));
       });
