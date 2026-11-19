@@ -33,8 +33,17 @@ jobs:
       - name: Prepare Android emulator
         run: |
           image='system-images;android-29;google_apis;x86_64'
-          sdkmanager 'emulator' 'platform-tools' "$image"
-          echo no | avdmanager create avd --force --name voting_pro_ci --package "$image" --device pixel_2
+          manager="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f -print | sort -V | tail -1)"
+          if [ -z "$manager" ]; then
+            curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip \
+              -o "$RUNNER_TEMP/android-command-line-tools.zip"
+            unzip -q "$RUNNER_TEMP/android-command-line-tools.zip" -d "$RUNNER_TEMP/android-command-line-tools"
+            manager="$RUNNER_TEMP/android-command-line-tools/cmdline-tools/bin/sdkmanager"
+          fi
+          "$manager" --sdk_root="$ANDROID_HOME" 'emulator' 'platform-tools' "$image"
+          echo no | "$(dirname "$manager")/avdmanager" create avd --force \
+            --name voting_pro_ci --package "$image" --device pixel_2
+          printf '%s\n' "$ANDROID_HOME/emulator" "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           test -c /dev/kvm
           sudo chmod a+rw /dev/kvm
 
