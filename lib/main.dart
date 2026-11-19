@@ -18,6 +18,8 @@ import 'widgets/advanced_text_overlay.dart';
 import 'widgets/scaled_overlay.dart';
 import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
+import 'widgets/premium_vs.dart';
+import 'widgets/vs_styles_panel.dart';
 import 'services/poster_share_cache.dart';
 import 'app_language.dart';
 
@@ -1119,77 +1121,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  void vsStylesTool() {
-    const styles = <(String, Color, List<Color>)>[
-      ('Royal Gold', Color(0xFFFFD700), [Color(0xFFFFF1A8), Color(0xFFB8860B)]),
-      ('Fire', Color(0xFFFF5722), [Color(0xFFFFC107), Color(0xFFD50000)]),
-      ('Blue Neon', Color(0xFF00E5FF), [Color(0xFF2979FF), Color(0xFF00FFFF)]),
-      ('Green Neon', Color(0xFF76FF03), [Color(0xFF00C853), Color(0xFFB2FF59)]),
-      ('Electric', Color(0xFFE040FB), [Color(0xFF7C4DFF), Color(0xFF00E5FF)]),
-      ('Diamond', Color(0xFFE1F5FE), [Color(0xFF80DEEA), Color(0xFFFFFFFF)]),
-      ('Rainbow', Color(0xFFFF4081), [Color(0xFFFF1744), Color(0xFF651FFF)]),
-      ('Luxury', Color(0xFFFFE082), [Color(0xFF8D6E63), Color(0xFFFFD54F)]),
-      ('Golden Glow', Color(0xFFFFC107), [Color(0xFFFFF59D), Color(0xFFFF6F00)]),
-      ('Black & Gold', Color(0xFFFFD700), [Color(0xFF212121), Color(0xFFFFD700)]),
-    ];
+  bool _showVsStyles = false;
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(c).size.height * 0.55,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 2.2,
-            ),
-            itemCount: styles.length,
-            itemBuilder: (c, index) {
-              final style = styles[index];
-              return InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  setState(() {
-                    vsStyle = style.$1;
-                    showVs = true;
-                    isVsSelected = false;
-                    vsOffset = Offset.zero;
-                    vsScale = 1.0;
-                    vsStartScale = 1.0;
-                  });
-                  Navigator.pop(c);
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: style.$3),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: style.$2, width: 2),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'VS  •  ${style.$1}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: style.$2,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                      shadows: const [
-                        Shadow(color: Colors.black, blurRadius: 5),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
+  void _closeVsStyles() {
+    if (_showVsStyles) setState(() => _showVsStyles = false);
   }
+
+  void vsStylesTool() => setState(() => _showVsStyles = !_showVsStyles);
 
   void stylishFramesTool() {
     showModalBottomSheet<void>(
@@ -4131,7 +4069,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         color: const Color(0xFF1B2638),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          onTap: tap,
+          onTap: () {
+            _closeVsStyles();
+            tap();
+          },
           borderRadius: BorderRadius.circular(14),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -4377,7 +4318,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final isGlowTool = title == 'Glow';
     final originalTap = tap;
     tap = () {
-      if (isVsSelected && mounted) {
+      if (title != 'VS Styles') _closeVsStyles();
+      if (title != 'VS Styles' && isVsSelected && mounted) {
         setState(() => isVsSelected = false);
       }
       originalTap();
@@ -5023,7 +4965,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_showVsStyles,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) _closeVsStyles();
+    },
+    child: Scaffold(
     key: _editorScaffoldKey,
     endDrawer: _buildSettingsDrawer(),
     body: SafeArea(child: Column(children: [
@@ -5056,7 +5003,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         const SizedBox(width: 8), IconButton(onPressed: busy ? null : share, tooltip: AppLanguage.tr('Share Poster'), icon: const Icon(Icons.share)),
       ]),
     ])),
-    Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Column(children: [
+    Expanded(child: LayoutBuilder(builder: (context, constraints) {
+      final posterHeight = ((constraints.maxWidth - 24) / canvasRatio) + 12;
+      final maxPanelHeight = (constraints.maxHeight * 0.65).clamp(0.0, 232.0);
+      final minPanelHeight = (constraints.maxHeight * 0.40)
+          .clamp(maxPanelHeight.clamp(0.0, 116.0), maxPanelHeight);
+      final panelHeight = (constraints.maxHeight - posterHeight)
+          .clamp(minPanelHeight, maxPanelHeight)
+          .toDouble();
+      return Column(children: [
+      Expanded(child: SingleChildScrollView(
+          key: const ValueKey('poster-scroll'),
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Column(children: [
       // Empty canvas touches must not deselect an active text overlay.
       // Only another text selection or Delete changes the active text.
       GestureDetector(
@@ -5138,31 +5096,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            border: isVsSelected
-                                ? Border.all(color: Colors.cyanAccent, width: 1)
-                                : null,
-                          ),
-                          child: Text(
-                            'VS',
-                            style: TextStyle(
-                              color: const <String, Color>{
-                                'Royal Gold': Color(0xFFFFD700),
-                                'Fire': Color(0xFFFF5722),
-                                'Blue Neon': Color(0xFF00E5FF),
-                                'Green Neon': Color(0xFF76FF03),
-                                'Electric': Color(0xFFE040FB),
-                                'Diamond': Color(0xFFE1F5FE),
-                                'Rainbow': Color(0xFFFF4081),
-                                'Luxury': Color(0xFFFFE082),
-                                'Golden Glow': Color(0xFFFFC107),
-                                'Black & Gold': Color(0xFFFFD700),
-                              }[vsStyle] ?? gold,
-                              fontSize: 42,
-                              fontWeight: FontWeight.w900,
-                              shadows: [
-                                Shadow(color: Colors.black, blurRadius: 8),
-                              ],
+                            border: Border.all(
+                              color: !isExportingPoster && isVsSelected
+                                  ? Colors.cyanAccent
+                                  : Colors.transparent,
                             ),
+                          ),
+                          child: PremiumVsRenderer(
+                            key: const ValueKey('poster-vs'),
+                            style: VsStyleDefinition.fromName(vsStyle),
                           ),
                         ),
                         if (!isExportingPoster && isVsSelected)
@@ -5170,6 +5112,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             right: 0,
                             top: 0,
                             child: GestureDetector(
+                              key: const ValueKey('delete-poster-vs'),
                               behavior: HitTestBehavior.opaque,
                               onTap: () => setState(() {
                                 showVs = false;
@@ -5990,6 +5933,26 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         ),
 
     ]))),
+      AnimatedSize(
+        duration: const Duration(milliseconds: 180),
+        alignment: Alignment.bottomCenter,
+        curve: Curves.easeOutCubic,
+        child: _showVsStyles
+            ? SizedBox(
+                height: panelHeight,
+                child: VsStylesPanel(
+                  selected: showVs ? VsStyleDefinition.fromName(vsStyle) : null,
+                  onSelect: (style) => setState(() {
+                    vsStyle = style.name;
+                    showVs = true;
+                  }),
+                  onClose: _closeVsStyles,
+                ),
+              )
+            : const SizedBox.shrink(),
+      ),
+      ]);
+    })),
     if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
     Container(
       padding: const EdgeInsets.fromLTRB(6, 7, 6, 9),
@@ -6108,5 +6071,5 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ]),
             ),
     ),
-  ])));
+  ]))));
 }
