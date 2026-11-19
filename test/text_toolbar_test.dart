@@ -133,4 +133,66 @@ void main() {
     expect(tester.widget<AdvancedTextOverlay>(overlay).shadow, isNull);
     expect(tester.takeException(), isNull);
   });
+
+  for (final index in [0, 2, 3]) {
+    testWidgets('Deleting overlay $index restores its editing target on Undo', (
+      tester,
+    ) async {
+      final values = ['First', '★', 'Middle', 'Last'];
+      SharedPreferences.setMockInitialValues({
+        'voting_pro_project_v1': jsonEncode({
+          'overlays': values,
+          'textOverlayIds': [0, 2, 3],
+          'stickerOverlayIds': [1],
+          'textPositions': {
+            '0': [20, 25],
+            '1': [20, 85],
+            '2': [20, 145],
+            '3': [20, 205],
+          },
+          'textColors': {'$index': 0xFFFF243A},
+          'boldTextOverlayIds': [index],
+        }),
+      });
+      await tester.pumpWidget(const MaterialApp(home: Editor()));
+      await tester.pumpAndSettle();
+
+      final target = find.byWidgetPredicate(
+        (widget) =>
+            widget is AdvancedTextOverlay && widget.text == values[index],
+      );
+      await tester.tap(target);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Text'));
+      await tester.tap(find.text('Text'));
+      await tester.pumpAndSettle();
+
+      Future<void> action(String label) async {
+        final button = find.text(label);
+        await tester.ensureVisible(button);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+      }
+
+      final originalPosition = tester.getTopLeft(target);
+      for (var cycle = 0; cycle < 2; cycle++) {
+        await action(cycle == 0 ? 'Delete Text' : 'Redo Text');
+        expect(target, findsNothing);
+        expect(find.byType(AdvancedTextOverlay), findsNWidgets(3));
+        await action('Undo Text');
+        expect(target, findsOneWidget);
+        final restored = tester.widget<AdvancedTextOverlay>(target);
+        expect(restored.style.color, const Color(0xFFFF243A));
+        expect(restored.style.fontWeight, FontWeight.w900);
+        expect(tester.getTopLeft(target), originalPosition);
+        expect(find.byIcon(Icons.delete), findsOneWidget);
+      }
+      // The restored selection must be usable, including when a sticker shares
+      // the index space and indices shifted during deletion.
+      await action('Delete Text');
+      expect(target, findsNothing);
+      expect(find.text('★'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
