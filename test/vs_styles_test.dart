@@ -102,6 +102,18 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const MaterialApp(home: Editor()));
     await tester.pumpAndSettle();
+    expect(VsStyleDefinition.styles.map((style) => style.name), [
+      'Royal Gold',
+      'Fire',
+      'Blue Neon',
+      'Green Neon',
+      'Electric',
+      'Diamond',
+      'Rainbow',
+      'Luxury',
+      'Golden Glow',
+      'Black & Gold',
+    ]);
     final bounds = tester.getRect(_posterVs);
     await _tapTool(tester, 'VS Styles');
     for (final style in VsStyleDefinition.styles) {
