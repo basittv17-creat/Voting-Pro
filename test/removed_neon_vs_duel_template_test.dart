@@ -89,7 +89,7 @@ void main() {
       await tester.tap(gallery);
       await tester.pumpAndSettle();
 
-      final list = find.byType(ListView);
+      final list = find.byType(GridView);
       final item = find.descendant(of: list, matching: find.text(entry.key));
       final scrollable = find.descendant(
         of: list,

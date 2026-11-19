@@ -19,6 +19,7 @@ import 'widgets/scaled_overlay.dart';
 import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
 import 'widgets/premium_vs.dart';
+import 'widgets/editor_options_panel.dart';
 import 'widgets/vs_styles_panel.dart';
 import 'services/poster_share_cache.dart';
 import 'app_language.dart';
@@ -181,6 +182,23 @@ class _TagraStickerOverlay {
   double scale = 1.0;
 }
 
+enum _EditorOptions {
+  vs,
+  stylishFrames,
+  backgrounds,
+  frame,
+  aLabel,
+  bLabel,
+  emoji,
+  canvas,
+  templates,
+  aStyle,
+  bStyle,
+  stickers,
+  votingStickers,
+  tagraStickers,
+}
+
 class Editor extends StatefulWidget {
   const Editor({super.key});
   @override
@@ -212,15 +230,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   bool showTextTools = false;
   TextToolSection _activeTextSection = TextToolSection.none;
   final _textSettingsKey = GlobalKey();
-  bool showStickerTools = false;
-  bool showCanvasTools = false;
-  bool showVotingStickerTools = false;
-
-  bool showAStyleGallery = false;
-  bool showBStyleGallery = false;
-  bool showTagraStickerGallery = false;
-
-  bool showReadyMadeTemplateGallery = false;
+  _EditorOptions? _editorOptions;
 
   static const List<({
     String key,
@@ -961,12 +971,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
 
         showTextTools = false;
-        showStickerTools = false;
-        showCanvasTools = false;
-        showVotingStickerTools = false;
-        showAStyleGallery = false;
-        showBStyleGallery = false;
-        showTagraStickerGallery = false;
       });
     } catch (_) {
       // Ignore an invalid old save and open a clean editor.
@@ -1130,59 +1134,74 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  bool _showVsStyles = false;
-
-  void _closeVsStyles() {
-    if (_showVsStyles) setState(() => _showVsStyles = false);
+  void _closeEditorOptions() {
+    if (_editorOptions != null) setState(() => _editorOptions = null);
   }
 
-  void vsStylesTool() => setState(() => _showVsStyles = !_showVsStyles);
+  void _toggleEditorOptions(_EditorOptions options) => setState(
+      () => _editorOptions = _editorOptions == options ? null : options);
 
-  void stylishFramesTool() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(c).size.height * 0.65,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.8,
-            ),
-            itemCount: stylishFrames.length,
-            itemBuilder: (c, index) {
-              final frame = stylishFrames[index];
-              return InkWell(
-                onTap: () {
-                  setState(() => selectedStylishFrame = frame.$2);
-                  Navigator.pop(c);
-                },
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Image.asset(
-                        frame.$2,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.broken_image, size: 36),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(frame.$1, textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 11)),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
+  void vsStylesTool() => _toggleEditorOptions(_EditorOptions.vs);
+
+  void stylishFramesTool() =>
+      _toggleEditorOptions(_EditorOptions.stylishFrames);
+
+  Widget _assetOptions({
+    required List<(String, String)> options,
+    required bool Function(String) isSelected,
+    required ValueChanged<String> onSelect,
+    double itemHeight = 72,
+  }) {
+    return GridView.builder(
+      primary: false,
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 180,
+        mainAxisExtent: itemHeight,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
       ),
+      itemCount: options.length,
+      itemBuilder: (context, index) {
+        final (name, asset) = options[index];
+        final selected = isSelected(asset);
+        return Semantics(
+          selected: selected,
+          button: true,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.all(4),
+              side: BorderSide(color: selected ? gold : Colors.white24),
+            ),
+            onPressed: () => onSelect(asset),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Image.asset(asset, fit: BoxFit.contain),
+                ),
+                if (name.isNotEmpty)
+                  Text(
+                    AppLanguage.tr(name),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, color: Colors.white),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
+
+  String _assetOptionName(String asset, [String prefix = '']) => asset
+      .split('/')
+      .last
+      .replaceFirst(prefix, '')
+      .replaceAll('.png', '')
+      .replaceAll('_', ' ');
 
   void msg(String s) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLanguage.tr(s), textDirection: AppLanguage.direction)));
@@ -1820,11 +1839,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
 
 
-  void readyMadeTemplatesTool() {
-    setState(() {
-      showReadyMadeTemplateGallery = !showReadyMadeTemplateGallery;
-    });
-  }
+  void readyMadeTemplatesTool() => _toggleEditorOptions(_EditorOptions.templates);
 
   void _selectReadyMadeTemplate(String templateKey) {
     final template = _readyTemplateOptions.firstWhere(
@@ -1832,7 +1847,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
 
     setState(() {
-      showReadyMadeTemplateGallery = false;
+      _editorOptions = null;
       _templateANameEdited = false;
       _templateBNameEdited = false;
       _templatePhotoScales[true] = 1.0;
@@ -1845,12 +1860,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       showBSideLabelDelete = false;
       isVsSelected = false;
       showTextTools = false;
-      showStickerTools = false;
-      showCanvasTools = false;
-      showVotingStickerTools = false;
-      showAStyleGallery = false;
-      showBStyleGallery = false;
-      showTagraStickerGallery = false;
 
       if (templateKey == 'royal_a_vs_b_battle' ||
           templateKey == 'tagra_muqabla' ||
@@ -1985,256 +1994,374 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildReadyMadeTemplatePicker() {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeOutCubic,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111A2B),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFFFD84D), width: 1.4),
-          boxShadow: const [
-            BoxShadow(color: Color(0x55FFD84D), blurRadius: 16, spreadRadius: 1),
-          ],
+  Widget _buildReadyMadeTemplatePicker() => GridView.builder(
+        primary: false,
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 136,
+          mainAxisExtent: 116,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
+        itemCount: _readyTemplateOptions.length,
+        itemBuilder: (context, index) {
+          final template = _readyTemplateOptions[index];
+          final isSelected =
+              (selectedReadyMadeTemplate ?? '') == template.key ||
+                  (selectedReadyMadeTemplate == null &&
+                      template.key == 'blue_gold_classic' &&
+                      selectedStylishFrame == template.frame);
+          return InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _selectReadyMadeTemplate(template.key),
+            child: Column(
               children: [
-                const Icon(Icons.palette, color: Color(0xFFFFD84D), size: 22),
-                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    AppLanguage.tr('Ready-made Templates'),
-                    style: TextStyle(
-                      color: Color(0xFFFFD84D),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFFFD84D)
+                            : Colors.white38,
+                        width: isSelected ? 2.5 : 1,
+                      ),
+                      boxShadow: isSelected
+                          ? const [
+                              BoxShadow(
+                                  color: Color(0xAAFFD84D), blurRadius: 10)
+                            ]
+                          : null,
                     ),
+                    child: _buildReadyTemplateThumbnail(template),
                   ),
                 ),
+                const SizedBox(height: 5),
                 Text(
-                  AppLanguage.tr('ٹیمپلیٹس منتخب کریں'),
-                  style: TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-                IconButton(
-                  tooltip: AppLanguage.tr('Close'),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => setState(() => showReadyMadeTemplateGallery = false),
-                  icon: const Icon(Icons.close, color: Colors.white70),
+                  template.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFFFFD84D) : Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            SizedBox(
-              height: 116,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _readyTemplateOptions.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 9),
-                itemBuilder: (context, index) {
-                  final template = _readyTemplateOptions[index];
-                  final isSelected =
-                      (selectedReadyMadeTemplate ?? '') == template.key ||
-                      (selectedReadyMadeTemplate == null &&
-                          template.key == 'blue_gold_classic' &&
-                          selectedStylishFrame == template.frame);
-                  return SizedBox(
-                    width: 104,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => _selectReadyMadeTemplate(template.key),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFFFFD84D)
-                                      : Colors.white38,
-                                  width: isSelected ? 2.5 : 1,
-                                ),
-                                boxShadow: isSelected
-                                    ? const [BoxShadow(color: Color(0xAAFFD84D), blurRadius: 10)]
-                                    : null,
-                              ),
-                              child: _buildReadyTemplateThumbnail(template),
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            template.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: isSelected ? const Color(0xFFFFD84D) : Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+          );
+        },
+      );
+
+  void backgrounds() => _toggleEditorOptions(_EditorOptions.backgrounds);
+
+  void frameTool() => _toggleEditorOptions(_EditorOptions.frame);
+
+  void canvasTool() => _toggleEditorOptions(_EditorOptions.canvas);
+
+  void aSideLabelTool() => _toggleEditorOptions(_EditorOptions.aLabel);
+
+  void bSideLabelTool() => _toggleEditorOptions(_EditorOptions.bLabel);
+
+  void emojiTool() => _toggleEditorOptions(_EditorOptions.emoji);
+
+  Widget _optionScroll(Widget child) => SingleChildScrollView(
+        primary: false,
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: child,
+      );
+
+  Widget _colorOptions(
+          List<Color> colors, Color selected, ValueChanged<Color> onChange) =>
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (var i = 0; i < colors.length; i++)
+          Semantics(
+            label: '${i + 1}',
+            selected: selected == colors[i],
+            button: true,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(26),
+              onTap: () => onChange(colors[i]),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors[i],
+                  border: Border.all(
+                    color: selected == colors[i] ? gold : Colors.white54,
+                    width: selected == colors[i] ? 3 : 1,
+                  ),
+                ),
+                child: selected == colors[i]
+                    ? const Icon(Icons.check_circle, color: Colors.black87)
+                    : null,
+              ),
+            ),
+          ),
+      ]);
+
+  Widget _labelOptions(bool sideA) => _assetOptions(
+        options: sideA
+            ? const [
+                (
+                  'A Side Style 1',
+                  'assets/label_bars/a_side/A_Side_Style_1.png'
+                ),
+                (
+                  'A Side Style 2',
+                  'assets/label_bars/a_side/A_Side_Style_2.png'
+                ),
+                (
+                  'A Side Style 3',
+                  'assets/label_bars/a_side/A_Side_Style_3.png'
+                ),
+                (
+                  'A Side Style 4',
+                  'assets/label_bars/a_side/A_Side_Style_4.png'
+                ),
+                (
+                  'A Side Style 5',
+                  'assets/label_bars/a_side/A_Side_Style_5.png'
+                ),
+              ]
+            : const [
+                (
+                  'B Side Style 1',
+                  'assets/label_bars/b_side/B_Side_Style_1.png'
+                ),
+                (
+                  'B Side Style 2',
+                  'assets/label_bars/b_side/B_Side_Style_2.png'
+                ),
+                (
+                  'B Side Style 3',
+                  'assets/label_bars/b_side/B_Side_Style_3.png'
+                ),
+                (
+                  'B Side Style 4',
+                  'assets/label_bars/b_side/B_Side_Style_4.png'
+                ),
+                (
+                  'B Side Style 5',
+                  'assets/label_bars/b_side/B_Side_Style_5.png'
+                ),
+              ],
+        isSelected: (asset) =>
+            asset == (sideA ? selectedASideLabel : selectedBSideLabel),
+        onSelect: (asset) => setState(() {
+          if (sideA) {
+            selectedASideLabel = asset;
+            aSideLabelPosition = Offset.zero;
+            showASideLabelDelete = false;
+          } else {
+            selectedBSideLabel = asset;
+            showBSideLabelDelete = false;
+          }
+        }),
+      );
+
+  Widget _emojiOptions({required bool includeControls}) => _optionScroll(
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (includeControls)
+            Wrap(spacing: 8, children: [
+              ActionChip(
+                  label: Text(AppLanguage.tr('Zoom +')),
+                  onPressed: () => zoomSelectedSticker(1.2)),
+              ActionChip(
+                  label: Text(AppLanguage.tr('Zoom −')),
+                  onPressed: () => zoomSelectedSticker(0.8)),
+              ActionChip(
+                  label: Text(AppLanguage.tr('Delete')),
+                  onPressed: deleteSelectedSticker),
+            ]),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final emoji in const [
+              '⭐',
+              '🔥',
+              '👑',
+              '❤️',
+              '🏆',
+              '⚡',
+              '🎉',
+              '💥',
+              '👍',
+              '🌟',
+              '😊',
+              '💯'
+            ])
+              IconButton(
+                icon: Text(emoji, style: const TextStyle(fontSize: 25)),
+                tooltip: emoji,
+                onPressed: () {
+                  _textUndoHistory.clear();
+                  _textRedoHistory.clear();
+                  setState(() {
+                    _clearCanvasSelection();
+                    overlays.add(emoji);
+                    final index = overlays.length - 1;
+                    stickerOverlayIds.add(index);
+                    _selectCanvasObject(stickerIndex: index);
+                  });
                 },
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void backgrounds() {
-    const colors = [Color(0xFF064B27), Color(0xFF102C67), Color(0xFF7F101B), Color(0xFF241044), Color(0xFF111827), Color(0xFF744210)];
-    showModalBottomSheet<void>(context: context, builder: (c) => Padding(
-      padding: const EdgeInsets.all(20),
-      child: Wrap(spacing: 14, runSpacing: 14, children: colors.map((color) => InkWell(
-        onTap: () { setState(() => background = color); Navigator.pop(c); },
-        child: Container(width: 48, height: 48, decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: Colors.white))),
-      )).toList()),
-    ));
-  }
-
-  void frameTool() {
-    showModalBottomSheet<void>(context: context, builder: (c) => StatefulBuilder(
-      builder: (c, modalSet) => Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(AppLanguage.tr('Frame Color')),
-          Wrap(spacing: 12, children: [Colors.amber, Colors.white, Colors.pinkAccent, Colors.cyanAccent, Colors.redAccent, Colors.greenAccent].map((color) => InkWell(
-            onTap: () { setState(() => frameColor = color); modalSet(() {}); },
-            child: Container(width: 35, height: 35, decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: frameColor == color ? Colors.black : Colors.transparent, width: 3))),
-          )).toList()),
-          const SizedBox(height: 12),
-          Text(AppLanguage.tr('Frame Thickness')),
-          Slider(value: frameWidth, min: 1, max: 10, divisions: 9, onChanged: (v) { setState(() => frameWidth = v); modalSet(() {}); }),
-          Align(alignment: Alignment.centerRight, child: FilledButton(onPressed: () => Navigator.pop(c), child: Text(AppLanguage.tr('Done')))),
+          ]),
         ]),
-      ),
-    ));
-  }
+      );
 
-  void canvasTool() {
-    setState(() {
-      showCanvasTools = true;
-      showTextTools = false;
-      showStickerTools = false;
-    });
-  }
-
-  void aSideLabelTool() {
-    const styles = [
-      "assets/label_bars/a_side/A_Side_Style_1.png",
-      "assets/label_bars/a_side/A_Side_Style_2.png",
-      "assets/label_bars/a_side/A_Side_Style_3.png",
-      "assets/label_bars/a_side/A_Side_Style_4.png",
-      "assets/label_bars/a_side/A_Side_Style_5.png",
-    ];
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(c).size.height * 0.65,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 2.2,
+  Widget _canvasOptions() => _optionScroll(
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final (label, ratio) in const <(String, double)>[
+            ('Poster 4:5', 4 / 5),
+            ('Portrait 3:4', 3 / 4),
+            ('Portrait 4:3', 4 / 3),
+            ('Portrait 2:3', 2 / 3),
+            ('Story 9:16', 9 / 16),
+            ('Square 1:1', 1),
+            ('Landscape 4:3', 4 / 3),
+            ('Landscape 3:2', 3 / 2),
+            ('Landscape 16:9', 16 / 9),
+            ('Landscape 5:4', 5 / 4),
+            ('Banner 2:1', 2),
+          ])
+            ChoiceChip(
+              label: Text(AppLanguage.tr(label)),
+              selected: canvasRatio == ratio,
+              onSelected: (_) => setState(() => canvasRatio = ratio),
             ),
-            itemCount: styles.length,
-            itemBuilder: (c, i) => InkWell(
-              onTap: () {
-                setState(() {
-                  selectedASideLabel = styles[i];
-                  aSideLabelPosition = Offset.zero;
-                  showASideLabelDelete = false;
-                });
-                Navigator.pop(c);
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF251019),
-                  border: Border.all(color: gold, width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.all(6),
-                child: Image.asset(styles[i], fit: BoxFit.contain),
+        ]),
+      );
+
+  Widget _buildEditorOptions(_EditorOptions options) {
+    if (options == _EditorOptions.vs) {
+      return VsStylesPanel(
+        selected: showVs ? VsStyleDefinition.fromName(vsStyle) : null,
+        onSelect: (style) => setState(() {
+          vsStyle = style.name;
+          showVs = true;
+        }),
+        onClose: _closeEditorOptions,
+      );
+    }
+    final (title, content) = switch (options) {
+      _EditorOptions.vs => throw StateError('VS uses its own grid'),
+      _EditorOptions.stylishFrames => (
+          'Stylish Frames',
+          _assetOptions(
+            options: stylishFrames,
+            isSelected: (asset) => selectedStylishFrame == asset,
+            onSelect: (asset) => setState(() => selectedStylishFrame = asset),
+            itemHeight: 104,
+          )
+        ),
+      _EditorOptions.backgrounds => (
+          'Background',
+          _optionScroll(_colorOptions(
+            const [
+              Color(0xff064b27),
+              Color(0xff102c67),
+              Color(0xff7f101b),
+              Color(0xff241044),
+              Color(0xff111827),
+              Color(0xff744210)
+            ],
+            background,
+            (color) => setState(() => background = color),
+          ))
+        ),
+      _EditorOptions.frame => (
+          'Frame',
+          _optionScroll(
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(AppLanguage.tr('Frame Color')),
+              _colorOptions(
+                const [
+                  Colors.amber,
+                  Colors.white,
+                  Colors.pinkAccent,
+                  Colors.cyanAccent,
+                  Colors.redAccent,
+                  Colors.greenAccent
+                ],
+                frameColor,
+                (color) => setState(() => frameColor = color),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(AppLanguage.tr('Frame Thickness')),
+              Slider(
+                  value: frameWidth.clamp(1.0, 10.0),
+                  min: 1,
+                  max: 10,
+                  divisions: 9,
+                  onChanged: (value) => setState(() => frameWidth = value)),
+            ]),
+          )
+        ),
+      _EditorOptions.aLabel => ('A Side Label', _labelOptions(true)),
+      _EditorOptions.bLabel => ('B Side Label', _labelOptions(false)),
+      _EditorOptions.emoji => ('Emoji', _emojiOptions(includeControls: false)),
+      _EditorOptions.stickers => (
+          'Stickers',
+          _emojiOptions(includeControls: true)
+        ),
+      _EditorOptions.canvas => ('Canvas', _canvasOptions()),
+      _EditorOptions.templates => (
+          'Ready-made Templates',
+          _buildReadyMadeTemplatePicker()
+        ),
+      _EditorOptions.aStyle || _EditorOptions.bStyle => (
+          options == _EditorOptions.aStyle ? 'A Style' : 'B Style',
+          _assetOptions(
+            options: [
+              for (final asset in options == _EditorOptions.aStyle
+                  ? aStyleAssets
+                  : bStyleAssets)
+                (_assetOptionName(asset), asset),
+            ],
+            isSelected: (asset) =>
+                letterOverlays.any((item) => item.asset == asset),
+            onSelect: (asset) =>
+                addLetterStyleOverlay(asset, options == _EditorOptions.aStyle),
           ),
         ),
-      ),
-    );
-  }
-
-  void bSideLabelTool() {
-    const styles = [
-      "assets/label_bars/b_side/B_Side_Style_1.png",
-      "assets/label_bars/b_side/B_Side_Style_2.png",
-      "assets/label_bars/b_side/B_Side_Style_3.png",
-      "assets/label_bars/b_side/B_Side_Style_4.png",
-      "assets/label_bars/b_side/B_Side_Style_5.png",
-    ];
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(c).size.height * 0.65,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 2.2,
-            ),
-            itemCount: styles.length,
-            itemBuilder: (c, i) => InkWell(
-              onTap: () {
-                setState(() {
-                  selectedBSideLabel = styles[i];
-                  showBSideLabelDelete = false;
-                });
-                Navigator.pop(c);
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10251A),
-                  border: Border.all(color: const Color(0xFF35D07F), width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.all(6),
-                child: Image.asset(styles[i], fit: BoxFit.contain),
-              ),
-            ),
-          ),
+      _EditorOptions.votingStickers => (
+          'Voting Sticker',
+          _assetOptions(
+            options: [
+              for (final asset in votingStickerAssets)
+                (_assetOptionName(asset), asset)
+            ],
+            isSelected: (asset) =>
+                asset == leftVotingSticker || asset == rightVotingSticker,
+            onSelect: (asset) => setState(() {
+              if (leftVotingSticker == null) {
+                leftVotingSticker = asset;
+              } else {
+                rightVotingSticker = asset;
+              }
+            }),
+          )
         ),
-      ),
+      _EditorOptions.tagraStickers => (
+          'تگڑا مقابلہ اسٹیکرز',
+          _assetOptions(
+            options: [
+              for (final asset in tagraStickerAssets)
+                (_assetOptionName(asset, 'Tagra_Muqabla_'), asset),
+            ],
+            isSelected: (asset) =>
+                tagraStickerOverlays.any((item) => item.asset == asset),
+            onSelect: addTagraStickerOverlay,
+          )
+        ),
+    };
+    return EditorOptionsPanel(
+      title: title,
+      onClose: _closeEditorOptions,
+      child: content,
     );
-  }
-
-  void emojiTool() {
-    const emojis = ['⭐','🔥','👑','❤️','🏆','⚡','🎉','💥','👍','🌟','😊','💯'];
-    showModalBottomSheet<void>(context: context, builder: (c) => Padding(
-      padding: const EdgeInsets.all(18),
-      child: Wrap(spacing: 12, runSpacing: 12, children: emojis.map((e) => InkWell(
-        onTap: () { _textUndoHistory.clear(); _textRedoHistory.clear(); setState(() { _clearCanvasSelection(); overlays.add(e); final index = overlays.length - 1; stickerOverlayIds.add(index); _selectCanvasObject(stickerIndex: index); }); Navigator.pop(c); },
-        child: Container(width: 52, height: 52, alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
-      )).toList()),
-    ));
   }
 
   bool _hasArabicScript(String value) => RegExp(r'[\u0600-\u06FF]').hasMatch(value);
@@ -3667,10 +3794,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     setState(() {
       showTextTools = !showTextTools;
       if (!showTextTools) _clearCanvasSelection();
-      showReadyMadeTemplateGallery = false;
+      _editorOptions = null;
       _activeTextSection = TextToolSection.none;
-      showStickerTools = false;
-      showCanvasTools = false;
     });
   }
 
@@ -3716,27 +3841,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
-  void openStickerTools() {
-    setState(() {
-      showStickerTools = !showStickerTools;
-      if (showStickerTools) _clearCanvasSelection();
-      showTextTools = false;
-      showCanvasTools = false;
-    });
-  }
-
+  void openStickerTools() => _toggleEditorOptions(_EditorOptions.stickers);
 
   void openTagraStickerGallery() {
+    if (_editorOptions == _EditorOptions.tagraStickers) {
+      _closeEditorOptions();
+      return;
+    }
     setState(() {
       final previousTagraIndex = selectedTagraStickerIndex;
       _clearCanvasSelection();
-      showTagraStickerGallery = true;
-      showAStyleGallery = false;
-      showBStyleGallery = false;
-      showTextTools = false;
-      showStickerTools = false;
-      showCanvasTools = false;
-      showVotingStickerTools = false;
+      _editorOptions = _EditorOptions.tagraStickers;
 
       // Keep the current Tagra sticker active while browsing alternative designs.
       // If none is selected, target the most recently added sticker instead.
@@ -3797,15 +3912,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   void openLetterStyleGallery(bool sideA) {
-    setState(() {
-      _clearCanvasSelection();
-      showAStyleGallery = sideA;
-      showBStyleGallery = !sideA;
-      showTextTools = false;
-      showStickerTools = false;
-      showCanvasTools = false;
-      showVotingStickerTools = false;
-    });
+    _toggleEditorOptions(sideA ? _EditorOptions.aStyle : _EditorOptions.bStyle);
   }
 
   void addLetterStyleOverlay(String asset, bool sideA) {
@@ -4078,10 +4185,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         color: const Color(0xFF1B2638),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          onTap: () {
-            _closeVsStyles();
-            tap();
-          },
+          onTap: tap,
           borderRadius: BorderRadius.circular(14),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -4327,11 +4431,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final isGlowTool = title == 'Glow';
     final originalTap = tap;
     tap = () {
-      if (title != 'VS Styles') _closeVsStyles();
+      final previousOptions = _editorOptions;
       if (title != 'VS Styles' && isVsSelected && mounted) {
         setState(() => isVsSelected = false);
       }
       originalTap();
+      if (previousOptions == _editorOptions) _closeEditorOptions();
     };
     return Container(
       width: 94,
@@ -4975,9 +5080,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !_showVsStyles,
+    canPop: _editorOptions == null,
     onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) _closeVsStyles();
+      if (!didPop) _closeEditorOptions();
     },
     child: Scaffold(
     key: _editorScaffoldKey,
@@ -5946,23 +6051,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         duration: const Duration(milliseconds: 180),
         alignment: Alignment.bottomCenter,
         curve: Curves.easeOutCubic,
-        child: _showVsStyles
+        child: _editorOptions != null
             ? SizedBox(
                 height: panelHeight,
-                child: VsStylesPanel(
-                  selected: showVs ? VsStyleDefinition.fromName(vsStyle) : null,
-                  onSelect: (style) => setState(() {
-                    vsStyle = style.name;
-                    showVs = true;
-                  }),
-                  onClose: _closeVsStyles,
+                child: KeyedSubtree(
+                  key: ValueKey(_editorOptions),
+                  child: _buildEditorOptions(_editorOptions!),
                 ),
               )
             : const SizedBox.shrink(),
       ),
       ]);
     })),
-    if (showReadyMadeTemplateGallery) _buildReadyMadeTemplatePicker(),
     Container(
       padding: const EdgeInsets.fromLTRB(6, 7, 6, 9),
       color: const Color(0xFF101827),
@@ -5988,70 +6088,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             )
           : showTextTools
           ? _buildTextToolbar()
-          : (showStickerTools || showCanvasTools || showVotingStickerTools || showAStyleGallery || showBStyleGallery || showTagraStickerGallery)
-          ? Row(
-              children: [
-                tool('←', 'Back', () => setState(() { showTextTools = false; showStickerTools = false; showCanvasTools = false; showVotingStickerTools = false; showAStyleGallery = false; showBStyleGallery = false; showTagraStickerGallery = false; selectedLetterOverlayIndex = null; selectedTagraStickerIndex = null; })),
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(children: showTagraStickerGallery ? [
-                      for (final asset in tagraStickerAssets)
-                        letterStyleTool(
-                          asset,
-                          asset.split("/").last
-                              .replaceAll(".png", "")
-                              .replaceAll("Tagra_Muqabla_", "")
-                              .replaceAll("_", " "),
-                          () => addTagraStickerOverlay(asset),
-                        ),
-                    ] : (showAStyleGallery || showBStyleGallery) ? [
-                      for (final asset in (showAStyleGallery ? aStyleAssets : bStyleAssets))
-                        letterStyleTool(
-                          asset,
-                          asset.split("/").last.replaceAll(".png", "").replaceAll("_", " "),
-                          () => addLetterStyleOverlay(asset, showAStyleGallery),
-                        ),
-                    ] : showVotingStickerTools ? [
-                      for (final asset in votingStickerAssets)
-                        tool(
-                          "👑",
-                          asset.split("/").last.replaceAll(".png", "").replaceAll(RegExp(r"^\d+_"), "").replaceAll("_", " "),
-                          () => setState(() {
-                            if (leftVotingSticker == null) {
-                              leftVotingSticker = asset;
-                            } else if (rightVotingSticker == null) {
-                              rightVotingSticker = asset;
-                            } else {
-                              rightVotingSticker = asset;
-                            }
-                          }),
-                        ),
-                    ] : showCanvasTools ? [
-                      for (final opt in const <(String, double)>[
-                        ('Poster 4:5', 4 / 5),
-                        ('Portrait 3:4', 3 / 4),
-                        ('Portrait 4:3', 4 / 3),
-                        ('Portrait 2:3', 2 / 3),
-                        ('Story 9:16', 9 / 16),
-                        ('Square 1:1', 1),
-                        ('Landscape 4:3', 4 / 3),
-                        ('Landscape 3:2', 3 / 2),
-                        ('Landscape 16:9', 16 / 9),
-                        ('Landscape 5:4', 5 / 4),
-                        ('Banner 2:1', 2),
-                      ])
-                        tool(canvasRatio == opt.$2 ? '✓' : '▱', opt.$1, () => setState(() => canvasRatio = opt.$2)),
-                    ] : [
-                      tool('+', 'Add Sticker', emojiTool),
-                      tool('+', 'Zoom +', () => zoomSelectedSticker(1.2)),
-                      tool('−', 'Zoom −', () => zoomSelectedSticker(0.8)),
-                      tool('🗑', 'Delete', deleteSelectedSticker),
-                    ]),
-                  ),
-                ),
-              ],
-            )
           : SingleChildScrollView(
               key: const PageStorageKey('main-toolbar'),
               scrollDirection: Axis.horizontal,
@@ -6070,7 +6106,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tool('▣', 'Frame', frameTool),
                 tool('😊', 'Emoji', emojiTool),
                 tool('▱', 'Canvas', canvasTool),
-                tool('👑', 'Voting Sticker', () => setState(() { showVotingStickerTools = true; showTextTools = false; showStickerTools = false; showCanvasTools = false; })),
+                tool('👑', 'Voting Sticker', () => _toggleEditorOptions(_EditorOptions.votingStickers)),
                 tool('▦', 'Background', backgrounds),
                 tool('↗', 'Share Poster', share),
                 tool('✨', 'Stylish Frames', stylishFramesTool),

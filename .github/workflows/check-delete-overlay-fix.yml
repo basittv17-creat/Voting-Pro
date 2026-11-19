@@ -205,7 +205,7 @@ jobs:
           print("Poster capture clears selection controls, waits for the frame, captures the canvas, and is used by save/share.")
           PY
 
-      - name: Verify ready-made template carousel and selection
+      - name: Verify ready-made template inventory and mappings
         shell: bash
         run: |
           set -euo pipefail
@@ -215,7 +215,7 @@ jobs:
           options_start = source.find("_readyTemplateOptions = [")
           options_end = source.find("\n  ];", options_start)
           if options_start < 0 or options_end < 0:
-              raise SystemExit("::error::Ready-made template carousel options were not found.")
+              raise SystemExit("::error::Ready-made template options were not found.")
           options = source[options_start:options_end]
           names = [
               "Royal Battle",
@@ -246,21 +246,7 @@ jobs:
               if item not in selection:
                   print(f"::error::Template selection behavior is missing: {item}")
                   raise SystemExit(1)
-          gallery_start = source.find("Widget _buildReadyMadeTemplatePicker() {")
-          gallery_end = source.find("\n  void _legacyReadyMadeTemplatesTool", gallery_start)
-          if gallery_start < 0:
-              raise SystemExit("::error::Inline template carousel UI was not found.")
-          gallery = source[gallery_start:gallery_end if gallery_end >= 0 else source.find("\n  void backgrounds()", gallery_start)]
-          for item in [
-              "ListView.separated(",
-              "scrollDirection: Axis.horizontal",
-              "onTap: () => _selectReadyMadeTemplate(template.key)",
-              "_buildReadyTemplateThumbnail(template)",
-          ]:
-              if item not in gallery:
-                  print(f"::error::Template carousel behavior is missing: {item}")
-                  raise SystemExit(1)
-          print("All seven ready-made templates have visual carousel previews and selection handlers.")
+          print("Ready-made template inventory and artwork mappings are present.")
           PY
 
       - name: Verify A-side photo replacement in ready-made template
@@ -379,6 +365,9 @@ jobs:
 
       - name: Verify VS styles and poster behavior
         run: flutter test test/vs_styles_test.dart test/premium_vs_golden_test.dart
+
+      - name: Verify inline toolbar options and template selection
+        run: flutter test test/inline_editor_options_test.dart
 
       - name: Analyze Dart code
         run: flutter analyze lib/main.dart --no-fatal-infos
@@ -506,26 +495,3 @@ jobs:
           else
             echo "::notice::No sign-in/authentication implementation was found in lib/main.dart; sign-in is not available to test."
           fi
-
-      - name: Verify mobile controls and panel state hooks
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          source = Path("lib/main.dart").read_text()
-          required = [
-              "showTextTools",
-              "showStickerTools",
-              "showCanvasTools",
-              "showVotingStickerTools",
-              "showAStyleGallery",
-              "showBStyleGallery",
-              "showTagraStickerGallery",
-              "TextToolSection.glow",
-          ]
-          for item in required:
-              if item not in source:
-                  raise SystemExit(f"::error::Editor panel state missing: {item}")
-          print("Expected editor tool/gallery panel state hooks are present.")
-          PY
