@@ -10,11 +10,6 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  # Let builds for earlier commits finish; they may be needed for QA.
-  # Deployment remains serialized by the Pages environment.
-  group: voting-pro-build-${{ github.sha }}
-  cancel-in-progress: false
 
 jobs:
   build:
@@ -209,6 +204,9 @@ jobs:
           path: build/web
 
   deploy:
+    concurrency:
+      group: voting-pro-pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
