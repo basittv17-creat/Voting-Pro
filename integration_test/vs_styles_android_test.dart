@@ -38,6 +38,15 @@ void main() {
     ]) {
       final card = find.byKey(ValueKey('vs-style-$style'));
       await tester.scrollUntilVisible(card, 72, scrollable: grid);
+      // A lazily built grid child can exist while its center remains beneath
+      // the fixed toolbar. Align it inside the grid before sending a tap.
+      await Scrollable.ensureVisible(
+        tester.element(card),
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 200),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getRect(grid).contains(tester.getCenter(card)), isTrue);
       await tester.tap(card);
       await tester.pumpAndSettle();
       expect(tester.widget<PremiumVsRenderer>(canvasVs).style.name, style);
