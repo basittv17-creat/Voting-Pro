@@ -31,5 +31,11 @@ void main() {
     expect(workflow, contains('adb -s emulator-5554 install -r'));
     expect(workflow, contains(r'pidof -s "$PACKAGE"'));
     expect(workflow, contains('text-09-normal-app-launch.png'));
+    // flutter clean must not discard VS/Text test evidence.
+    expect(workflow, contains('cp build/android-screenshots/*.png'));
+    expect(
+      workflow,
+      contains(r'cp "$RUNNER_TEMP/voting-pro-ui-screenshots/"*.png'),
+    );
   });
 }

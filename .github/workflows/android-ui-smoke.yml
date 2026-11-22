@@ -93,6 +93,9 @@ jobs:
       - name: Rebuild a normal installable Voting Pro APK with its launcher icon
         run: |
           set -euo pipefail
+          # Preserve Android integration screenshots: flutter clean deletes build/.
+          mkdir -p "$RUNNER_TEMP/voting-pro-ui-screenshots"
+          cp build/android-screenshots/*.png "$RUNNER_TEMP/voting-pro-ui-screenshots/"
           flutter clean
           flutter pub get
           sed -i 's/android:label="[^"]*"/android:label="Voting Pro"/' android/app/src/main/AndroidManifest.xml
@@ -101,6 +104,8 @@ jobs:
           test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           flutter build apk --debug --target lib/main.dart
           test -s build/app/outputs/flutter-apk/app-debug.apk
+          mkdir -p build/android-screenshots
+          cp "$RUNNER_TEMP/voting-pro-ui-screenshots/"*.png build/android-screenshots/
 
       - name: Install normal APK and verify app stays open after splash
         run: |
