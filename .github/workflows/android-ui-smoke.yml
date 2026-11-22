@@ -9,6 +9,8 @@ on:
       - 'test/text_toolbar_test.dart'
       - 'test/premium_text_editor_panel_test.dart'
       - 'integration_test/text_toolbar_android_test.dart'
+      - 'test/android_apk_workflow_test.dart'
+      - '.github/workflows/android-ui-smoke.yml'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -19,7 +21,7 @@ permissions:
 jobs:
   vs-styles:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -85,6 +87,44 @@ jobs:
             tail -100 "$RUNNER_TEMP/voting-pro-emulator.log"
           fi
 
+      # flutter drive leaves an integration-test entrypoint in app-debug.apk.
+      # NEVER publish that test-runner APK as the installable Voting Pro app.
+      # Rebuild explicitly from the production entrypoint after device tests.
+      - name: Rebuild a normal installable Voting Pro APK with its launcher icon
+        run: |
+          set -euo pipefail
+          flutter clean
+          flutter pub get
+          sed -i 's/android:label="[^"]*"/android:label="Voting Pro"/' android/app/src/main/AndroidManifest.xml
+          grep -Fq 'android:label="Voting Pro"' android/app/src/main/AndroidManifest.xml
+          dart run flutter_launcher_icons
+          test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          flutter build apk --debug --target lib/main.dart
+          test -s build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Install normal APK and verify app stays open after splash
+        run: |
+          set -euo pipefail
+          PACKAGE=com.awasigogera.votingpro
+          APK=build/app/outputs/flutter-apk/app-debug.apk
+          adb -s emulator-5554 install -r "$APK"
+          adb -s emulator-5554 shell am force-stop "$PACKAGE"
+          adb -s emulator-5554 logcat -c
+          adb -s emulator-5554 shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
+          # Splash transitions into the real Editor after 2.2 seconds.
+          sleep 8
+          pid="$(adb -s emulator-5554 shell pidof -s "$PACKAGE" | tr -d '\r')"
+          test -n "$pid"
+          if adb -s emulator-5554 logcat -d -s AndroidRuntime:E | grep -Fq 'FATAL EXCEPTION'; then
+            echo '::error::Android app crashed during normal cold launch'
+            adb -s emulator-5554 logcat -d -s AndroidRuntime:E
+            exit 1
+          fi
+          mkdir -p build/android-screenshots
+          adb -s emulator-5554 exec-out screencap -p > build/android-screenshots/text-09-normal-app-launch.png
+          test -s build/android-screenshots/text-09-normal-app-launch.png
+          echo "NORMAL_VOTING_PRO_LAUNCH_PASSED: PID=$pid"
+
       - name: Upload Android screenshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -92,9 +132,9 @@ jobs:
           path: build/android-screenshots/*.png
           if-no-files-found: error
 
-      - name: Upload debug APK
+      - name: Upload installable normal-app debug APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: voting-pro-debug-apk
+          name: voting-pro-normal-app-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
