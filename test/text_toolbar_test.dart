@@ -33,6 +33,11 @@ void main() {
 
     expect(main, findsNothing);
     expect(find.text('Add Photo A'), findsNothing);
+    expect(find.descendant(of: text, matching: find.text('More')), findsNothing);
+    expect(
+      find.descendant(of: text, matching: find.text('Color Palette')),
+      findsOneWidget,
+    );
     expect(tester.getRect(text), toolbarBounds);
     expect(find.byType(PremiumTextEditorPanel), findsNothing);
 
@@ -150,6 +155,44 @@ void main() {
       }
     });
   }
+
+  testWidgets('Color Palette opens the existing color studio directly', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'voting_pro_project_v1': jsonEncode({
+        'overlays': ['Vote'],
+        'textOverlayIds': [0],
+      }),
+    });
+    AppLanguage.current = 'en';
+    await tester.pumpWidget(const MaterialApp(home: Editor()));
+    await tester.pumpAndSettle();
+
+    final overlay = find.byType(AdvancedTextOverlay);
+    await tester.tap(overlay);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Text'));
+    await tester.tap(find.text('Text'));
+    await tester.pumpAndSettle();
+
+    final toolbar = find.byKey(const ValueKey('text-toolbar'));
+    final tools = find.byKey(const ValueKey('text-tool-scroll'));
+    expect(find.descendant(of: toolbar, matching: find.text('More')), findsNothing);
+    final palette = find.descendant(
+      of: tools,
+      matching: find.text('Color Palette'),
+    );
+    expect(palette, findsOneWidget);
+    await tester.ensureVisible(palette);
+    await tester.tap(palette);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Text Color Studio'), findsOneWidget);
+    expect(find.byType(PremiumTextEditorPanel), findsNothing);
+    expect(toolbar, findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Delete with no text selection explains what to do', (
     tester,

@@ -55,6 +55,8 @@ void main() {
     final back = action(text, 'Back');
     final backBounds = tester.getRect(back);
     expect(backBounds.right, lessThanOrEqualTo(tester.getRect(tools).left));
+    expect(action(text, 'More'), findsNothing);
+    expect(action(text, 'Color Palette'), findsOneWidget);
     await capture('text-02-toolbar');
 
     await tap(action(text, 'Add Text'));
@@ -80,6 +82,18 @@ void main() {
 
     await tap(find.descendant(of: panel, matching: find.byTooltip('Close')));
     expect(panel, findsNothing);
+
+    // The former More-only Color Palette now opens the existing color studio
+    // directly from the SAME bottom Text toolbar, without another toolbar.
+    await tap(action(text, 'Color Palette'));
+    expect(panel, findsNothing);
+    expect(find.text('Text Color Studio'), findsOneWidget);
+    expect(tester.getRect(text), bounds);
+    expect(tester.getRect(back), backBounds);
+    await capture('text-06-direct-color-palette');
+    await tap(find.byTooltip('Close'));
+    expect(find.text('Text Color Studio'), findsNothing);
+
     await tap(action(text, 'Undo Text'));
     expect(find.text('Vote  ووٹ  वोट'), findsNothing);
     await tap(action(text, 'Redo Text'));

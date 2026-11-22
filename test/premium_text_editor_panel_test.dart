@@ -17,9 +17,6 @@ void main() {
             onClose: () {},
             onOpenGradient: () {},
             onOpenPresets: () {},
-            onAddText: () {},
-            onEditText: () {},
-            onDeleteText: () {},
             styleActions: [
               TextPanelAction('Font', Icons.font_download_outlined, () {}),
               TextPanelAction('Zoom +', Icons.zoom_in, () {}),
@@ -28,7 +25,6 @@ void main() {
               TextPanelAction('Curve Up', Icons.arrow_upward, () {}),
               TextPanelAction('Curve Down', Icons.arrow_downward, () {}),
             ],
-            moreActions: [TextPanelAction('Undo Text', Icons.undo, () {})],
             textColor: Colors.white,
             onTextColor: (_) {},
             onMoreColors: () {},
@@ -107,7 +103,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Style Layout and More still expose the legacy actions', (
+  testWidgets('Style and Layout still expose the legacy actions', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 760);
@@ -125,9 +121,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Font'), findsOneWidget);
 
-    await tester.pumpWidget(makeEditor(section: TextToolSection.more));
-    await tester.pumpAndSettle();
-    expect(find.text('Delete Text'), findsOneWidget);
+    expect(find.text('More Text Tools'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

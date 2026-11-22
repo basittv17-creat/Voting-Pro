@@ -1,6 +1,14 @@
 name: Android UI Smoke
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/main.dart'
+      - 'lib/widgets/premium_text_editor_panel.dart'
+      - 'test/text_toolbar_test.dart'
+      - 'test/premium_text_editor_panel_test.dart'
+      - 'integration_test/text_toolbar_android_test.dart'
   pull_request:
     branches: [main]
   workflow_dispatch:

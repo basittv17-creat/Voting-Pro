@@ -21,7 +21,6 @@ enum TextToolSection {
   shadow,
   outline,
   gradient,
-  more,
 }
 
 class PremiumTextEditorPanel extends StatefulWidget {
@@ -32,12 +31,8 @@ class PremiumTextEditorPanel extends StatefulWidget {
     required this.onOpenGradient,
     required this.onOpenPresets,
     required this.section,
-    required this.onAddText,
-    required this.onEditText,
-    required this.onDeleteText,
     required this.styleActions,
     required this.layoutActions,
-    required this.moreActions,
     required this.textColor,
     required this.onTextColor,
     required this.onMoreColors,
@@ -76,8 +71,7 @@ class PremiumTextEditorPanel extends StatefulWidget {
   final String? selectedText;
   final VoidCallback onClose, onOpenGradient, onOpenPresets;
   final TextToolSection section;
-  final VoidCallback onAddText, onEditText, onDeleteText;
-  final List<TextPanelAction> styleActions, layoutActions, moreActions;
+  final List<TextPanelAction> styleActions, layoutActions;
   final Color textColor;
   final ValueChanged<Color> onTextColor;
   final VoidCallback onMoreColors;
@@ -151,7 +145,6 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       TextToolSection.shadow => _shadow(),
       TextToolSection.outline => _outline(),
       TextToolSection.gradient => _gradient(),
-      TextToolSection.more => _more(),
     };
 
     return Padding(
@@ -183,8 +176,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             children: [
               if (switch (widget.section) {
                 TextToolSection.style ||
-                TextToolSection.layout ||
-                TextToolSection.more => true,
+                TextToolSection.layout => true,
                 _ => false,
               })
                 Row(
@@ -194,7 +186,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                         AppLanguage.tr(switch (widget.section) {
                           TextToolSection.style => 'Text Style',
                           TextToolSection.layout => 'Text Layout',
-                          _ => 'More Text Tools',
+                          _ => 'Text Tools',
                         }),
                         style: const TextStyle(
                           color: Colors.white,
@@ -478,21 +470,6 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
         ),
       ],
     ),
-  );
-
-  Widget _more() => Column(
-    children: [
-      _actionGrid([
-        TextPanelAction('Add Text', Icons.add, widget.onAddText),
-        TextPanelAction('Edit Text', Icons.edit, widget.onEditText),
-        ...widget.moreActions,
-        TextPanelAction(
-          'Delete Text',
-          Icons.delete_outline,
-          widget.onDeleteText,
-        ),
-      ]),
-    ],
   );
 
   Widget _section(

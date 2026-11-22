@@ -4204,9 +4204,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       onOpenGradient: () => _selectTextSection(TextToolSection.gradient),
       onOpenPresets: chooseTextPreset,
       selectedText: active == null ? null : overlays[active],
-      onAddText: addText,
-      onEditText: editSelectedText,
-      onDeleteText: deleteSelectedText,
       styleActions: [
         TextPanelAction('Font', Icons.font_download_outlined, chooseTextFont),
         TextPanelAction(
@@ -4272,22 +4269,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           () => adjustSelectedTextCurve(-0.2),
         ),
         TextPanelAction('Duplicate', Icons.copy, duplicateSelectedText),
-      ],
-      moreActions: [
-        TextPanelAction('Undo Text', Icons.undo, undoTextEdit),
-        TextPanelAction('Redo Text', Icons.redo, redoTextEdit),
-        TextPanelAction('BG Remover', Icons.content_cut, openBackgroundRemover),
-        TextPanelAction('Color Palette', Icons.palette, chooseTextColor),
-        TextPanelAction(
-          'Text Background',
-          Icons.format_color_fill,
-          editTextBackground,
-        ),
-        TextPanelAction(
-          'Reset Style',
-          Icons.restart_alt,
-          resetSelectedTextStyle,
-        ),
       ],
       textColor: active == null
           ? Colors.white
@@ -4596,6 +4577,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   section: TextToolSection.color,
                 ),
                 _textToolbarButton(
+                  Icons.color_lens_outlined,
+                  'Color Palette',
+                  chooseTextColor,
+                ),
+                _textToolbarButton(
                   Icons.text_fields,
                   'Style',
                   () => _selectTextSection(TextToolSection.style),
@@ -4651,12 +4637,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   Icons.redo,
                   'Redo Text',
                   _textRedoHistory.isEmpty ? null : redoTextEdit,
-                ),
-                _textToolbarButton(
-                  Icons.more_horiz,
-                  'More',
-                  () => _selectTextSection(TextToolSection.more),
-                  section: TextToolSection.more,
                 ),
                 _textToolbarButton(
                   Icons.upload_file,
