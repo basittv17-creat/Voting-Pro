@@ -81,7 +81,7 @@ void main() {
 
     await _tapToolbar(tester, 'Color');
     expect(_panel, findsNothing);
-    final moreColors = find.text('More colors');
+    final moreColors = find.byTooltip('More colors');
     await tester.ensureVisible(moreColors);
     await tester.tap(moreColors);
     await tester.pumpAndSettle();

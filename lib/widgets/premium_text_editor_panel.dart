@@ -181,31 +181,32 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      AppLanguage.tr(switch (widget.section) {
-                        TextToolSection.color => 'Text Color',
-                        TextToolSection.style => 'Text Style',
-                        TextToolSection.layout => 'Text Layout',
-                        TextToolSection.more => 'More Text Tools',
-                        _ => 'Text Settings',
-                      }),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
+              if (switch (widget.section) {
+                TextToolSection.color ||
+                TextToolSection.style ||
+                TextToolSection.layout ||
+                TextToolSection.more => true,
+                _ => false,
+              })
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        AppLanguage.tr(switch (widget.section) {
+                          TextToolSection.color => 'Text Color',
+                          TextToolSection.style => 'Text Style',
+                          TextToolSection.layout => 'Text Layout',
+                          _ => 'More Text Tools',
+                        }),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: AppLanguage.tr('Close'),
-                    onPressed: widget.onClose,
-                    color: _mint,
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                  ),
-                ],
-              ),
+                    _closeButton(),
+                  ],
+                ),
               if (widget.selectedText == null)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 8),
@@ -289,19 +290,29 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     ],
   );
 
+  Widget _closeButton() => IconButton(
+    tooltip: AppLanguage.tr('Close'),
+    onPressed: widget.onClose,
+    color: _mint,
+    icon: const Icon(Icons.keyboard_arrow_down),
+  );
+
   Widget _color() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Wrap(
         spacing: 6,
         children: [
-          TextButton(
-            onPressed: widget.onMoreColors,
-            style: TextButton.styleFrom(
-              foregroundColor: _dark,
-              backgroundColor: _gold,
+          Tooltip(
+            message: AppLanguage.tr('More colors'),
+            child: TextButton(
+              onPressed: widget.onMoreColors,
+              style: TextButton.styleFrom(
+                foregroundColor: _dark,
+                backgroundColor: _gold,
+              ),
+              child: Text(AppLanguage.tr('Solid')),
             ),
-            child: Text(AppLanguage.tr('Solid')),
           ),
           OutlinedButton(
             onPressed: widget.onOpenGradient,
@@ -476,6 +487,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                 activeTrackColor: _gold,
               ),
             ),
+            _closeButton(),
           ],
         ),
         if (child != null) child,
