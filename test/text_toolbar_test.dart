@@ -33,7 +33,10 @@ void main() {
 
     expect(main, findsNothing);
     expect(find.text('Add Photo A'), findsNothing);
-    expect(find.descendant(of: text, matching: find.text('More')), findsNothing);
+    expect(
+      find.descendant(of: text, matching: find.text('More')),
+      findsNothing,
+    );
     expect(
       find.descendant(of: text, matching: find.text('Color Palette')),
       findsOneWidget,
@@ -178,7 +181,10 @@ void main() {
 
     final toolbar = find.byKey(const ValueKey('text-toolbar'));
     final tools = find.byKey(const ValueKey('text-tool-scroll'));
-    expect(find.descendant(of: toolbar, matching: find.text('More')), findsNothing);
+    expect(
+      find.descendant(of: toolbar, matching: find.text('More')),
+      findsNothing,
+    );
     final palette = find.descendant(
       of: tools,
       matching: find.text('Color Palette'),
