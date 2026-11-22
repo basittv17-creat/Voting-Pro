@@ -4505,9 +4505,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final labelColor =
         tap == null ? Colors.white38 : (emphasized ? gold : Colors.white);
     return Container(
-      width: isBack ? 52 : 64,
+      width: isBack ? 48 : 49,
       height: 68,
-      margin: const EdgeInsets.symmetric(horizontal: 3),
+      margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,

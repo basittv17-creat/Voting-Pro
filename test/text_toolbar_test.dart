@@ -54,8 +54,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getRect(back), fixedBackPosition);
     expect(
-      tester.getCenter(find.text('Back')).dy,
-      tester.getCenter(find.text('Add Text')).dy,
+      tester.getCenter(find.widgetWithText(InkWell, 'Back')).dy,
+      tester.getCenter(find.widgetWithText(InkWell, 'Add Text')).dy,
     );
 
     final glow = find.descendant(of: text, matching: find.text('Glow'));

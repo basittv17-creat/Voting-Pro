@@ -28,15 +28,26 @@ void main() {
         find.descendant(of: toolbar, matching: find.text(label));
 
     Future<void> tap(Finder target) async {
-      await tester.ensureVisible(target);
-      await tester.pumpAndSettle();
+      if (target.hitTestable().evaluate().isEmpty) {
+        await tester.ensureVisible(target);
+        await tester.pumpAndSettle();
+      }
       await tester.tap(target);
       await tester.pumpAndSettle();
     }
 
+    Future<void> capture(String name) async {
+      // Allow the Android surface to present the scrolled frame and clear
+      // Flutter's transient test-pointer crosshair.
+      for (var frame = 0; frame < 6; frame++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      await binding.takeScreenshot(name);
+    }
+
     await binding.convertFlutterSurfaceToImage();
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('text-01-main');
+    await capture('text-01-main');
     await tap(action(main, 'Text'));
     expect(main, findsNothing);
     expect(panel, findsNothing);
@@ -44,7 +55,7 @@ void main() {
     final back = action(text, 'Back');
     final backBounds = tester.getRect(back);
     expect(backBounds.right, lessThanOrEqualTo(tester.getRect(tools).left));
-    await binding.takeScreenshot('text-02-toolbar');
+    await capture('text-02-toolbar');
 
     await tap(action(text, 'Add Text'));
     await tester.enterText(find.byType(TextField), 'Vote  ووٹ  वोट');
@@ -64,7 +75,7 @@ void main() {
       );
       expect(tester.getRect(text), bounds);
       expect(tester.getRect(back), backBounds);
-      await binding.takeScreenshot(file);
+      await capture(file);
     }
 
     await tap(find.descendant(of: panel, matching: find.byTooltip('Close')));
@@ -73,18 +84,18 @@ void main() {
     expect(find.text('Vote  ووٹ  वोट'), findsNothing);
     await tap(action(text, 'Redo Text'));
     expect(find.text('Vote  ووٹ  वोट'), findsOneWidget);
-    await binding.takeScreenshot('text-06-history');
+    await capture('text-06-history');
 
     final delete = action(text, 'Delete Text');
     await tester.ensureVisible(delete);
     await tester.pumpAndSettle();
     expect(tester.getRect(tools).contains(tester.getCenter(delete)), isTrue);
     expect(tester.getRect(back), backBounds);
-    await binding.takeScreenshot('text-07-far-scroll');
+    await capture('text-07-far-scroll');
     await tap(back);
     expect(text, findsNothing);
     expect(panel, findsNothing);
     expect(tester.getRect(main), bounds);
-    await binding.takeScreenshot('text-08-back');
+    await capture('text-08-back');
   });
 }

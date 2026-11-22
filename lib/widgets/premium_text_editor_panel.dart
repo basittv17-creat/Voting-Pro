@@ -182,7 +182,6 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (switch (widget.section) {
-                TextToolSection.color ||
                 TextToolSection.style ||
                 TextToolSection.layout ||
                 TextToolSection.more => true,
@@ -193,7 +192,6 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                     Expanded(
                       child: Text(
                         AppLanguage.tr(switch (widget.section) {
-                          TextToolSection.color => 'Text Color',
                           TextToolSection.style => 'Text Style',
                           TextToolSection.layout => 'Text Layout',
                           _ => 'More Text Tools',
@@ -297,52 +295,100 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     icon: const Icon(Icons.keyboard_arrow_down),
   );
 
-  Widget _color() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Wrap(
-        spacing: 6,
-        children: [
-          Tooltip(
-            message: AppLanguage.tr('More colors'),
-            child: TextButton(
-              onPressed: widget.onMoreColors,
-              style: TextButton.styleFrom(
-                foregroundColor: _dark,
-                backgroundColor: _gold,
-              ),
-              child: Text(AppLanguage.tr('Solid')),
+  Widget _color() {
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      minimumSize: const Size(48, 36),
+    );
+    final actions = Wrap(
+      spacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Tooltip(
+          message: AppLanguage.tr('More colors'),
+          child: TextButton(
+            onPressed: widget.onMoreColors,
+            style: TextButton.styleFrom(
+              foregroundColor: _dark,
+              backgroundColor: _gold,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(48, 36),
             ),
+            child: Text(AppLanguage.tr('Solid')),
           ),
-          OutlinedButton(
-            onPressed: widget.onOpenGradient,
-            child: Text(AppLanguage.tr('Gradient')),
-          ),
-          OutlinedButton(
-            onPressed: widget.onOpenPresets,
-            child: Text(AppLanguage.tr('Presets')),
-          ),
-        ],
-      ),
-      const SizedBox(height: 4),
-      DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xFF040C1A),
-          borderRadius: BorderRadius.circular(14),
         ),
-        child: _palette(widget.textColor, widget.onTextColor),
-      ),
-      _slider(
-        'Text opacity',
-        widget.textOpacity,
-        0.1,
-        1,
-        widget.onOpacityStart,
-        widget.onTextOpacity,
-        percentage: true,
-      ),
-    ],
-  );
+        OutlinedButton(
+          onPressed: widget.onOpenGradient,
+          style: buttonStyle,
+          child: Text(AppLanguage.tr('Gradient')),
+        ),
+        OutlinedButton(
+          onPressed: widget.onOpenPresets,
+          style: buttonStyle,
+          child: Text(AppLanguage.tr('Presets')),
+        ),
+        _closeButton(),
+      ],
+    );
+    final title = Text(
+      AppLanguage.tr('Text Color'),
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+    );
+    final opacity = widget.textOpacity;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+            if (constraints.maxWidth >= 335 * scale && !AppLanguage.isUrdu) {
+              return Row(
+                children: [
+                  Expanded(child: title),
+                  actions,
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [title, actions],
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF040C1A),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: _palette(widget.textColor, widget.onTextColor),
+        ),
+        Row(
+          children: [
+            Text(
+              AppLanguage.tr('Opacity'),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            Expanded(
+              child: Slider(
+                value: opacity.clamp(0.1, 1),
+                min: 0.1,
+                activeColor: _gold,
+                label: '${(opacity * 100).round()}%',
+                onChangeStart: (_) => widget.onOpacityStart(),
+                onChanged: widget.onTextOpacity,
+              ),
+            ),
+            Text(
+              '${(opacity * 100).round()}%',
+              style: const TextStyle(color: _gold, fontSize: 12),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   // Each effect is its own destination. There is no nested Effects tab.
   Widget _glow() => _section(
@@ -531,14 +577,24 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       );
     }).toList();
     final rowSize = (swatches.length + 1) ~/ 2;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: swatches.take(rowSize).toList()),
-          Row(children: swatches.skip(rowSize).toList()),
-        ],
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: constraints.maxWidth.clamp(rowSize * 44.0, double.infinity),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: swatches.take(rowSize).toList(),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: swatches.skip(rowSize).toList(),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
