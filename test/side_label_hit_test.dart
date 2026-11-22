@@ -53,6 +53,8 @@ void main() {
     expect(editor.tagraStickerOverlays, hasLength(1));
 
     await tester.tap(a);
+    // Single-tap dispatch waits for the competing double-tap recognizer.
+    await tester.pump(const Duration(milliseconds: 450));
     await tester.pumpAndSettle();
     expect(find.text('Edit A Side Name'), findsOneWidget);
     expect(find.text('Edit B Side Name'), findsNothing);
@@ -61,6 +63,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(b);
+    // Single-tap dispatch waits for the competing double-tap recognizer.
+    await tester.pump(const Duration(milliseconds: 450));
     await tester.pumpAndSettle();
     expect(find.text('Edit B Side Name'), findsOneWidget);
     expect(find.text('Edit A Side Name'), findsNothing);
@@ -83,6 +87,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('b-side-label-hit-target')));
+    // Single-tap dispatch waits for the competing double-tap recognizer.
+    await tester.pump(const Duration(milliseconds: 450));
     await tester.pumpAndSettle();
     expect(find.text('Edit B Side Name'), findsOneWidget);
     expect(tester.takeException(), isNull);
