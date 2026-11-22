@@ -52,7 +52,7 @@ jobs:
           test -c /dev/kvm
           sudo chmod a+rw /dev/kvm
 
-      - name: Verify VS Styles and capture Android screenshots
+      - name: Verify VS Styles and the Text toolbar on Android
         run: |
           adb start-server
           emulator -list-avds | grep -Fx voting_pro_ci
@@ -68,6 +68,7 @@ jobs:
           adb -s emulator-5554 shell input keyevent KEYCODE_WAKEUP
           adb -s emulator-5554 shell wm dismiss-keyguard
           flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/vs_styles_android_test.dart
+          flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/text_toolbar_android_test.dart
 
       - name: Report emulator diagnostics
         if: failure()
@@ -81,4 +82,11 @@ jobs:
         with:
           name: voting-pro-android-screenshots
           path: build/android-screenshots/*.png
+          if-no-files-found: error
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: voting-pro-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error

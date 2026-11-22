@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../app_language.dart';
+
 /// The same tools as the legacy toolbar, organized in a compact premium panel.
 /// All values are supplied by the existing editor, never duplicated locally.
 class TextPanelAction {
@@ -26,6 +28,9 @@ class PremiumTextEditorPanel extends StatefulWidget {
   const PremiumTextEditorPanel({
     super.key,
     required this.selectedText,
+    required this.onClose,
+    required this.onOpenGradient,
+    required this.onOpenPresets,
     required this.section,
     required this.onAddText,
     required this.onEditText,
@@ -69,6 +74,7 @@ class PremiumTextEditorPanel extends StatefulWidget {
   });
 
   final String? selectedText;
+  final VoidCallback onClose, onOpenGradient, onOpenPresets;
   final TextToolSection section;
   final VoidCallback onAddText, onEditText, onDeleteText;
   final List<TextPanelAction> styleActions, layoutActions, moreActions;
@@ -148,9 +154,6 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       TextToolSection.more => _more(),
     };
 
-    // Settings live in the scrollable gap BELOW the poster, not in a
-    // modal bottom sheet. The one-row tool strip is rendered separately
-    // in the original bottom toolbar position.
     return Padding(
       padding: const EdgeInsets.only(top: 14, bottom: 10),
       child: Container(
@@ -165,7 +168,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0F2D42), Color(0xFF1E1B38), _dark],
+            colors: [Color(0xFF102B43), _dark],
           ),
           border: Border.all(color: const Color(0xFF34DDE7), width: 1.3),
           borderRadius: BorderRadius.circular(22),
@@ -178,6 +181,30 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (switch (widget.section) {
+                TextToolSection.style ||
+                TextToolSection.layout ||
+                TextToolSection.more => true,
+                _ => false,
+              })
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        AppLanguage.tr(switch (widget.section) {
+                          TextToolSection.style => 'Text Style',
+                          TextToolSection.layout => 'Text Layout',
+                          _ => 'More Text Tools',
+                        }),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    _closeButton(),
+                  ],
+                ),
               if (widget.selectedText == null)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 8),
@@ -261,31 +288,107 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
     ],
   );
 
-  Widget _color() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Text color',
-        style: TextStyle(color: _gold, fontWeight: FontWeight.bold),
-      ),
-      const SizedBox(height: 9),
-      _palette(widget.textColor, widget.onTextColor),
-      const SizedBox(height: 12),
-      _actionGrid([
-        TextPanelAction('More colors', Icons.palette, widget.onMoreColors),
-      ]),
-      const SizedBox(height: 10),
-      _slider(
-        'Text opacity',
-        widget.textOpacity,
-        0.1,
-        1,
-        widget.onOpacityStart,
-        widget.onTextOpacity,
-        percentage: true,
-      ),
-    ],
+  Widget _closeButton() => IconButton(
+    tooltip: AppLanguage.tr('Close'),
+    onPressed: widget.onClose,
+    color: _mint,
+    icon: const Icon(Icons.keyboard_arrow_down),
   );
+
+  Widget _color() {
+    final buttonStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      minimumSize: const Size(48, 36),
+    );
+    final actions = Wrap(
+      spacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Tooltip(
+          message: AppLanguage.tr('More colors'),
+          child: TextButton(
+            onPressed: widget.onMoreColors,
+            style: TextButton.styleFrom(
+              foregroundColor: _dark,
+              backgroundColor: _gold,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(48, 36),
+            ),
+            child: Text(AppLanguage.tr('Solid')),
+          ),
+        ),
+        OutlinedButton(
+          onPressed: widget.onOpenGradient,
+          style: buttonStyle,
+          child: Text(AppLanguage.tr('Gradient')),
+        ),
+        OutlinedButton(
+          onPressed: widget.onOpenPresets,
+          style: buttonStyle,
+          child: Text(AppLanguage.tr('Presets')),
+        ),
+        _closeButton(),
+      ],
+    );
+    final title = Text(
+      AppLanguage.tr('Text Color'),
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+    );
+    final opacity = widget.textOpacity;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+            if (constraints.maxWidth >= 335 * scale && !AppLanguage.isUrdu) {
+              return Row(
+                children: [
+                  Expanded(child: title),
+                  actions,
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [title, actions],
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF040C1A),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: _palette(widget.textColor, widget.onTextColor),
+        ),
+        Row(
+          children: [
+            Text(
+              AppLanguage.tr('Opacity'),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            Expanded(
+              child: Slider(
+                value: opacity.clamp(0.1, 1),
+                min: 0.1,
+                activeColor: _gold,
+                label: '${(opacity * 100).round()}%',
+                onChangeStart: (_) => widget.onOpacityStart(),
+                onChanged: widget.onTextOpacity,
+              ),
+            ),
+            Text(
+              '${(opacity * 100).round()}%',
+              style: const TextStyle(color: _gold, fontSize: 12),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   // Each effect is its own destination. There is no nested Effects tab.
   Widget _glow() => _section(
@@ -430,6 +533,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                 activeTrackColor: _gold,
               ),
             ),
+            _closeButton(),
           ],
         ),
         if (child != null) child,
@@ -456,11 +560,14 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                   height: 30,
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(7),
+                    shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? _gold : Colors.white24,
-                      width: isSelected ? 3 : 1,
+                      color: isSelected ? Colors.white : Colors.white38,
+                      width: isSelected ? 2 : 1,
                     ),
+                    boxShadow: isSelected
+                        ? const [BoxShadow(color: _gold, blurRadius: 8)]
+                        : null,
                   ),
                 ),
               ),
@@ -470,14 +577,24 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       );
     }).toList();
     final rowSize = (swatches.length + 1) ~/ 2;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: swatches.take(rowSize).toList()),
-          Row(children: swatches.skip(rowSize).toList()),
-        ],
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: constraints.maxWidth.clamp(rowSize * 44.0, double.infinity),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: swatches.take(rowSize).toList(),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: swatches.skip(rowSize).toList(),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -515,7 +632,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
         value: value.clamp(min, max),
         min: min,
         max: max,
-        activeColor: _mint,
+        activeColor: _gold,
         onChangeStart: (_) => onStart(),
         onChanged: onChanged,
       ),
