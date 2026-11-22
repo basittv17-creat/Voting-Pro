@@ -29,7 +29,7 @@ void main() {
     expect(workflow, contains('android:label="Voting Pro"'));
     expect(workflow, contains('mipmap-xxxhdpi/ic_launcher.png'));
     expect(workflow, contains('adb -s emulator-5554 install -r'));
-    expect(workflow, contains('pidof -s "$PACKAGE"'));
+    expect(workflow, contains(r'pidof -s "$PACKAGE"'));
     expect(workflow, contains('text-09-normal-app-launch.png'));
   });
 }
