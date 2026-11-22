@@ -36,6 +36,10 @@ class AppLanguage {
     "Could not restart. Your current poster is still open.":
         "نیا پروجیکٹ شروع نہیں ہو سکا۔ آپ کا موجودہ پوسٹر کھلا ہے۔",
     "Restart Project": "نیا پروجیکٹ",
+    "Replace Photo": "تصویر بدلیں",
+    "Zoom In": "زوم بڑھائیں",
+    "Zoom Out": "زوم گھٹائیں",
+    "Remove Background": "پس منظر ہٹائیں",
     "Back": "واپس",
     "Add Text": "متن شامل کریں",
     "Text Editor": "متن کی تدوین",

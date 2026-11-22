@@ -19,11 +19,13 @@ class BackgroundRemoverPage extends StatefulWidget {
     required this.initialPhotoB,
     required this.onApply,
     this.initialSideA = true,
+    this.onClose,
   });
 
   final File? initialPhotoA;
   final File? initialPhotoB;
   final bool initialSideA;
+  final VoidCallback? onClose;
   final Future<void> Function(bool sideA, File result) onApply;
 
   @override
@@ -378,8 +380,9 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         '${folder.path}/voting_pro_cutout_${DateTime.now().millisecondsSinceEpoch}.png',
       );
       await file.writeAsBytes(png, flush: true);
+      if (!mounted) return;
       await widget.onApply(_sideA, file);
-      if (mounted) {
+      if (mounted && widget.onClose == null) {
         setState(() => _allowExit = true);
         Navigator.of(context).pop();
       }
@@ -409,9 +412,240 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         label: Text(label, maxLines: 2, textAlign: TextAlign.center),
       );
 
+  Widget _preview(bool imageAvailable) => imageAvailable
+      ? LayoutBuilder(
+          builder: (ctx, constraints) {
+            final scale = math.min(
+              constraints.maxWidth / _imageWidth,
+              constraints.maxHeight / _imageHeight,
+            );
+            final w = _imageWidth * scale;
+            final h = _imageHeight * scale;
+            final left = (constraints.maxWidth - w) / 2;
+            final top = (constraints.maxHeight - h) / 2;
+            _previewRect = Rect.fromLTWH(left, top, w, h);
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanStart: _manual ? (d) => _beginStroke(d.localPosition) : null,
+              onPanUpdate: _manual ? (d) => _paintAt(d.localPosition) : null,
+              onPanEnd: _manual ? (_) => _endStroke() : null,
+              onPanCancel: _manual ? () => _endStroke() : null,
+              onTapUp: _manual ? (d) => _tapBrush(d.localPosition) : null,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: left,
+                    top: top,
+                    width: w,
+                    height: h,
+                    child: CustomPaint(
+                      painter: _CheckerboardPainter(),
+                      child: Image.memory(
+                        _compare ? _sourcePng! : _previewPng!,
+                        gaplessPlayback: true,
+                        fit: BoxFit.fill,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                  BackgroundBrushCursor(
+                    cursor: _brushCursor,
+                    enabled: _manual,
+                    size: _brushSize,
+                  ),
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: _action(
+                      _compare ? 'After' : 'Compare',
+                      Icons.compare,
+                      () => setState(() => _compare = !_compare),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        )
+      : const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.image_outlined, color: mint, size: 62),
+              SizedBox(height: 10),
+              Text(
+                'Upload Your Picture',
+                style: TextStyle(color: Colors.white70),
+              ),
+              Text(
+                'Preview appears here',
+                style: TextStyle(color: Colors.white38),
+              ),
+            ],
+          ),
+        );
+
+  Widget _inline(bool imageAvailable) {
+    void brush(bool erase) => setState(() {
+      _manual = true;
+      _erase = erase;
+    });
+    Widget tile(
+      String label,
+      IconData icon,
+      VoidCallback? action, {
+      bool selected = false,
+    }) => Expanded(
+      child: OutlinedButton(
+        onPressed: _busy ? null : action,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+          backgroundColor: selected
+              ? const Color(0xFF3B2358)
+              : const Color(0xFF19283C),
+          foregroundColor: Colors.white,
+          side: BorderSide(
+            color: selected ? const Color(0xFFB68AFF) : const Color(0xFF35445B),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111C2E),
+        border: Border.all(color: const Color(0xFFB68AFF)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.content_cut, color: Color(0xFFB68AFF)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Remove Background — ${_sideA ? "A" : "B"} Side',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: _busy ? null : widget.onClose,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            if (_busy) const LinearProgressIndicator(color: mint),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SizedBox(height: 155, child: _preview(imageAvailable)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          tile(
+                            'Auto Remove',
+                            Icons.auto_awesome,
+                            imageAvailable ? _autoRemove : null,
+                            selected: !_manual,
+                          ),
+                          const SizedBox(width: 4),
+                          tile(
+                            'Erase',
+                            Icons.auto_fix_off,
+                            imageAvailable ? () => brush(true) : null,
+                            selected: _manual && _erase,
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          tile(
+                            'Restore',
+                            Icons.brush_outlined,
+                            imageAvailable ? () => brush(false) : null,
+                            selected: _manual && !_erase,
+                          ),
+                          const SizedBox(width: 4),
+                          tile(
+                            'Reset',
+                            Icons.refresh,
+                            imageAvailable ? _reset : null,
+                          ),
+                        ],
+                      ),
+                      _action(
+                        'Apply',
+                        Icons.check,
+                        imageAvailable && _hasUnsavedEdits
+                            ? _applyCutout
+                            : null,
+                        primary: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (_manual)
+              Slider(
+                label: 'Brush size',
+                value: _brushSize,
+                min: 5,
+                max: 90,
+                onChanged: _busy
+                    ? null
+                    : (value) => setState(() => _brushSize = value),
+              ),
+            if (_manual || _undo.isNotEmpty || _redo.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                children: [
+                  _action(
+                    'Undo',
+                    Icons.undo,
+                    _undo.isEmpty ? null : _undoChange,
+                  ),
+                  _action(
+                    'Redo',
+                    Icons.redo,
+                    _redo.isEmpty ? null : _redoChange,
+                  ),
+                ],
+              ),
+            Text(_status, style: const TextStyle(color: mint, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageAvailable = _previewPng != null && _sourcePng != null;
+    if (widget.onClose != null) return _inline(imageAvailable);
     return PopScope(
       canPop: _allowExit || (!_busy && !_hasUnsavedEdits),
       onPopInvokedWithResult: (didPop, result) async {
@@ -502,82 +736,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: mint.withOpacity(0.55)),
                             ),
-                            child: imageAvailable
-                                ? LayoutBuilder(builder: (ctx, constraints) {
-                                    final scale = math.min(
-                                      constraints.maxWidth / _imageWidth,
-                                      constraints.maxHeight / _imageHeight,
-                                    );
-                                    final w = _imageWidth * scale;
-                                    final h = _imageHeight * scale;
-                                    final left = (constraints.maxWidth - w) / 2;
-                                    final top = (constraints.maxHeight - h) / 2;
-                                    _previewRect = Rect.fromLTWH(left, top, w, h);
-                                    return GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onPanStart: _manual
-                                          ? (d) => _beginStroke(d.localPosition)
-                                          : null,
-                                      onPanUpdate: _manual
-                                          ? (d) => _paintAt(d.localPosition)
-                                          : null,
-                                      onPanEnd: _manual
-                                          ? (_) => _endStroke()
-                                          : null,
-                                      onPanCancel: _manual
-                                          ? () => _endStroke()
-                                          : null,
-                                      onTapUp: _manual
-                                          ? (d) => _tapBrush(d.localPosition)
-                                          : null,
-                                      child: Stack(children: [
-                                        Positioned(
-                                          left: left, top: top,
-                                          width: w, height: h,
-                                          child: CustomPaint(
-                                            painter: _CheckerboardPainter(),
-                                            child: Image.memory(
-                                              _compare ? _sourcePng! : _previewPng!,
-                                              gaplessPlayback: true,
-                                              fit: BoxFit.fill,
-                                              filterQuality: FilterQuality.high,
-                                            ),
-                                          ),
-                                        ),
-                                        BackgroundBrushCursor(
-                                          cursor: _brushCursor,
-                                          enabled: _manual,
-                                          size: _brushSize,
-                                        ),
-                                        Positioned(
-                                          right: 6, top: 6,
-                                          child: _action(
-                                            _compare ? 'After' : 'Compare',
-                                            Icons.compare,
-                                            () => setState(
-                                              () => _compare = !_compare,
-                                            ),
-                                          ),
-                                        ),
-                                      ]),
-                                    );
-                                  })
-                                : const Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.image_outlined,
-                                          color: mint, size: 62),
-                                        SizedBox(height: 10),
-                                        Text('Upload Your Picture',
-                                          style: TextStyle(
-                                            color: Colors.white70)),
-                                        Text('Preview appears here',
-                                          style: TextStyle(
-                                            color: Colors.white38)),
-                                      ],
-                                    ),
-                                  ),
+                            child: _preview(imageAvailable),
                           ),
                           const SizedBox(height: 14),
                           Row(children: [

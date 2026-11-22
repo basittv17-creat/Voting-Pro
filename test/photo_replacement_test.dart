@@ -8,6 +8,7 @@ import 'package:image_picker_platform_interface/image_picker_platform_interface.
 // ignore: depend_on_referenced_packages
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:voting_pro/app_language.dart';
 import 'package:voting_pro/main.dart';
 
 class _Gallery extends ImagePickerPlatform {
@@ -59,6 +60,7 @@ void main() {
     final originalA = makePhoto('first-a', 20, 12);
     final originalB = makePhoto('first-b', 12, 20);
     final replacement = makePhoto('replacement-a', 24, 16);
+    final replacementB = makePhoto('replacement-b', 16, 24);
 
     tester.view.physicalSize = const Size(600, 900);
     tester.view.devicePixelRatio = 1;
@@ -67,6 +69,9 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: Editor()));
     await tester.pumpAndSettle();
     final editor = tester.state(find.byType(Editor)) as dynamic;
+    final normal = find.byKey(const PageStorageKey('main-toolbar'));
+    final tools = find.byKey(const ValueKey('photo-toolbar'));
+    final bounds = tester.getRect(normal);
 
     Future<void> pick(XFile file, {required bool sideA}) async {
       gallery.nextImage = file;
@@ -78,9 +83,9 @@ void main() {
           (widget) =>
               widget is Image &&
               widget.key is ValueKey<String> &&
-              (widget.key! as ValueKey<String>)
-                  .value
-                  .startsWith('editor-photo-$side-'),
+              (widget.key! as ValueKey<String>).value.startsWith(
+                    'editor-photo-$side-',
+                  ),
         );
     String path(Finder finder) =>
         (tester.widget<Image>(finder).image as FileImage).file.path;
@@ -105,6 +110,65 @@ void main() {
     expect(path(photoA), isNot(originalPathA));
     expect(path(photoB), originalPathB);
     expect(tester.getTopLeft(photoB), draggedPositionB);
+    expect(normal, findsNothing);
+    expect(tester.getRect(tools), bounds);
+    expect(find.byKey(const ValueKey('photo-selection-A')), findsOneWidget);
+    expect(find.byKey(const ValueKey('photo-selection-B')), findsNothing);
+    final keptA = path(photoA);
+    gallery.nextImage = null;
+    await tester.runAsync(() => editor.pick(false) as Future<void>);
+    await tester.pumpAndSettle();
+    expect(path(photoB), originalPathB);
+    await pick(replacementB, sideA: false);
+    expect(path(photoA), keptA);
+    expect(path(photoB), isNot(originalPathB));
+    expect(find.byKey(const ValueKey('photo-selection-B')), findsOneWidget);
+    final back = find.descendant(of: tools, matching: find.text('Back'));
+    await tester.tap(back);
+    await tester.pumpAndSettle();
+    expect(tools, findsNothing);
+    expect(tester.getRect(normal), bounds);
+    addTearDown(() => AppLanguage.current = 'en');
+    for (final language in ['en', 'ur']) {
+      AppLanguage.current = language;
+      for (final width in [320.0, 360.0, 393.0, 412.0]) {
+        tester.view.physicalSize = Size(width, 800);
+        await tester.pumpAndSettle();
+        final mainBounds = tester.getRect(normal);
+        await tester.tap(photoB);
+        await tester.pumpAndSettle();
+        expect(tester.getRect(tools), mainBounds);
+        final fixedBack = find.descendant(
+          of: tools,
+          matching: find.text(AppLanguage.tr('Back')),
+        );
+        final backPosition = tester.getRect(fixedBack);
+        final row = find.byKey(const ValueKey('photo-tool-scroll'));
+        expect(backPosition.right, lessThan(tester.getRect(row).left));
+        for (final title in [
+          'Replace Photo',
+          'Zoom In',
+          'Zoom Out',
+          'Remove Background',
+          'Backgrounds',
+        ]) {
+          final action = find.descendant(
+            of: row,
+            matching: find.text(AppLanguage.tr(title)),
+          );
+          expect(action, findsOneWidget);
+          await tester.ensureVisible(action);
+          await tester.pumpAndSettle();
+          expect(
+            tester.getRect(row).contains(tester.getCenter(action)),
+            isTrue,
+          );
+          expect(tester.getRect(fixedBack), backPosition);
+        }
+        await tester.tap(fixedBack);
+        await tester.pumpAndSettle();
+      }
+    }
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

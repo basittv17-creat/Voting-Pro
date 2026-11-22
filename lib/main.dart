@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show compute;
+import 'package:image/image.dart' as img;
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +25,13 @@ import 'widgets/editor_options_panel.dart';
 import 'widgets/vs_styles_panel.dart';
 import 'services/poster_share_cache.dart';
 import 'app_language.dart';
+
+bool _hasPhotoTransparency(Uint8List bytes) {
+  final image = img.decodeImage(bytes);
+  return image != null && image.any((pixel) => pixel.a < pixel.maxChannelValue);
+}
+
+enum _PhotoPanel { remover, backgrounds }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -666,6 +675,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'vsOffset': _offsetJson(vsOffset),
         'vsScale': vsScale,
         'vsStyle': vsStyle,
+        'photoBackgrounds': {
+          'a': _photoBackgrounds[true],
+          'b': _photoBackgrounds[false],
+        },
         'photoScales': {'a': _photoScales[true] ?? 1.0, 'b': _photoScales[false] ?? 1.0},
         'photoOffsets': {'a': _offsetJson(_photoOffsets[true] ?? Offset.zero), 'b': _offsetJson(_photoOffsets[false] ?? Offset.zero)},
         'templatePhotoScales': {
@@ -932,6 +945,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         vsOffset = _offsetFromJson(data['vsOffset']);
         vsScale = (data['vsScale'] as num?)?.toDouble() ?? 1.0;
         vsStyle = data['vsStyle'] as String? ?? 'Classic';
+        final photoBackgrounds = data['photoBackgrounds'];
+        if (photoBackgrounds is Map) {
+          for (final sideA in [true, false]) {
+            final preset = photoBackgrounds[sideA ? 'a' : 'b'];
+            if (_photoPalettes.containsKey(preset)) {
+              _photoBackgrounds[sideA] = preset as String;
+            }
+          }
+        }
         final photoScales = data['photoScales'];
         if (photoScales is Map) {
           _photoScales[true] = (photoScales['a'] as num?)?.toDouble() ?? 1.0;
@@ -1239,6 +1261,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
           // A replacement photo starts with its own default crop/zoom.
           // Keep the opposite side's photo and transform untouched.
+          _photoBackgrounds.remove(sideA);
+          _photoPanel = null;
+          showTextTools = false;
+          _editorOptions = null;
           _photoScales[sideA] = 1.0;
           _photoOffsets[sideA] = Offset.zero;
           _photoStartScales[sideA] = 1.0;
@@ -1269,7 +1295,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final previousADelete = showASideLabelDelete;
     final previousBDelete = showBSideLabelDelete;
     setState(() {
-      _clearCanvasSelection();
+      _clearCanvasSelection(keepPhotoPanel: true);
+      _selectedPhotoSideA = previousPhoto;
       isExportingPoster = true;
     });
     try {
@@ -1310,7 +1337,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   // Clear selection state only; keep poster objects and their content intact.
   // This prevents selection borders and edit/delete/resize handles from being
   // included in the saved image.
-  void _clearCanvasSelection() {
+  void _clearCanvasSelection({bool keepPhotoPanel = false}) {
+    if (!keepPhotoPanel) _photoPanel = null;
     selectedTextIndex = null;
     selectedStickerIndex = null;
     selectedTagraStickerIndex = null;
@@ -4478,15 +4506,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     VoidCallback? tap, {
     TextToolSection? section,
     bool isBack = false,
+    double width = 49,
+    bool? active,
   }) {
-    final selected = section != null && _activeTextSection == section;
+    final selected = active ?? (section != null && _activeTextSection == section);
     final emphasized = selected || isBack;
     final label = AppLanguage.tr(title);
     final iconColor = tap == null ? Colors.white38 : (emphasized ? gold : Colors.white);
     final labelColor =
         tap == null ? Colors.white38 : (emphasized ? gold : Colors.white);
     return Container(
-      width: isBack ? 48 : 49,
+      width: isBack ? 48 : width,
       height: 68,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
@@ -4507,7 +4537,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             : null,
       ),
       child: Semantics(
-        selected: section == null ? null : selected,
+        selected: section != null || active != null ? selected : null,
         button: true,
         enabled: tap != null,
         child: Tooltip(
@@ -4750,6 +4780,142 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     ],
   );
 
+  _PhotoPanel? _photoPanel;
+  final _photoBackgrounds = <bool, String>{};
+
+  static const _photoPalettes = <String, List<Color>>{
+    'Navy': [Color(0xFF102342), Color(0xFF102342)],
+    'Mint': [Color(0xFF167C72), Color(0xFF167C72)],
+    'Sunset': [Color(0xFF742492), Color(0xFFF6A333)],
+    'Ocean': [Color(0xFF062A69), Color(0xFF29B8C4)],
+  };
+
+  bool? get _photoToolsSide =>
+      selectedReadyMadeTemplate == null && !showTextTools
+      ? _selectedPhotoSideA
+      : null;
+
+  void _closePhotoTools() => setState(() {
+    _photoPanel = null;
+    _clearCanvasSelection();
+  });
+
+  void _zoomPhoto(bool sideA, double factor) {
+    final current = _photoScales[sideA] ?? 1;
+    setState(() {
+      _photoScales[sideA] = (current * factor).clamp(1.0, 5.0).toDouble();
+    });
+  }
+
+  Widget _buildPhotoToolbar(bool sideA) {
+    final scale = _photoScales[sideA] ?? 1;
+    void toggle(_PhotoPanel panel) => setState(() {
+      _photoPanel = _photoPanel == panel ? null : panel;
+    });
+    return Row(
+      key: const ValueKey('photo-toolbar'),
+      textDirection: TextDirection.ltr,
+      children: [
+        _textToolbarButton(
+          Icons.arrow_back,
+          'Back',
+          _closePhotoTools,
+          isBack: true,
+        ),
+        Expanded(
+          child: Directionality(
+            textDirection: AppLanguage.direction,
+            child: SingleChildScrollView(
+              key: const ValueKey('photo-tool-scroll'),
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _textToolbarButton(
+                    Icons.image_outlined,
+                    'Replace Photo',
+                    busy ? null : () => pick(sideA),
+                    width: 68,
+                  ),
+                  _textToolbarButton(
+                    Icons.zoom_in,
+                    'Zoom In',
+                    scale >= 5 ? null : () => _zoomPhoto(sideA, 1.1),
+                    width: 58,
+                  ),
+                  _textToolbarButton(
+                    Icons.zoom_out,
+                    'Zoom Out',
+                    scale <= 1 ? null : () => _zoomPhoto(sideA, 1 / 1.1),
+                    width: 58,
+                  ),
+                  _textToolbarButton(
+                    Icons.content_cut,
+                    'Remove Background',
+                    () => toggle(_PhotoPanel.remover),
+                    width: 80,
+                    active: _photoPanel == _PhotoPanel.remover,
+                  ),
+                  _textToolbarButton(
+                    Icons.layers_outlined,
+                    'Backgrounds',
+                    () => toggle(_PhotoPanel.backgrounds),
+                    width: 72,
+                    active: _photoPanel == _PhotoPanel.backgrounds,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhotoPanel(bool sideA) {
+    final source = sideA ? a : b;
+    if (source == null) return const SizedBox.shrink();
+    if (_photoPanel == _PhotoPanel.remover) {
+      return BackgroundRemoverPage(
+        key: ValueKey('inline-remover-${source.path}-$sideA'),
+        initialPhotoA: sideA ? source : null,
+        initialPhotoB: sideA ? null : source,
+        initialSideA: sideA,
+        onClose: () => setState(() => _photoPanel = null),
+        onApply: (target, cutout) async {
+          if (!mounted ||
+              target != sideA ||
+              _photoToolsSide != sideA ||
+              _photoPanel != _PhotoPanel.remover ||
+              (sideA ? a : b)?.path != source.path)
+            return;
+          setState(() {
+            if (sideA) {
+              a = cutout;
+            } else {
+              b = cutout;
+            }
+            _photoPanel = null;
+          });
+        },
+      );
+    }
+    return _PhotoBackgroundSettings(
+      key: ValueKey('photo-background-${source.path}-$sideA'),
+      file: source,
+      title: 'Backgrounds — ${sideA ? "A" : "B"} Side',
+      palettes: _photoPalettes,
+      selected: _photoBackgrounds[sideA],
+      onClose: () => setState(() => _photoPanel = null),
+      onSelected: (preset) => setState(() {
+        if (preset == null) {
+          _photoBackgrounds.remove(sideA);
+        } else {
+          _photoBackgrounds[sideA] = preset;
+        }
+      }),
+    );
+  }
+
   final Map<bool, double> _photoScales = {true: 1.0, false: 1.0};
   final Map<bool, Offset> _photoOffsets = {true: Offset.zero, false: Offset.zero};
   final Map<bool, double> _photoStartScales = {true: 1.0, false: 1.0};
@@ -4794,6 +4960,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     selectedTextIndex = textIndex;
     selectedStickerIndex = stickerIndex;
     isVsSelected = isVs;
+    if (_selectedPhotoSideA != photoSideA) _photoPanel = null;
+    if (photoSideA != null && selectedReadyMadeTemplate == null) {
+      showTextTools = false;
+      _activeTextSection = TextToolSection.none;
+      _editorOptions = null;
+    }
     _selectedPhotoSideA = photoSideA;
     _selectedTemplatePhotoSideA = templatePhotoSideA;
 
@@ -4930,6 +5102,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final file = sideA ? a : b;
     final label = sideA ? selectedASideLabel : selectedBSideLabel;
     final labelText = sideA ? aSideLabelText : bSideLabelText;
+    final selected = file != null &&
+        !isExportingPoster &&
+        _selectedPhotoSideA == sideA;
     final isUrduLabelText = RegExp(r'[\u0600-\u06FF]').hasMatch(labelText);
     return GestureDetector(
       onTap: () {
@@ -4937,9 +5112,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           pick(sideA);
           return;
         }
-        setState(() => _selectCanvasObject(photoSideA: sideA));
+        if (!_textOwnsCanvasGestures) {
+          setState(() => _selectCanvasObject(photoSideA: sideA));
+        }
       },
       child: Container(
+        key: ValueKey('photo-frame-${sideA ? "A" : "B"}'),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: const Color(0xFF18202B),
@@ -4947,6 +5125,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Stack(fit: StackFit.expand, children: [
+          if (_photoBackgrounds[sideA] case final preset?)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: _photoPalettes[preset]!),
+              ),
+            ),
           if (file != null)
             GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -5007,6 +5191,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 ),
               ],
             )),
+          if (selected)
+            Positioned(
+              top: 1, left: 1, right: 1, bottom: label == null ? 30 : 42,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  key: ValueKey('photo-selection-${sideA ? "A" : "B"}'),
+                  painter: const _PhotoSelectionGlow(),
+                ),
+              ),
+            ),
           if (label != null)
             Positioned(
               left: 0, right: 0, bottom: 0, height: 42,
@@ -5090,10 +5284,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: _editorOptions == null && !showTextTools,
+    canPop: _editorOptions == null && !showTextTools && _photoToolsSide == null,
     onPopInvokedWithResult: (didPop, _) {
       if (didPop) return;
-      if (_editorOptions != null) {
+      if (_photoToolsSide != null) {
+        if (_photoPanel != null) {
+          setState(() => _photoPanel = null);
+        } else {
+          _closePhotoTools();
+        }
+      } else if (_editorOptions != null) {
         _closeEditorOptions();
       } else if (_activeTextSection != TextToolSection.none) {
         _selectTextSection(_activeTextSection);
@@ -6085,7 +6285,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         duration: const Duration(milliseconds: 180),
         alignment: Alignment.bottomCenter,
         curve: Curves.easeOutCubic,
-        child: _editorOptions != null
+        child: _photoToolsSide != null && _photoPanel != null
+            ? SizedBox(height: panelHeight, child: _buildPhotoPanel(_photoToolsSide!))
+            : _editorOptions != null
             ? SizedBox(
                 height: panelHeight,
                 child: KeyedSubtree(
@@ -6122,6 +6324,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             )
           : showTextTools
           ? _buildTextToolbar()
+          : _photoToolsSide != null
+          ? _buildPhotoToolbar(_photoToolsSide!)
           : SingleChildScrollView(
               key: const PageStorageKey('main-toolbar'),
               scrollDirection: Axis.horizontal,
@@ -6151,4 +6355,105 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             ),
     ),
   ]))));
+}
+
+class _PhotoSelectionGlow extends CustomPainter {
+  const _PhotoSelectionGlow();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final border = RRect.fromRectAndRadius(
+      (Offset.zero & size).deflate(2),
+      const Radius.circular(7),
+    );
+    final glow = Paint()
+      ..color = const Color(0xFF45F9FF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawRRect(border, glow);
+    canvas.drawRRect(
+      border,
+      Paint()
+        ..color = const Color(0xFF8CFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PhotoSelectionGlow oldDelegate) => false;
+}
+
+class _PhotoBackgroundSettings extends StatefulWidget {
+  const _PhotoBackgroundSettings({
+    super.key,
+    required this.file,
+    required this.title,
+    required this.palettes,
+    required this.selected,
+    required this.onClose,
+    required this.onSelected,
+  });
+
+  final File file;
+  final String title;
+  final Map<String, List<Color>> palettes;
+  final String? selected;
+  final VoidCallback onClose;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  State<_PhotoBackgroundSettings> createState() =>
+      _PhotoBackgroundSettingsState();
+}
+
+class _PhotoBackgroundSettingsState extends State<_PhotoBackgroundSettings> {
+  late final Future<bool> _transparent = _checkTransparency();
+
+  Future<bool> _checkTransparency() async =>
+      compute(_hasPhotoTransparency, await widget.file.readAsBytes());
+
+  @override
+  Widget build(BuildContext context) => EditorOptionsPanel(
+    title: widget.title,
+    onClose: widget.onClose,
+    child: FutureBuilder<bool>(
+      future: _transparent,
+      builder: (context, snapshot) => SingleChildScrollView(
+        padding: const EdgeInsets.all(8),
+        child: snapshot.hasError
+            ? const Text('Could not read the selected photo.')
+            : !snapshot.hasData
+            ? const LinearProgressIndicator()
+            : snapshot.data == false
+            ? const Text(
+                'Use Remove Background first to reveal a photo background.',
+              )
+            : Wrap(
+                spacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('None'),
+                    selected: widget.selected == null,
+                    onSelected: (_) => widget.onSelected(null),
+                  ),
+                  for (final MapEntry(:key, :value) in widget.palettes.entries)
+                    ChoiceChip(
+                      avatar: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(colors: value),
+                        ),
+                        child: const SizedBox.square(dimension: 20),
+                      ),
+                      label: Text(key),
+                      selected: widget.selected == key,
+                      onSelected: (_) => widget.onSelected(key),
+                    ),
+                ],
+              ),
+      ),
+    ),
+  );
 }

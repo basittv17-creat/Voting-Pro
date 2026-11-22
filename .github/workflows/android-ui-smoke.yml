@@ -9,6 +9,8 @@ on:
       - 'test/text_toolbar_test.dart'
       - 'test/premium_text_editor_panel_test.dart'
       - 'integration_test/text_toolbar_android_test.dart'
+      - 'integration_test/photo_tools_android_test.dart'
+      - 'lib/widgets/bg_remover_page.dart'
       - 'test/android_apk_workflow_test.dart'
       - '.github/workflows/android-ui-smoke.yml'
   pull_request:
@@ -79,6 +81,7 @@ jobs:
           adb -s emulator-5554 shell wm dismiss-keyguard
           flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/vs_styles_android_test.dart
           flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/text_toolbar_android_test.dart
+          flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/photo_tools_android_test.dart
 
       - name: Report emulator diagnostics
         if: failure()
