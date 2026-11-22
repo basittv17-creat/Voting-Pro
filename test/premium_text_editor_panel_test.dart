@@ -14,6 +14,9 @@ void main() {
           child: PremiumTextEditorPanel(
             selectedText: text,
             section: section,
+            onClose: () {},
+            onOpenGradient: () {},
+            onOpenPresets: () {},
             onAddText: () {},
             onEditText: () {},
             onDeleteText: () {},

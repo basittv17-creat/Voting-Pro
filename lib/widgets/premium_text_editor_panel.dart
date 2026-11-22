@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../app_language.dart';
+
 /// The same tools as the legacy toolbar, organized in a compact premium panel.
 /// All values are supplied by the existing editor, never duplicated locally.
 class TextPanelAction {
@@ -26,6 +28,9 @@ class PremiumTextEditorPanel extends StatefulWidget {
   const PremiumTextEditorPanel({
     super.key,
     required this.selectedText,
+    required this.onClose,
+    required this.onOpenGradient,
+    required this.onOpenPresets,
     required this.section,
     required this.onAddText,
     required this.onEditText,
@@ -69,6 +74,7 @@ class PremiumTextEditorPanel extends StatefulWidget {
   });
 
   final String? selectedText;
+  final VoidCallback onClose, onOpenGradient, onOpenPresets;
   final TextToolSection section;
   final VoidCallback onAddText, onEditText, onDeleteText;
   final List<TextPanelAction> styleActions, layoutActions, moreActions;
@@ -148,9 +154,6 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       TextToolSection.more => _more(),
     };
 
-    // Settings live in the scrollable gap BELOW the poster, not in a
-    // modal bottom sheet. The one-row tool strip is rendered separately
-    // in the original bottom toolbar position.
     return Padding(
       padding: const EdgeInsets.only(top: 14, bottom: 10),
       child: Container(
@@ -165,7 +168,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0F2D42), Color(0xFF1E1B38), _dark],
+            colors: [Color(0xFF102B43), _dark],
           ),
           border: Border.all(color: const Color(0xFF34DDE7), width: 1.3),
           borderRadius: BorderRadius.circular(22),
@@ -178,6 +181,31 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      AppLanguage.tr(switch (widget.section) {
+                        TextToolSection.color => 'Text Color',
+                        TextToolSection.style => 'Text Style',
+                        TextToolSection.layout => 'Text Layout',
+                        TextToolSection.more => 'More Text Tools',
+                        _ => 'Text Settings',
+                      }),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: AppLanguage.tr('Close'),
+                    onPressed: widget.onClose,
+                    color: _mint,
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                  ),
+                ],
+              ),
               if (widget.selectedText == null)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 8),
@@ -264,17 +292,35 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
   Widget _color() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
-        'Text color',
-        style: TextStyle(color: _gold, fontWeight: FontWeight.bold),
+      Wrap(
+        spacing: 6,
+        children: [
+          TextButton(
+            onPressed: widget.onMoreColors,
+            style: TextButton.styleFrom(
+              foregroundColor: _dark,
+              backgroundColor: _gold,
+            ),
+            child: Text(AppLanguage.tr('Solid')),
+          ),
+          OutlinedButton(
+            onPressed: widget.onOpenGradient,
+            child: Text(AppLanguage.tr('Gradient')),
+          ),
+          OutlinedButton(
+            onPressed: widget.onOpenPresets,
+            child: Text(AppLanguage.tr('Presets')),
+          ),
+        ],
       ),
-      const SizedBox(height: 9),
-      _palette(widget.textColor, widget.onTextColor),
-      const SizedBox(height: 12),
-      _actionGrid([
-        TextPanelAction('More colors', Icons.palette, widget.onMoreColors),
-      ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: 4),
+      DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFF040C1A),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: _palette(widget.textColor, widget.onTextColor),
+      ),
       _slider(
         'Text opacity',
         widget.textOpacity,
@@ -456,11 +502,14 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                   height: 30,
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(7),
+                    shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? _gold : Colors.white24,
-                      width: isSelected ? 3 : 1,
+                      color: isSelected ? Colors.white : Colors.white38,
+                      width: isSelected ? 2 : 1,
                     ),
+                    boxShadow: isSelected
+                        ? const [BoxShadow(color: _gold, blurRadius: 8)]
+                        : null,
                   ),
                 ),
               ),
@@ -515,7 +564,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
         value: value.clamp(min, max),
         min: min,
         max: max,
-        activeColor: _mint,
+        activeColor: _gold,
         onChangeStart: (_) => onStart(),
         onChanged: onChanged,
       ),

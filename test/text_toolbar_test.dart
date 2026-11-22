@@ -36,14 +36,14 @@ void main() {
     expect(tester.getRect(text), toolbarBounds);
     expect(find.byType(PremiumTextEditorPanel), findsNothing);
 
-    // Back is pinned to the RIGHT, outside the horizontally scrolling tools.
+    // Back is pinned to the LEFT, outside the horizontally scrolling tools.
     final textScroll = find.byKey(const ValueKey('text-tool-scroll'));
     final back = find.descendant(of: text, matching: find.text('Back'));
     expect(textScroll, findsOneWidget);
     expect(back, findsOneWidget);
     expect(
-      tester.getRect(back).left,
-      greaterThanOrEqualTo(tester.getRect(textScroll).right),
+      tester.getRect(back).right,
+      lessThanOrEqualTo(tester.getRect(textScroll).left),
     );
     final fixedBackPosition = tester.getRect(back);
     final delete = find.descendant(
@@ -91,7 +91,7 @@ void main() {
     expect(tester.getRect(main), toolbarBounds);
     expect(tester.takeException(), isNull);
   });
-  for (final width in [320.0, 360.0, 393.0, 412.0]) {
+  for (final width in [320.0, 360.0, 393.0, 412.0, 768.0]) {
     testWidgets('All text actions remain reachable at $width dp in Urdu', (
       tester,
     ) async {
@@ -118,9 +118,11 @@ void main() {
 
         expect(main, findsNothing);
         final backPosition = tester.getRect(back);
-        expect(backPosition.center.dx, greaterThan(width / 2));
-        final cards =
-            find.descendant(of: tools, matching: find.byType(InkWell));
+        expect(backPosition.center.dx, lessThan(width / 2));
+        final cards = find.descendant(
+          of: tools,
+          matching: find.byType(InkWell),
+        );
         expect(cards, findsNWidgets(38));
         for (final index in [0, 18, 37, 0]) {
           await tester.ensureVisible(cards.at(index));
@@ -135,10 +137,9 @@ void main() {
             await tester.ensureVisible(cards.at(index));
             await tester.pump();
             expect(
-                tester
-                    .getRect(tools)
-                    .contains(tester.getCenter(cards.at(index))),
-                isTrue);
+              tester.getRect(tools).contains(tester.getCenter(cards.at(index))),
+              isTrue,
+            );
           }
         }
         await tester.tap(back);
@@ -150,8 +151,9 @@ void main() {
     });
   }
 
-  testWidgets('Delete with no text selection explains what to do',
-      (tester) async {
+  testWidgets('Delete with no text selection explains what to do', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'voting_pro_project_v1': jsonEncode({
         'overlays': ['★'],
@@ -170,8 +172,9 @@ void main() {
     expect(find.text('★'), findsOneWidget);
   });
 
-  testWidgets('Opening text settings reveals controls on a short viewport',
-      (tester) async {
+  testWidgets('Opening text settings reveals controls on a short viewport', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(320, 450);
     tester.view.devicePixelRatio = 1;
@@ -188,8 +191,9 @@ void main() {
       ('Glow', 'Glow intensity'),
       ('Text Background', 'Background opacity'),
     ]) {
-      await tester.ensureVisible(find.text(section));
-      await tester.tap(find.text(section));
+      final action = find.descendant(of: toolbar, matching: find.text(section));
+      await tester.ensureVisible(action);
+      await tester.tap(action);
       await tester.pumpAndSettle();
       expect(tester.getRect(find.text(control)).bottom, lessThan(bounds.top));
       expect(tester.getRect(toolbar), bounds);
@@ -316,8 +320,10 @@ void main() {
     await tester.pump();
     await drag.up();
     await tester.pumpAndSettle();
-    expect(tester.getRect(find.text('Delete me')).width,
-        greaterThan(originalWidth));
+    expect(
+      tester.getRect(find.text('Delete me')).width,
+      greaterThan(originalWidth),
+    );
 
     final handle = find.descendant(
       of: find.byType(Screenshot),

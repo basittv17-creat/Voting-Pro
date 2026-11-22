@@ -3027,11 +3027,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Future<void> addText() async {
-    final controller = TextEditingController();
+    var input = '';
     final value = await showDialog<String>(context: context, builder: (c) => AlertDialog(
       title: Text(AppLanguage.tr('متن شامل کریں')),
       content: TextField(
-        controller: controller,
+        onChanged: (text) => input = text,
         autofocus: true,
         keyboardType: TextInputType.multiline,
         textCapitalization: TextCapitalization.sentences,
@@ -3043,9 +3043,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           border: const OutlineInputBorder(),
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(c), child: Text(AppLanguage.tr('Cancel'))), FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: Text(AppLanguage.tr('Add')))],
+      actions: [TextButton(onPressed: () => Navigator.pop(c), child: Text(AppLanguage.tr('Cancel'))), FilledButton(onPressed: () => Navigator.pop(c, input.trim()), child: Text(AppLanguage.tr('Add')))],
     ));
-    controller.dispose();
     if (value != null && value.isNotEmpty && mounted) {
       _rememberTextEdit();
       setState(() {
@@ -3074,22 +3073,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
 
-    final controller = TextEditingController(
-      text: overlays[index],
-    );
+    final initialText = overlays[index];
+    var input = initialText;
 
     final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppLanguage.tr('Edit Text')),
-        content: TextField(
-          controller: controller,
+        content: TextFormField(
+          initialValue: initialText,
+          onChanged: (text) => input = text,
           autofocus: true,
           keyboardType: TextInputType.multiline,
           textCapitalization: TextCapitalization.sentences,
           minLines: 2,
           maxLines: 6,
-          textDirection: _hasArabicScript(controller.text)
+          textDirection: _hasArabicScript(initialText)
               ? TextDirection.rtl : AppLanguage.direction,
           decoration: InputDecoration(
             hintText: AppLanguage.tr('اپنا ٹیکسٹ یہاں تبدیل کریں'),
@@ -3104,7 +3103,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           FilledButton.icon(
             onPressed: () => Navigator.pop(
               dialogContext,
-              controller.text.trim(),
+              input.trim(),
             ),
             icon: const Icon(Icons.check),
             label: Text(AppLanguage.tr('Save')),
@@ -3113,7 +3112,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ),
     );
 
-    controller.dispose();
 
     if (value != null && value.isNotEmpty && mounted) {
       _rememberTextEdit();
@@ -4202,6 +4200,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     return PremiumTextEditorPanel(
       section: _activeTextSection,
+      onClose: () => _selectTextSection(_activeTextSection),
+      onOpenGradient: () => _selectTextSection(TextToolSection.gradient),
+      onOpenPresets: chooseTextPreset,
       selectedText: active == null ? null : overlays[active],
       onAddText: addText,
       onEditText: editSelectedText,
@@ -4489,30 +4490,38 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   // Text mode REPLACES the main toolbar at exactly the same bottom slot.
-  // Cards retain the 94 x 68 dimensions used by the existing toolbar.
+  // Keep the original toolbar height while fitting more Text actions on screen.
   Widget _textToolbarButton(
     IconData icon,
     String title,
     VoidCallback? tap, {
     TextToolSection? section,
+    bool isBack = false,
   }) {
     final selected = section != null && _activeTextSection == section;
+    final emphasized = selected || isBack;
     final label = AppLanguage.tr(title);
-    final iconColor = tap == null ? Colors.white38 : (selected ? gold : mint);
+    final iconColor = tap == null ? Colors.white38 : (emphasized ? gold : Colors.white);
     final labelColor =
-        tap == null ? Colors.white38 : (selected ? gold : Colors.white);
+        tap == null ? Colors.white38 : (emphasized ? gold : Colors.white);
     return Container(
-      width: 94,
+      width: isBack ? 52 : 64,
       height: 68,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFF4A3C21) : const Color(0xFF1B2638),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: emphasized
+              ? const [Color(0xFF54411A), Color(0xFF171004)]
+              : const [Color(0xFF182F4B), Color(0xFF041022)],
+        ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: selected ? gold : const Color(0xFF39566D),
-          width: selected ? 2 : 1,
+          color: emphasized ? gold : const Color(0xFF39566D),
+          width: emphasized ? 2 : 1,
         ),
-        boxShadow: selected
+        boxShadow: emphasized
             ? const [BoxShadow(color: Color(0x55FFD84D), blurRadius: 10)]
             : null,
       ),
@@ -4565,199 +4574,199 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  // Exactly one bottom toolbar: the text tools scroll on the left,
-  // while Back stays visible at the right edge, even after scrolling.
   Widget _buildTextToolbar() => Row(
     key: const ValueKey('text-toolbar'),
+    textDirection: TextDirection.ltr,
     children: [
+      _textToolbarButton(Icons.reply_rounded, 'Back', openTextTools, isBack: true),
       Expanded(
-        child: SingleChildScrollView(
-          key: const ValueKey('text-tool-scroll'),
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-        _textToolbarButton(Icons.add, 'Add Text', addText),
-        _textToolbarButton(Icons.edit, 'Text Editor', editSelectedText),
-        _textToolbarButton(
-          Icons.format_color_fill,
-          'Text Background',
-          () => _selectTextSection(TextToolSection.background),
-          section: TextToolSection.background,
-        ),
-        _textToolbarButton(
-          Icons.auto_awesome,
-          'Glow',
-          () => _selectTextSection(TextToolSection.glow),
-          section: TextToolSection.glow,
-        ),
-        _textToolbarButton(
-          Icons.layers_outlined,
-          'Shadow',
-          () => _selectTextSection(TextToolSection.shadow),
-          section: TextToolSection.shadow,
-        ),
-        _textToolbarButton(
-          Icons.border_outer,
-          'Outline',
-          () => _selectTextSection(TextToolSection.outline),
-          section: TextToolSection.outline,
-        ),
-        _textToolbarButton(
-          Icons.gradient,
-          'Gradient',
-          () => _selectTextSection(TextToolSection.gradient),
-          section: TextToolSection.gradient,
-        ),
-        _textToolbarButton(
-          Icons.palette_outlined,
-          'Color',
-          () => _selectTextSection(TextToolSection.color),
-          section: TextToolSection.color,
-        ),
-        _textToolbarButton(
-          Icons.text_fields,
-          'Style',
-          () => _selectTextSection(TextToolSection.style),
-          section: TextToolSection.style,
-        ),
-        _textToolbarButton(
-          Icons.dashboard_outlined,
-          'Layout',
-          () => _selectTextSection(TextToolSection.layout),
-          section: TextToolSection.layout,
-        ),
-        _textToolbarButton(
-          Icons.more_horiz,
-          'More',
-          () => _selectTextSection(TextToolSection.more),
-          section: TextToolSection.more,
-        ),
-        // Keep all existing legacy text actions directly reachable
-        // by scrolling further along the same bottom toolbar.
-        _textToolbarButton(
-          Icons.font_download_outlined,
-          'Font',
-          chooseTextFont,
-        ),
-        _textToolbarButton(
-          Icons.upload_file,
-          'Import TTF/OTF',
-          importSelectedTextFont,
-        ),
-        _textToolbarButton(Icons.format_bold, 'Bold', toggleSelectedTextBold),
-        _textToolbarButton(Icons.format_italic, 'Italic', toggleTextItalic),
-        _textToolbarButton(
-          Icons.format_underline,
-          'Underline',
-          toggleTextUnderline,
-        ),
-        _textToolbarButton(
-          Icons.strikethrough_s,
-          'Strikethrough',
-          toggleTextStrikethrough,
-        ),
-        _textToolbarButton(Icons.style, 'Text Presets', chooseTextPreset),
-        _textToolbarButton(Icons.copy, 'Duplicate', duplicateSelectedText),
-        _textToolbarButton(
-          Icons.undo,
-          'Undo Text',
-          _textUndoHistory.isEmpty ? null : undoTextEdit,
-        ),
-        _textToolbarButton(
-          Icons.redo,
-          'Redo Text',
-          _textRedoHistory.isEmpty ? null : redoTextEdit,
-        ),
-        _textToolbarButton(
-          Icons.format_align_center,
-          'Alignment',
-          cycleSelectedTextAlignment,
-        ),
-        _textToolbarButton(
-          Icons.keyboard_arrow_up,
-          'Curve Up',
-          () => adjustSelectedTextCurve(0.2),
-        ),
-        _textToolbarButton(
-          Icons.keyboard_arrow_down,
-          'Curve Down',
-          () => adjustSelectedTextCurve(-0.2),
-        ),
-        _textToolbarButton(
-          Icons.zoom_in,
-          'Zoom +',
-          () => zoomSelectedText(1.2),
-        ),
-        _textToolbarButton(
-          Icons.zoom_out,
-          'Zoom −',
-          () => zoomSelectedText(0.8),
-        ),
-        _textToolbarButton(
-          Icons.space_bar,
-          'Letter Space +',
-          () => adjustSelectedTextSpacing(0.5),
-        ),
-        _textToolbarButton(
-          Icons.space_bar,
-          'Letter Space −',
-          () => adjustSelectedTextSpacing(-0.5),
-        ),
-        _textToolbarButton(
-          Icons.height,
-          'Line Height +',
-          () => adjustTextLineHeight(0.1),
-        ),
-        _textToolbarButton(
-          Icons.compress,
-          'Line Height −',
-          () => adjustTextLineHeight(-0.1),
-        ),
-        _textToolbarButton(
-          Icons.opacity,
-          'Opacity +',
-          () => adjustTextOpacity(0.1),
-        ),
-        _textToolbarButton(
-          Icons.opacity,
-          'Opacity −',
-          () => adjustTextOpacity(-0.1),
-        ),
-        _textToolbarButton(
-          Icons.add,
-          'Outline +',
-          () => adjustSelectedTextOutline(0.5),
-        ),
-        _textToolbarButton(
-          Icons.remove,
-          'Outline −',
-          () => adjustSelectedTextOutline(-0.5),
-        ),
-        _textToolbarButton(
-          Icons.palette,
-          'Outline Color',
-          cycleTextOutlineColor,
-        ),
-        _textToolbarButton(
-          Icons.restart_alt,
-          'Reset Style',
-          resetSelectedTextStyle,
-        ),
-        _textToolbarButton(
-          Icons.content_cut,
-          'BG Remover',
-          openBackgroundRemover,
-        ),
-        _textToolbarButton(
-          Icons.delete_outline,
-          'Delete Text',
-          deleteSelectedText,
-        ),
-            ],
+        child: Directionality(
+          textDirection: AppLanguage.direction,
+          child: SingleChildScrollView(
+            key: const ValueKey('text-tool-scroll'),
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _textToolbarButton(Icons.add, 'Add Text', addText),
+                _textToolbarButton(Icons.edit, 'Edit Text', editSelectedText),
+                _textToolbarButton(
+                  Icons.palette_outlined,
+                  'Color',
+                  () => _selectTextSection(TextToolSection.color),
+                  section: TextToolSection.color,
+                ),
+                _textToolbarButton(
+                  Icons.text_fields,
+                  'Style',
+                  () => _selectTextSection(TextToolSection.style),
+                  section: TextToolSection.style,
+                ),
+                _textToolbarButton(
+                  Icons.font_download_outlined,
+                  'Font',
+                  chooseTextFont,
+                ),
+                _textToolbarButton(
+                  Icons.auto_awesome,
+                  'Glow',
+                  () => _selectTextSection(TextToolSection.glow),
+                  section: TextToolSection.glow,
+                ),
+                _textToolbarButton(
+                  Icons.layers_outlined,
+                  'Shadow',
+                  () => _selectTextSection(TextToolSection.shadow),
+                  section: TextToolSection.shadow,
+                ),
+                _textToolbarButton(
+                  Icons.format_color_fill,
+                  'Text Background',
+                  () => _selectTextSection(TextToolSection.background),
+                  section: TextToolSection.background,
+                ),
+                _textToolbarButton(
+                  Icons.border_outer,
+                  'Outline',
+                  () => _selectTextSection(TextToolSection.outline),
+                  section: TextToolSection.outline,
+                ),
+                _textToolbarButton(
+                  Icons.gradient,
+                  'Gradient',
+                  () => _selectTextSection(TextToolSection.gradient),
+                  section: TextToolSection.gradient,
+                ),
+                _textToolbarButton(
+                  Icons.dashboard_outlined,
+                  'Layout',
+                  () => _selectTextSection(TextToolSection.layout),
+                  section: TextToolSection.layout,
+                ),
+                _textToolbarButton(
+                  Icons.undo,
+                  'Undo Text',
+                  _textUndoHistory.isEmpty ? null : undoTextEdit,
+                ),
+                _textToolbarButton(
+                  Icons.redo,
+                  'Redo Text',
+                  _textRedoHistory.isEmpty ? null : redoTextEdit,
+                ),
+                _textToolbarButton(
+                  Icons.more_horiz,
+                  'More',
+                  () => _selectTextSection(TextToolSection.more),
+                  section: TextToolSection.more,
+                ),
+                _textToolbarButton(
+                  Icons.upload_file,
+                  'Import TTF/OTF',
+                  importSelectedTextFont,
+                ),
+                _textToolbarButton(Icons.format_bold, 'Bold', toggleSelectedTextBold),
+                _textToolbarButton(Icons.format_italic, 'Italic', toggleTextItalic),
+                _textToolbarButton(
+                  Icons.format_underline,
+                  'Underline',
+                  toggleTextUnderline,
+                ),
+                _textToolbarButton(
+                  Icons.strikethrough_s,
+                  'Strikethrough',
+                  toggleTextStrikethrough,
+                ),
+                _textToolbarButton(Icons.style, 'Text Presets', chooseTextPreset),
+                _textToolbarButton(Icons.copy, 'Duplicate', duplicateSelectedText),
+                _textToolbarButton(
+                  Icons.format_align_center,
+                  'Alignment',
+                  cycleSelectedTextAlignment,
+                ),
+                _textToolbarButton(
+                  Icons.keyboard_arrow_up,
+                  'Curve Up',
+                  () => adjustSelectedTextCurve(0.2),
+                ),
+                _textToolbarButton(
+                  Icons.keyboard_arrow_down,
+                  'Curve Down',
+                  () => adjustSelectedTextCurve(-0.2),
+                ),
+                _textToolbarButton(
+                  Icons.zoom_in,
+                  'Zoom +',
+                  () => zoomSelectedText(1.2),
+                ),
+                _textToolbarButton(
+                  Icons.zoom_out,
+                  'Zoom −',
+                  () => zoomSelectedText(0.8),
+                ),
+                _textToolbarButton(
+                  Icons.space_bar,
+                  'Letter Space +',
+                  () => adjustSelectedTextSpacing(0.5),
+                ),
+                _textToolbarButton(
+                  Icons.space_bar,
+                  'Letter Space −',
+                  () => adjustSelectedTextSpacing(-0.5),
+                ),
+                _textToolbarButton(
+                  Icons.height,
+                  'Line Height +',
+                  () => adjustTextLineHeight(0.1),
+                ),
+                _textToolbarButton(
+                  Icons.compress,
+                  'Line Height −',
+                  () => adjustTextLineHeight(-0.1),
+                ),
+                _textToolbarButton(
+                  Icons.opacity,
+                  'Opacity +',
+                  () => adjustTextOpacity(0.1),
+                ),
+                _textToolbarButton(
+                  Icons.opacity,
+                  'Opacity −',
+                  () => adjustTextOpacity(-0.1),
+                ),
+                _textToolbarButton(
+                  Icons.add,
+                  'Outline +',
+                  () => adjustSelectedTextOutline(0.5),
+                ),
+                _textToolbarButton(
+                  Icons.remove,
+                  'Outline −',
+                  () => adjustSelectedTextOutline(-0.5),
+                ),
+                _textToolbarButton(
+                  Icons.palette,
+                  'Outline Color',
+                  cycleTextOutlineColor,
+                ),
+                _textToolbarButton(
+                  Icons.restart_alt,
+                  'Reset Style',
+                  resetSelectedTextStyle,
+                ),
+                _textToolbarButton(
+                  Icons.content_cut,
+                  'BG Remover',
+                  openBackgroundRemover,
+                ),
+                _textToolbarButton(
+                  Icons.delete_outline,
+                  'Delete Text',
+                  deleteSelectedText,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-      _textToolbarButton(Icons.arrow_back, 'Back', openTextTools),
     ],
   );
 
@@ -5056,9 +5065,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: _editorOptions == null,
+    canPop: _editorOptions == null && !showTextTools,
     onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) _closeEditorOptions();
+      if (didPop) return;
+      if (_editorOptions != null) {
+        _closeEditorOptions();
+      } else if (_activeTextSection != TextToolSection.none) {
+        _selectTextSection(_activeTextSection);
+      } else if (showTextTools) {
+        openTextTools();
+      }
     },
     child: Scaffold(
     key: _editorScaffoldKey,
