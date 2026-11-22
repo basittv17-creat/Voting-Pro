@@ -123,14 +123,23 @@ void main() {
     await capture('photo-05-side-b-inline-remover');
 
     await tap(find.descendant(of: remover, matching: find.text('Erase')));
-    final preview = find.descendant(
+    final preview = find.byKey(const ValueKey('inline-cutout-brush'));
+    await tester.ensureVisible(preview);
+    await tester.pumpAndSettle();
+    final touch = tester.getCenter(preview);
+    final stroke = await tester.startGesture(touch - const Offset(16, 0));
+    await stroke.moveTo(touch + const Offset(16, 0));
+    await tester.pump();
+    await stroke.moveTo(touch + const Offset(32, 0));
+    await stroke.up();
+    await tester.pumpAndSettle();
+
+    final apply = find.descendant(
       of: remover,
-      matching: find.byWidgetPredicate(
-        (widget) => widget is Image && widget.image is MemoryImage,
-      ),
+      matching: find.widgetWithText(OutlinedButton, 'Apply'),
     );
-    await tap(preview);
-    await tap(find.descendant(of: remover, matching: find.text('Apply')));
+    expect(tester.widget<OutlinedButton>(apply).onPressed, isNotNull);
+    await tap(apply);
     expect(remover, findsNothing);
     expect(pathOf('A'), a.path);
     expect(pathOf('B'), isNot(b.path));

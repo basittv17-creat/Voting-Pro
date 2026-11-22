@@ -425,6 +425,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
             final top = (constraints.maxHeight - h) / 2;
             _previewRect = Rect.fromLTWH(left, top, w, h);
             return GestureDetector(
+              key: widget.onClose == null ? null : const ValueKey('inline-cutout-brush'),
               behavior: HitTestBehavior.opaque,
               onPanStart: _manual ? (d) => _beginStroke(d.localPosition) : null,
               onPanUpdate: _manual ? (d) => _paintAt(d.localPosition) : null,
@@ -453,15 +454,16 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                     enabled: _manual,
                     size: _brushSize,
                   ),
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: _action(
-                      _compare ? 'After' : 'Compare',
-                      Icons.compare,
-                      () => setState(() => _compare = !_compare),
+                  if (widget.onClose == null)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: _action(
+                        _compare ? 'After' : 'Compare',
+                        Icons.compare,
+                        () => setState(() => _compare = !_compare),
+                      ),
                     ),
-                  ),
                 ],
               ),
             );
@@ -619,20 +621,21 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                     ? null
                     : (value) => setState(() => _brushSize = value),
               ),
-            if (_manual || _undo.isNotEmpty || _redo.isNotEmpty)
+            if (imageAvailable)
               Wrap(
                 spacing: 6,
                 children: [
-                  _action(
-                    'Undo',
-                    Icons.undo,
-                    _undo.isEmpty ? null : _undoChange,
+                  TextButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() => _compare = !_compare),
+                    icon: const Icon(Icons.compare),
+                    label: Text(_compare ? 'After' : 'Compare'),
                   ),
-                  _action(
-                    'Redo',
-                    Icons.redo,
-                    _redo.isEmpty ? null : _redoChange,
-                  ),
+                  if (_manual || _undo.isNotEmpty || _redo.isNotEmpty) ...[
+                    _action('Undo', Icons.undo, _undo.isEmpty ? null : _undoChange),
+                    _action('Redo', Icons.redo, _redo.isEmpty ? null : _redoChange),
+                  ],
                 ],
               ),
             Text(_status, style: const TextStyle(color: mint, fontSize: 12)),
