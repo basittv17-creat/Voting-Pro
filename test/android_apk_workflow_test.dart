@@ -29,6 +29,15 @@ void main() {
     expect(workflow, contains('android:label="Voting Pro"'));
     expect(workflow, contains('mipmap-xxxhdpi/ic_launcher.png'));
     expect(workflow, contains('adb -s emulator-5554 install -r'));
+    // The first test step closes its emulator; app launch needs a new one.
+    final launchStep = workflow.indexOf(
+      '- name: Install normal APK and verify app stays open after splash',
+    );
+    expect(launchStep, greaterThan(normalBuild));
+    expect(
+      workflow.indexOf('emulator -avd voting_pro_ci', launchStep),
+      greaterThan(launchStep),
+    );
     expect(workflow, contains(r'pidof -s "$PACKAGE"'));
     expect(workflow, contains('text-09-normal-app-launch.png'));
     // flutter clean must not discard VS/Text test evidence.
