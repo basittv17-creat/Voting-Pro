@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -123,11 +124,25 @@ void main() {
     expect(path(photoA), keptA);
     expect(path(photoB), isNot(originalPathB));
     expect(find.byKey(const ValueKey('photo-selection-B')), findsOneWidget);
+    Future<Uint8List> exportPoster() async {
+      final result = await tester.runAsync(() async {
+        final capture =
+            editor.capturePosterWithoutControls() as Future<Uint8List?>;
+        await tester.pump();
+        return capture.timeout(const Duration(seconds: 8));
+      });
+      await tester.pumpAndSettle();
+      return result!;
+    }
+
+    final selectedExport = await exportPoster();
+    expect(find.byKey(const ValueKey('photo-selection-B')), findsOneWidget);
     final back = find.descendant(of: tools, matching: find.text('Back'));
     await tester.tap(back);
     await tester.pumpAndSettle();
     expect(tools, findsNothing);
     expect(tester.getRect(normal), bounds);
+    expect(await exportPoster(), orderedEquals(selectedExport));
     addTearDown(() => AppLanguage.current = 'en');
     for (final language in ['en', 'ur']) {
       AppLanguage.current = language;
