@@ -4803,32 +4803,40 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Future<void> editSideLabelText(bool sideA) async {
-    final controller = TextEditingController(
-      text: sideA ? aSideLabelText : bSideLabelText,
-    );
-
+    // TextFormField owns and disposes its internal controller when the dialog
+    // route is actually unmounted. Disposing a caller-owned controller as soon
+    // as showDialog returns breaks the route's reverse animation.
+    var editedName = sideA ? aSideLabelText : bSideLabelText;
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(AppLanguage.tr(sideA ? 'Edit A Side Name' : 'Edit B Side Name')),
         content: StatefulBuilder(
-          builder: (context, setDialogState) => TextField(
-            controller: controller,
+          builder: (context, setDialogState) => TextFormField(
+            initialValue: editedName,
             autofocus: true,
             maxLength: 28,
-            textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+            textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(editedName)
                 ? TextDirection.rtl
                 : TextDirection.ltr,
-            textAlign: RegExp(r'[\u0600-\u06FF]').hasMatch(controller.text)
+            textAlign: RegExp(r'[\u0600-\u06FF]').hasMatch(editedName)
                 ? TextAlign.right
                 : TextAlign.left,
             textCapitalization: TextCapitalization.characters,
             decoration: InputDecoration(
-              labelText: AppLanguage.tr(sideA ? 'Enter A Side name' : 'Enter B Side name'),
-              hintText: AppLanguage.tr(sideA ? 'Type A Side name' : 'Type B Side name'),
+              labelText: AppLanguage.tr(
+                sideA ? 'Enter A Side name' : 'Enter B Side name',
+              ),
+              hintText: AppLanguage.tr(
+                sideA ? 'Type A Side name' : 'Type B Side name',
+              ),
             ),
-            onChanged: (_) => setDialogState(() {}),
-            onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+            onChanged: (value) {
+              editedName = value;
+              setDialogState(() {});
+            },
+            onFieldSubmitted: (value) =>
+                Navigator.pop(dialogContext, value.trim()),
           ),
         ),
         actions: [
@@ -4837,17 +4845,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             child: Text(AppLanguage.tr('Cancel')),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(
-              dialogContext,
-              controller.text.trim(),
-            ),
+            onPressed: () => Navigator.pop(dialogContext, editedName.trim()),
             child: Text(AppLanguage.tr('Save')),
           ),
         ],
       ),
     );
-
-    controller.dispose();
 
     if (result != null && result.isNotEmpty && mounted) {
       setState(() {
