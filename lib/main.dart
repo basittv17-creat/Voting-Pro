@@ -4862,10 +4862,70 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     }
   }
 
+  // Bottom name plates must win taps over letter/sticker artwork with
+  // transparent PNG padding. Their visible strip is a reserved edit target.
+  Widget _sideLabelHitArea(bool sideA) {
+    final hasLabel =
+        sideA ? selectedASideLabel != null : selectedBSideLabel != null;
+    final showDelete =
+        sideA ? showASideLabelDelete : showBSideLabelDelete;
+    return SizedBox(
+      height: hasLabel ? 42 : 32,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            key: ValueKey<String>(
+              sideA ? 'a-side-label-hit-target' : 'b-side-label-hit-target',
+            ),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => editSideLabelText(sideA),
+            onDoubleTap: () {
+              if (!hasLabel) return;
+              setState(() {
+                if (sideA) {
+                  showASideLabelDelete = true;
+                } else {
+                  showBSideLabelDelete = true;
+                }
+              });
+            },
+            child: const SizedBox.expand(),
+          ),
+          if (hasLabel && showDelete)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: IconButton(
+                key: ValueKey<String>(
+                  sideA ? 'delete-a-side-label' : 'delete-b-side-label',
+                ),
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() {
+                  if (sideA) {
+                    selectedASideLabel = null;
+                    showASideLabelDelete = false;
+                  } else {
+                    selectedBSideLabel = null;
+                    showBSideLabelDelete = false;
+                  }
+                }),
+                icon: const Icon(
+                  Icons.delete,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                style: IconButton.styleFrom(backgroundColor: Colors.red),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget photoSlot(bool sideA) {
     final file = sideA ? a : b;
     final label = sideA ? selectedASideLabel : selectedBSideLabel;
-    final showDelete = sideA ? showASideLabelDelete : showBSideLabelDelete;
     final labelText = sideA ? aSideLabelText : bSideLabelText;
     final isUrduLabelText = RegExp(r'[\u0600-\u06FF]').hasMatch(labelText);
     return GestureDetector(
@@ -5001,24 +5061,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
-                  if (showDelete)
-                    Positioned(
-                      right: 0, top: 0,
-                      child: IconButton(
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => setState(() {
-                          if (sideA) {
-                            selectedASideLabel = null;
-                            showASideLabelDelete = false;
-                          } else {
-                            selectedBSideLabel = null;
-                            showBSideLabelDelete = false;
-                          }
-                        }),
-                        icon: const Icon(Icons.delete, color: Colors.white, size: 20),
-                        style: IconButton.styleFrom(backgroundColor: Colors.red),
-                      ),
-                    ),
                 ]),
               ),
             )
@@ -5995,6 +6037,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+              ),
+            ),
+          // Paint no extra artwork: only reserve bottom name-strip taps above
+          // transparent sticker/letter hitboxes, including overlapping ones.
+          if (selectedReadyMadeTemplate == null && !isExportingPoster)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(child: _sideLabelHitArea(true)),
+                  const SizedBox(width: 6),
+                  Expanded(child: _sideLabelHitArea(false)),
+                ],
               ),
             ),
           if (selectedReadyMadeTemplate != null)
