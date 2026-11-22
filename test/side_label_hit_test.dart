@@ -16,10 +16,8 @@ void main() {
       'voting_pro_project_v1': jsonEncode({
         'aSideLabelText': 'A SIDE',
         'bSideLabelText': 'B SIDE',
-        'selectedASideLabel':
-            'assets/label_bars/a_side/A_Side_Style_1.png',
-        'selectedBSideLabel':
-            'assets/label_bars/b_side/B_Side_Style_1.png',
+        'selectedASideLabel': 'assets/label_bars/a_side/A_Side_Style_1.png',
+        'selectedBSideLabel': 'assets/label_bars/b_side/B_Side_Style_1.png',
         'letterOverlays': [
           {
             'asset': 'assets/a_letter_styles/A_Style_01.png',
