@@ -27,6 +27,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/fonts/licenses/
     - assets/stylish_frames/
     - assets/templates/
     - assets/models/selfie_segmenter.tflite
@@ -41,6 +42,15 @@ flutter:
     - family: NotoNastaliqUrdu
       fonts:
         - asset: assets/fonts/NotoNastaliqUrdu.ttf
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic.ttf
+    - family: Gulzar
+      fonts:
+        - asset: assets/fonts/Gulzar.ttf
+    - family: Lateef
+      fonts:
+        - asset: assets/fonts/Lateef.ttf
     - family: RobotoLocal
       fonts:
         - asset: assets/fonts/Roboto.ttf

@@ -131,7 +131,7 @@ void main() {
           of: tools,
           matching: find.byType(InkWell),
         );
-        expect(cards, findsNWidgets(38));
+        expect(cards, findsNWidgets(39));
         for (final index in [0, 18, 37, 0]) {
           await tester.ensureVisible(cards.at(index));
           await tester.pumpAndSettle();
@@ -141,7 +141,7 @@ void main() {
         }
 
         if (cycle == 0) {
-          for (var index = 0; index < 38; index++) {
+          for (var index = 0; index < 39; index++) {
             await tester.ensureVisible(cards.at(index));
             await tester.pump();
             expect(

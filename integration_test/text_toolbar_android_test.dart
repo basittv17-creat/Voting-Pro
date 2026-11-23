@@ -5,6 +5,8 @@ import 'package:screenshot/screenshot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voting_pro/main.dart' as voting_pro;
 import 'package:voting_pro/widgets/premium_text_editor_panel.dart';
+import 'package:voting_pro/widgets/advanced_text_overlay.dart';
+import 'package:voting_pro/widgets/text_background_plate.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -99,6 +101,46 @@ void main() {
     await tap(action(text, 'Redo Text'));
     expect(find.text('Vote  ووٹ  वोट'), findsOneWidget);
     await capture('text-06-history');
+
+    final overlay = find.byType(AdvancedTextOverlay);
+    await capture('text-10-background-off');
+    await tap(action(text, 'Text Background'));
+    await tap(
+        find.descendant(of: panel, matching: find.byTooltip('Color #00DB52')));
+    expect(find.byType(TextBackgroundPlate), findsOneWidget);
+    await capture('text-11-background-swatch');
+
+    await tap(action(text, 'Premium Text Backgrounds'));
+    await tap(find.text('Royal Gold'));
+    expect(tester.widget<AdvancedTextOverlay>(overlay).backgroundDesign,
+        'Royal Gold');
+    expect(tester.getRect(text), bounds);
+    await capture('text-12-premium-backgrounds');
+
+    await tap(action(text, 'Font'));
+    for (final family in [
+      'Gulzar',
+      'Lateef',
+      'Noto Naskh Arabic',
+      'اردو نستعلیق'
+    ]) {
+      await tap(find.text(family));
+      expect(
+          tester.widget<AdvancedTextOverlay>(overlay).style.fontFamily,
+          switch (family) {
+            'Noto Naskh Arabic' => 'NotoNaskhArabic',
+            'اردو نستعلیق' => 'NotoNastaliqUrdu',
+            _ => family,
+          });
+    }
+    await capture('text-13-offline-urdu-fonts');
+    await tap(find.byTooltip('Close'));
+    await tester.drag(overlay, const Offset(0, -100));
+    await tester.pumpAndSettle();
+    expect(
+        tester.getRect(overlay).top, greaterThan(tester.getRect(poster).top));
+    expect(tester.getRect(text), bounds);
+    await capture('text-14-top-edge');
 
     final delete = action(text, 'Delete Text');
     await tester.ensureVisible(delete);

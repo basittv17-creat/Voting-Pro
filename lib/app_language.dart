@@ -43,6 +43,7 @@ class AppLanguage {
     "Back": "واپس",
     "Add Text": "متن شامل کریں",
     "Text Editor": "متن کی تدوین",
+    "Premium Text Backgrounds": "پریمیم متن کے پس منظر",
     "Text Background": "متن کا پس منظر",
     "Shadow": "سایہ",
     "Outline": "بیرونی لکیر",

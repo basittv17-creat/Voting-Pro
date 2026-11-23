@@ -18,6 +18,7 @@ import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
 import 'widgets/advanced_text_overlay.dart';
 import 'widgets/scaled_overlay.dart';
+import 'widgets/text_background_plate.dart';
 import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
 import 'widgets/premium_vs.dart';
@@ -209,6 +210,7 @@ enum _EditorOptions {
   textPreset,
   textFont,
   textColor,
+  premiumTextBackground,
 }
 
 class Editor extends StatefulWidget {
@@ -419,6 +421,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<int, String> textFonts = {};
   final Map<int, Color> textColors = {};
   final Map<int, Color> textBgColors = {};
+  final Map<int, String> textBgDesigns = {};
   final Map<int, double> textBgOpacities = {};
   final Map<int, double> textBgPaddings = {};
   final Map<int, double> textBgRadii = {};
@@ -643,6 +646,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'customFontPaths': _stringMapJson(customFontPaths),
         'textColors': _colorMapJson(textColors),
         'textBgColors': _colorMapJson(textBgColors),
+        'textBgDesigns': _stringMapJson(textBgDesigns),
         'textBgOpacities': _doubleMapJson(textBgOpacities),
         'textBgPaddings': _doubleMapJson(textBgPaddings),
         'textBgRadii': _doubleMapJson(textBgRadii),
@@ -847,6 +851,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             if (index != null && entry.value is String &&
                 family != null && _loadedCustomFontFamilies.contains(family)) {
               customFontPaths[index] = entry.value as String;
+            }
+          }
+        }
+        textBgDesigns.clear();
+        final savedDesigns = data['textBgDesigns'];
+        if (savedDesigns is Map) {
+          for (final entry in savedDesigns.entries) {
+            final index = int.tryParse(entry.key.toString());
+            final name = entry.value;
+            if (index != null && name is String &&
+                (name == 'solid' || premiumTextBackgrounds.containsKey(name))) {
+              textBgDesigns[index] = name;
             }
           }
         }
@@ -2397,6 +2413,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           'Font',
           _textOptionsContent(_textFontOptions),
         ),
+      _EditorOptions.premiumTextBackground => (
+          'Premium Text Backgrounds',
+          _textOptionsContent(_premiumBackgroundOptions),
+        ),
       _EditorOptions.textColor => (
           'Text Color Studio',
           _textOptionsContent(_textColorOptions),
@@ -2631,6 +2651,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     _rememberTextEdit();
     setState(() {
       if (enabled) {
+        if (textBgColors[index] != color) textBgDesigns[index] = 'solid';
+        textBgDesigns.putIfAbsent(index, () => 'solid');
         textBgColors[index] = color;
         textBgOpacities[index] = opacity;
         textBgPaddings[index] = padding;
@@ -2641,6 +2663,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         else { textBgGradients.remove(index); }
       } else {
         textBgColors.remove(index);
+        textBgDesigns.remove(index);
         textBgOpacities.remove(index);
         textBgPaddings.remove(index);
         textBgRadii.remove(index);
@@ -2659,6 +2682,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textFonts.remove(index);
       textColors.remove(index);
       textBgColors.remove(index);
+      textBgDesigns.remove(index);
       textBgOpacities.remove(index);
       textBgPaddings.remove(index);
       textBgRadii.remove(index);
@@ -2700,6 +2724,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (textFonts.containsKey(index)) textFonts[next] = textFonts[index]!;
       if (textColors.containsKey(index)) textColors[next] = textColors[index]!;
       if (textBgColors.containsKey(index)) textBgColors[next] = textBgColors[index]!;
+      if (textBgDesigns[index] case final design?) textBgDesigns[next] = design;
       if (textBgOpacities.containsKey(index)) textBgOpacities[next] = textBgOpacities[index]!;
       if (textBgPaddings.containsKey(index)) textBgPaddings[next] = textBgPaddings[index]!;
       if (textBgRadii.containsKey(index)) textBgRadii[next] = textBgRadii[index]!;
@@ -2801,6 +2826,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     'customFontPaths': Map<int, String>.from(customFontPaths),
     'textColors': Map<int, Color>.from(textColors),
     'textBgColors': Map<int, Color>.from(textBgColors),
+    'textBgDesigns': Map<int, String>.from(textBgDesigns),
     'textBgOpacities': Map<int, double>.from(textBgOpacities),
     'textBgPaddings': Map<int, double>.from(textBgPaddings),
     'textBgRadii': Map<int, double>.from(textBgRadii),
@@ -2837,6 +2863,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     customFontPaths..clear()..addAll(snapshot['customFontPaths'] as Map<int, String>);
     textColors..clear()..addAll(snapshot['textColors'] as Map<int, Color>);
     textBgColors..clear()..addAll(snapshot['textBgColors'] as Map<int, Color>);
+    textBgDesigns..clear()..addAll(snapshot['textBgDesigns'] as Map<int, String>);
     textBgOpacities..clear()..addAll(snapshot['textBgOpacities'] as Map<int, double>);
     textBgPaddings..clear()..addAll(snapshot['textBgPaddings'] as Map<int, double>);
     textBgRadii..clear()..addAll(snapshot['textBgRadii'] as Map<int, double>);
@@ -3418,11 +3445,123 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void chooseTextFont() => _openTextOption(_EditorOptions.textFont);
 
+  Widget _premiumBackgroundOptions(int index) {
+    void apply(String? name) {
+      _rememberTextEdit();
+      setState(() {
+        if (name == null) {
+          textBgDesigns.remove(index);
+          textBgColors.remove(index);
+          textBgOpacities.remove(index);
+          textBgPaddings.remove(index);
+          textBgRadii.remove(index);
+          textBgBorders.remove(index);
+          textBgShadows.remove(index);
+          textBgGradients.remove(index);
+          return;
+        }
+        final preset = premiumTextBackgrounds[name]!;
+        textBgDesigns[index] = name;
+        textBgColors[index] = Color(preset.$1);
+        textBgOpacities[index] = .95;
+        textBgPaddings[index] = 6;
+        textBgRadii[index] = preset.$4;
+        textBgBorders[index] = 1.5;
+        textBgShadows[index] = 3;
+        textBgGradients.add(index);
+      });
+    }
+
+    return _optionScroll(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            children: [
+              ActionChip(
+                label: const Text('None / Reset'),
+                onPressed: () => apply(null),
+              ),
+              ActionChip(
+                label: const Text('Adjust background'),
+                onPressed: editTextBackground,
+              ),
+              ActionChip(
+                label: const Text('Use white text'),
+                onPressed: () {
+                  _rememberTextEdit();
+                  setState(() => textColors[index] = Colors.white);
+                },
+              ),
+              ActionChip(
+                label: const Text('Choose a matching font'),
+                onPressed: chooseTextFont,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final entry in premiumTextBackgrounds.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Semantics(
+                      button: true,
+                      selected: textBgDesigns[index] == entry.key,
+                      child: InkWell(
+                        onTap: () => apply(entry.key),
+                        child: TextBackgroundPlate(
+                          color: Color(entry.value.$1),
+                          design: entry.key,
+                          gradient: true,
+                          radius: entry.value.$4,
+                          borderWidth: textBgDesigns[index] == entry.key
+                              ? 3
+                              : 1.5,
+                          child: SizedBox(
+                            width: 115,
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'تگڑا مقابلہ',
+                                  textDirection: TextDirection.rtl,
+                                  style: TextStyle(
+                                    fontFamily: 'NotoNastaliqUrdu',
+                                    fontSize: 17,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  entry.key,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _textFontOptions(int index) {
     final isUrdu = RegExp(r'[\u0600-\u06FF]').hasMatch(overlays[index]);
     final fonts = isUrdu
         ? <(String, String)>[
             ('NotoNastaliqUrdu', 'اردو نستعلیق'),
+            ('NotoNaskhArabic', 'Noto Naskh Arabic'),
+            ('Gulzar', 'Gulzar'),
+            ('Lateef', 'Lateef'),
           ]
         : <(String, String)>[
             ('RobotoLocal', 'Modern'),
@@ -3432,27 +3571,50 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           ];
 
     return _optionScroll(
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final (family, name) in fonts)
-            ChoiceChip(
-              label: Text(
-                AppLanguage.tr(name),
-                style: TextStyle(fontFamily: family, fontSize: 16),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final (family, name) in fonts)
+              ChoiceChip(
+                label: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(AppLanguage.tr(name)),
+                    if (isUrdu) ...[
+                      Text(
+                        'تگڑا مقابلہ',
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(fontFamily: family, fontSize: 22),
+                      ),
+                      Text(
+                        'ووٹنگ پوسٹر کے لیے خوب صورت اردو ۱۲۳',
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(fontFamily: family, fontSize: 14),
+                      ),
+                    ],
+                    Text(
+                      'Voting Pro 123',
+                      style: TextStyle(
+                        fontFamily: family,
+                        fontFamilyFallback: const ['RobotoLocal'],
+                      ),
+                    ),
+                  ],
+                ),
+                selected:
+                    textFonts[index] == family &&
+                    !customFontPaths.containsKey(index),
+                onSelected: (_) {
+                  _rememberTextEdit();
+                  setState(() {
+                    customFontPaths.remove(index);
+                    textFonts[index] = family;
+                  });
+                },
               ),
-              selected: textFonts[index] == family &&
-                  !customFontPaths.containsKey(index),
-              onSelected: (_) {
-                _rememberTextEdit();
-                setState(() {
-                  customFontPaths.remove(index);
-                  textFonts[index] = family;
-                });
-              },
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -3498,6 +3660,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldFonts = Map<int, String>.from(textFonts);
       final oldColors = Map<int, Color>.from(textColors);
       final oldBgColors = Map<int, Color>.from(textBgColors);
+      final oldBgDesigns = Map<int, String>.from(textBgDesigns);
       final oldBgOpacities = Map<int, double>.from(textBgOpacities);
       final oldBgPaddings = Map<int, double>.from(textBgPaddings);
       final oldBgRadii = Map<int, double>.from(textBgRadii);
@@ -3526,6 +3689,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textFonts.clear();
       textColors.clear();
       textBgColors.clear();
+      textBgDesigns.clear();
       textBgOpacities.clear();
       textBgPaddings.clear();
       textBgRadii.clear();
@@ -3566,6 +3730,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
         if (oldBgColors.containsKey(sourceIndex)) textBgColors[i] = oldBgColors[sourceIndex]!;
+        if (oldBgDesigns[sourceIndex] case final design?) textBgDesigns[i] = design;
         if (oldBgOpacities.containsKey(sourceIndex)) textBgOpacities[i] = oldBgOpacities[sourceIndex]!;
         if (oldBgPaddings.containsKey(sourceIndex)) textBgPaddings[i] = oldBgPaddings[sourceIndex]!;
         if (oldBgRadii.containsKey(sourceIndex)) textBgRadii[i] = oldBgRadii[sourceIndex]!;
@@ -3639,6 +3804,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldFonts = Map<int, String>.from(textFonts);
       final oldColors = Map<int, Color>.from(textColors);
       final oldBgColors = Map<int, Color>.from(textBgColors);
+      final oldBgDesigns = Map<int, String>.from(textBgDesigns);
       final oldBgOpacities = Map<int, double>.from(textBgOpacities);
       final oldBgPaddings = Map<int, double>.from(textBgPaddings);
       final oldBgRadii = Map<int, double>.from(textBgRadii);
@@ -3669,6 +3835,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textFonts.clear();
       textColors.clear();
       textBgColors.clear();
+      textBgDesigns.clear();
       textBgOpacities.clear();
       textBgPaddings.clear();
       textBgRadii.clear();
@@ -3705,6 +3872,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldFonts.containsKey(sourceIndex)) textFonts[i] = oldFonts[sourceIndex]!;
         if (oldColors.containsKey(sourceIndex)) textColors[i] = oldColors[sourceIndex]!;
         if (oldBgColors.containsKey(sourceIndex)) textBgColors[i] = oldBgColors[sourceIndex]!;
+        if (oldBgDesigns[sourceIndex] case final design?) textBgDesigns[i] = design;
         if (oldBgOpacities.containsKey(sourceIndex)) textBgOpacities[i] = oldBgOpacities[sourceIndex]!;
         if (oldBgPaddings.containsKey(sourceIndex)) textBgPaddings[i] = oldBgPaddings[sourceIndex]!;
         if (oldBgRadii.containsKey(sourceIndex)) textBgRadii[i] = oldBgRadii[sourceIndex]!;
@@ -4381,7 +4549,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (textBgColors.containsKey(active)) {
           textBgColors.remove(active);
         } else {
-          textBgColors[active!] = const Color(0xFF0C1430);
+          textBgDesigns[active!] = 'solid';
+          textBgColors[active] = const Color(0xFF0C1430);
           textBgOpacities[active] = 0.85;
         }
       }),
@@ -4389,8 +4558,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           ? const Color(0xFF0C1430)
           : (textBgColors[active] ?? const Color(0xFF0C1430)),
       onBackgroundColor: (color) => updateSelected(() {
-        textBgColors[active!] = color;
-        textBgOpacities.putIfAbsent(active, () => 0.85);
+        textBgDesigns[active!] = 'solid';
+        textBgColors[active] = color;
+        if ((textBgOpacities[active] ?? 0) <= 0) textBgOpacities[active] = .85;
       }),
       backgroundOpacity: active == null
           ? 0.85
@@ -4402,6 +4572,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (active == null) return;
         setState(() {
           textBgColors.putIfAbsent(active, () => const Color(0xFF0C1430));
+          textBgDesigns.putIfAbsent(active, () => 'solid');
           textBgOpacities[active] = value;
         });
       },
@@ -4641,6 +4812,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   'Text Background',
                   () => _selectTextSection(TextToolSection.background),
                   section: TextToolSection.background,
+                  width: 75,
+                ),
+                _textToolbarButton(
+                  Icons.auto_awesome_mosaic_outlined,
+                  'Premium Text Backgrounds',
+                  () => _openTextOption(_EditorOptions.premiumTextBackground),
+                  active: _editorOptions == _EditorOptions.premiumTextBackground,
+                  width: 86,
                 ),
                 _textToolbarButton(
                   Icons.border_outer,
@@ -5766,11 +5945,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
             final scale = (textScales[index] ?? 1.0).clamp(0.4, 4.0);
             // Enlarge the hit target without changing the painted text position.
-            final textTouchInset = isText && !isExportingPoster ? 15.0 : 0.0;
-            return Positioned(
-              left: position.dx - textTouchInset,
-              top: position.dy - textTouchInset,
-              child: GestureDetector(
+            final textTouchInset = isText ? 15.0 : 0.0;
+            Widget buildOverlay(BuildContext? placementContext) => GestureDetector(
                 key: ValueKey(index),
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (_) {
@@ -5811,6 +5987,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     }
                     textGestureStartPosition = textPositions[index] ??
                         Offset(10 + (index % 4) * 35.0, 12 + (index % 3) * 38.0);
+                    final overlayBox = placementContext?.findRenderObject();
+                    final canvas = overlayBox is RenderBox ? overlayBox.parent : null;
+                    if (overlayBox is RenderBox && canvas is RenderBox) {
+                      textGestureStartPosition = overlayBox.localToGlobal(
+                        Offset.zero, ancestor: canvas,
+                      ) + Offset(textTouchInset, textTouchInset);
+                      textPositions[index] = textGestureStartPosition;
+                    }
                     textGestureStartScale = textScales[index] ?? 1.0;
                   });
                 },
@@ -5823,9 +6007,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         textScales[index] =
                             (textGestureStartScale * details.scale).clamp(0.4, 4.0).toDouble();
                       } else {
-                        textPositions[index] =
-                            (textPositions[index] ?? textGestureStartPosition) +
-                            details.focalPointDelta;
+                        final overlayBox = placementContext?.findRenderObject();
+                        final canvas = overlayBox is RenderBox
+                            ? overlayBox.parent
+                            : null;
+                        if (overlayBox is RenderBox && canvas is RenderBox) {
+                          final anchor =
+                              textPositions[index] ?? textGestureStartPosition;
+                          final placement = TextCanvasPlacement(
+                            anchor + details.focalPointDelta, textTouchInset,
+                          );
+                          textPositions[index] = placement.getPositionForChild(
+                            canvas.size, overlayBox.size,
+                          ) + Offset(textTouchInset, textTouchInset);
+                        }
                       }
                     } else {
                       textPositions[index] =
@@ -5845,6 +6040,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             textTouchInset),
                         child: ScaledOverlay(
                           scale: isText ? scale : 1.0,
+                          fitHeight: isText,
                           child: AnimatedContainer(
                             duration: const Duration(
                                 milliseconds: 220),
@@ -5876,14 +6072,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                   ? textBgColors[
                                       index]
                                   : null,
+                              backgroundDesign: textBgDesigns[index],
+                              backgroundRadius: textBgRadii[index] ?? 8,
                               backgroundOpacity:
                                   textBgOpacities[
                                           index] ??
                                       0.8,
                               backgroundExpansion:
-                                  textBgPaddings[
-                                          index] ??
-                                      0,
+                                  textBgPaddings[index] ?? (textBgDesigns[index] == null ? 0 : 6),
                               backgroundGradient:
                                   textBgGradients
                                       .contains(
@@ -5940,6 +6136,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                   textCurves[index] ??
                                       0.0,
                               style: TextStyle(
+                                fontFamilyFallback: const ['NotoNastaliqUrdu', 'RobotoLocal'],
                                 fontFamily: textFonts[
                                         index] ??
                                     (RegExp(r'[\u0600-\u06FF]')
@@ -6223,8 +6420,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     ],
                   ),
                 ),
-              ),
             );
+            if (isText) {
+              return Positioned.fill(
+                key: ValueKey('text-overlay-$index'),
+                child: CustomSingleChildLayout(
+                  delegate: TextCanvasPlacement(position, textTouchInset),
+                  child: Builder(builder: buildOverlay),
+                ),
+              );
+            }
+            return Positioned(left: position.dx, top: position.dy, child: buildOverlay(null));
           }),
           if (selectedReadyMadeTemplate == null && selectedStylishFrame != null)
             Positioned.fill(

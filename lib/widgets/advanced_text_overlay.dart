@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'text_background_plate.dart';
 
 /// Renderer shared by classic text overlays, canvas preview and poster export.
 /// Curved text supports Latin characters and shaped Urdu/Arabic word runs.
@@ -17,6 +18,8 @@ class AdvancedTextOverlay extends StatelessWidget {
     this.outlineColor = Colors.black,
     this.curve = 0,
     this.backgroundColor,
+    this.backgroundDesign,
+    this.backgroundRadius = 8,
     this.backgroundOpacity = 0.8,
     this.backgroundExpansion = 0,
     this.backgroundGradient = false,
@@ -34,6 +37,8 @@ class AdvancedTextOverlay extends StatelessWidget {
   final Color outlineColor;
   final double curve;
   final Color? backgroundColor;
+  final String? backgroundDesign;
+  final double backgroundRadius;
   final double backgroundOpacity;
   final double backgroundExpansion;
   final bool backgroundGradient;
@@ -46,11 +51,53 @@ class AdvancedTextOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final legacyBackground = backgroundDesign == null ? backgroundColor : null;
+    Widget artwork = _buildArtwork(legacyBackground);
+    final color = backgroundColor;
+    if (backgroundDesign != null && color != null && backgroundOpacity > 0) {
+      artwork = TextBackgroundPlate(
+        color: color,
+        design: backgroundDesign,
+        opacity: backgroundOpacity,
+        padding: math.max(2, backgroundExpansion),
+        radius: backgroundRadius,
+        borderWidth: backgroundBorderWidth,
+        shadowBlur: backgroundShadowBlur,
+        gradient: backgroundGradient,
+        child: artwork,
+      );
+    }
+    final effect = math.max(outlineWidth, backgroundShadowBlur * 2);
+    final shadows = [...?style.shadows, if (shadow != null) shadow!];
+    final shadowInset = shadows.fold<double>(
+        0,
+        (inset, value) =>
+            math.max(inset, value.blurRadius + value.offset.distance));
+    final inset = math.max(effect, shadowInset);
+    return Padding(padding: EdgeInsets.all(inset), child: artwork);
+  }
+
+  double get _glyphInset =>
+      direction == TextDirection.rtl ? (style.fontSize ?? 14) * .14 : 0;
+
+  Widget _line(TextStyle paintStyle) => Padding(
+        padding: EdgeInsets.all(_glyphInset),
+        child: Text(
+          text,
+          textAlign: alignment,
+          textDirection: direction,
+          style: paintStyle,
+        ),
+      );
+
+  Widget _buildArtwork(Color? backgroundColor) {
     final canCurve = curve.abs() > 0.01 && !text.contains('\n');
     if (canCurve) {
       final chars = RegExp(r'[\u0600-\u06FF]').hasMatch(text)
-          ? text.split(RegExp(r'(?<=\s)|(?=\s)'))
-              .where((part) => part.isNotEmpty).toList()
+          ? text
+              .split(RegExp(r'(?<=\s)|(?=\s)'))
+              .where((part) => part.isNotEmpty)
+              .toList()
           : text.runes.map(String.fromCharCode).toList();
       double width = 0;
       double lineHeight = 0;
@@ -64,34 +111,33 @@ class AdvancedTextOverlay extends StatelessWidget {
         painter.dispose();
       }
       final canvasWidth = math.max(1.0, width + outlineWidth * 2 + 32);
-      final canvasHeight = math.max(1.0, lineHeight + 120 * curve.abs() + outlineWidth * 2 + 24);
-      return CustomPaint(
-        size: Size(canvasWidth, canvasHeight),
-        painter: _CurvedTextPainter(
-          text: text,
-          style: style,
-          curve: curve,
-          outlineWidth: outlineWidth,
-          outlineColor: outlineColor,
-          gradient: gradient,
-          shadow: shadow,
-          direction: direction,
-          backgroundColor: backgroundColor,
-          backgroundOpacity: backgroundOpacity,
-          backgroundExpansion: backgroundExpansion,
-          backgroundGradient: backgroundGradient,
-          backgroundShadowBlur: backgroundShadowBlur,
-          backgroundBorderWidth: backgroundBorderWidth,
+      final canvasHeight =
+          math.max(1.0, lineHeight + 120 * curve.abs() + outlineWidth * 2 + 24);
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: CustomPaint(
+          size: Size(canvasWidth, canvasHeight),
+          painter: _CurvedTextPainter(
+            text: text,
+            style: style,
+            curve: curve,
+            outlineWidth: outlineWidth,
+            outlineColor: outlineColor,
+            gradient: gradient,
+            shadow: shadow,
+            direction: direction,
+            backgroundColor: backgroundColor,
+            backgroundOpacity: backgroundOpacity,
+            backgroundExpansion: backgroundExpansion,
+            backgroundGradient: backgroundGradient,
+            backgroundShadowBlur: backgroundShadowBlur,
+            backgroundBorderWidth: backgroundBorderWidth,
+          ),
         ),
       );
     }
 
-    Widget fill = Text(
-      text,
-      textAlign: alignment,
-      textDirection: direction,
-      style: style,
-    );
+    Widget fill = _line(style);
     if (gradient) {
       fill = ShaderMask(
         blendMode: BlendMode.srcIn,
@@ -111,14 +157,15 @@ class AdvancedTextOverlay extends StatelessWidget {
           .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble());
     if (backgroundGradient && backgroundColor != null) {
       bgPaint.shader = LinearGradient(colors: [
-        backgroundColor!.withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
-        Color.lerp(backgroundColor!, Colors.purpleAccent, 0.55)!
+        backgroundColor
+            .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
+        Color.lerp(backgroundColor, Colors.purpleAccent, 0.55)!
             .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
       ]).createShader(const Rect.fromLTWH(0, 0, 500, 120));
     }
     if (backgroundShadowBlur > 0) {
       bgPaint.maskFilter = MaskFilter.blur(
-        BlurStyle.normal, backgroundShadowBlur.clamp(0.0, 24.0).toDouble());
+          BlurStyle.normal, backgroundShadowBlur.clamp(0.0, 24.0).toDouble());
     }
     return Stack(
       alignment: Alignment.center,
@@ -126,54 +173,49 @@ class AdvancedTextOverlay extends StatelessWidget {
       children: [
         if (shadow case final shadow?)
           ExcludeSemantics(
-            child: Text(
-              text,
-              textAlign: alignment,
-              textDirection: direction,
-              style: style.copyWith(
+            child: _line(
+              style.copyWith(
                 foreground: Paint()..color = Colors.transparent,
                 shadows: [shadow],
               ),
             ),
           ),
         // Keep the border wrapped around the actual shaped text glyphs.
-        if (hasBg && backgroundBorderWidth > 0) Text(
-          text,
-          textAlign: alignment,
-          textDirection: direction,
-          style: style.copyWith(
-            shadows: const <Shadow>[],
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeJoin = StrokeJoin.round
-              ..strokeCap = StrokeCap.round
-              ..strokeWidth = (backgroundExpansion.clamp(0.0, 24.0).toDouble() +
-                  backgroundBorderWidth.clamp(0.0, 6.0).toDouble()) * 2 + 2
-              ..color = Colors.white70,
+        if (hasBg && backgroundBorderWidth > 0)
+          _line(
+            style.copyWith(
+              shadows: const <Shadow>[],
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeJoin = StrokeJoin.round
+                ..strokeCap = StrokeCap.round
+                ..strokeWidth = (backgroundExpansion
+                                .clamp(0.0, 24.0)
+                                .toDouble() +
+                            backgroundBorderWidth.clamp(0.0, 6.0).toDouble()) *
+                        2 +
+                    2
+                ..color = Colors.white70,
+            ),
           ),
-        ),
-        if (hasBg) Text(
-          text,
-          textAlign: alignment,
-          textDirection: direction,
-          style: style.copyWith(
-            shadows: const <Shadow>[],
-            foreground: bgPaint,
+        if (hasBg)
+          _line(
+            style.copyWith(
+              shadows: const <Shadow>[],
+              foreground: bgPaint,
+            ),
           ),
-        ),
-        if (outlineWidth > 0) Text(
-          text,
-          textAlign: alignment,
-          textDirection: direction,
-          style: style.copyWith(
-            shadows: const <Shadow>[],
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeJoin = StrokeJoin.round
-              ..strokeWidth = outlineWidth * 2
-              ..color = outlineColor,
+        if (outlineWidth > 0)
+          _line(
+            style.copyWith(
+              shadows: const <Shadow>[],
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeJoin = StrokeJoin.round
+                ..strokeWidth = outlineWidth * 2
+                ..color = outlineColor,
+            ),
           ),
-        ),
         fill,
       ],
     );
@@ -216,12 +258,15 @@ class _CurvedTextPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final logicalRuns = RegExp(r'[\u0600-\u06FF]').hasMatch(text)
-        ? text.split(RegExp(r'(?<=\s)|(?=\s)'))
-            .where((part) => part.isNotEmpty).toList()
+        ? text
+            .split(RegExp(r'(?<=\s)|(?=\s)'))
+            .where((part) => part.isNotEmpty)
+            .toList()
         : text.runes.map(String.fromCharCode).toList();
     // RTL is painted right-to-left while each word stays joined.
     final characters = direction == TextDirection.rtl
-        ? logicalRuns.reversed.toList() : logicalRuns;
+        ? logicalRuns.reversed.toList()
+        : logicalRuns;
     final painters = <TextPainter>[];
     var totalWidth = 0.0;
     var tallest = 0.0;
@@ -235,19 +280,22 @@ class _CurvedTextPainter extends CustomPainter {
       tallest = math.max(tallest, painter.height);
     }
     if (totalWidth == 0) {
-      for (final p in painters) { p.dispose(); }
+      for (final p in painters) {
+        p.dispose();
+      }
       return;
     }
     final shader = gradient
-        ? AdvancedTextOverlay._fill.createShader(
-            Rect.fromLTWH(0, 0, size.width, size.height))
+        ? AdvancedTextOverlay._fill
+            .createShader(Rect.fromLTWH(0, 0, size.width, size.height))
         : null;
     var cursor = (size.width - totalWidth) / 2;
     for (var i = 0; i < characters.length; i++) {
       final painter = painters[i];
       final mid = cursor + painter.width / 2;
       final normalized = ((mid - size.width / 2) / (totalWidth / 2))
-          .clamp(-1.0, 1.0).toDouble();
+          .clamp(-1.0, 1.0)
+          .toDouble();
       final bend = curve * 55 * (1 - normalized * normalized);
       final angle = -curve * 110 * normalized / math.max(totalWidth, 1);
       final positionY = (size.height - tallest) / 2 - bend;
@@ -262,12 +310,15 @@ class _CurvedTextPainter extends CustomPainter {
             ..strokeJoin = StrokeJoin.round
             ..strokeCap = StrokeCap.round
             ..strokeWidth = (backgroundExpansion.clamp(0.0, 24.0).toDouble() +
-                backgroundBorderWidth.clamp(0.0, 6.0).toDouble()) * 2 + 2
+                        backgroundBorderWidth.clamp(0.0, 6.0).toDouble()) *
+                    2 +
+                2
             ..color = Colors.white70;
           final borderPainter = TextPainter(
-            text: TextSpan(text: characters[i],
-              style: style.copyWith(
-                shadows: const <Shadow>[], foreground: borderPaint)),
+            text: TextSpan(
+                text: characters[i],
+                style: style.copyWith(
+                    shadows: const <Shadow>[], foreground: borderPaint)),
             textDirection: direction,
           )..layout();
           borderPainter.paint(canvas, origin);
@@ -277,12 +328,14 @@ class _CurvedTextPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeJoin = StrokeJoin.round
           ..strokeCap = StrokeCap.round
-          ..strokeWidth = backgroundExpansion.clamp(0.0, 24.0).toDouble() * 2 + 2
-          ..color = backgroundColor!.withOpacity(
-              backgroundOpacity.clamp(0.0, 1.0).toDouble());
+          ..strokeWidth =
+              backgroundExpansion.clamp(0.0, 24.0).toDouble() * 2 + 2
+          ..color = backgroundColor!
+              .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble());
         if (backgroundGradient) {
           paint.shader = LinearGradient(colors: [
-            backgroundColor!.withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
+            backgroundColor!
+                .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
             Color.lerp(backgroundColor!, Colors.purpleAccent, 0.55)!
                 .withOpacity(backgroundOpacity.clamp(0.0, 1.0).toDouble()),
           ]).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
@@ -292,8 +345,10 @@ class _CurvedTextPainter extends CustomPainter {
               backgroundShadowBlur.clamp(0.0, 24.0).toDouble());
         }
         final bgPainter = TextPainter(
-          text: TextSpan(text: characters[i], style: style.copyWith(
-            shadows: const <Shadow>[], foreground: paint)),
+          text: TextSpan(
+              text: characters[i],
+              style:
+                  style.copyWith(shadows: const <Shadow>[], foreground: paint)),
           textDirection: direction,
         )..layout();
         bgPainter.paint(canvas, origin);
@@ -346,14 +401,21 @@ class _CurvedTextPainter extends CustomPainter {
       canvas.restore();
       cursor += painter.width;
     }
-    for (final p in painters) { p.dispose(); }
+    for (final p in painters) {
+      p.dispose();
+    }
   }
 
   @override
   bool shouldRepaint(covariant _CurvedTextPainter old) =>
-      text != old.text || style != old.style || curve != old.curve ||
-      outlineWidth != old.outlineWidth || outlineColor != old.outlineColor ||
-      gradient != old.gradient || direction != old.direction || shadow != old.shadow ||
+      text != old.text ||
+      style != old.style ||
+      curve != old.curve ||
+      outlineWidth != old.outlineWidth ||
+      outlineColor != old.outlineColor ||
+      gradient != old.gradient ||
+      direction != old.direction ||
+      shadow != old.shadow ||
       backgroundColor != old.backgroundColor ||
       backgroundOpacity != old.backgroundOpacity ||
       backgroundExpansion != old.backgroundExpansion ||
