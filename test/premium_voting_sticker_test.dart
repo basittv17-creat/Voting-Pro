@@ -10,17 +10,21 @@ import 'package:voting_pro/widgets/premium_voting_sticker.dart';
 void main() {
   test('all old voting PNG IDs migrate to persistent vector IDs', () {
     const legacy = [
-      '01_lion.png', '02_cheetah.png', '03_tiger.png',
-      '04_elephant.png', '05_eagle.png', '06_wolf.png',
-      '07_panther.png', '08_bear.png', '09_cobra.png',
+      '01_lion.png',
+      '02_cheetah.png',
+      '03_tiger.png',
+      '04_elephant.png',
+      '05_eagle.png',
+      '06_wolf.png',
+      '07_panther.png',
+      '08_bear.png',
+      '09_cobra.png',
       '10_crossed_swords.png',
     ];
     expect(VotingStickerCatalog.designs.length, 16);
     for (var i = 0; i < legacy.length; i++) {
       expect(
-        VotingStickerCatalog.migrate(
-          'assets/voting_stickers/' + legacy[i],
-        ),
+        VotingStickerCatalog.migrate('assets/voting_stickers/' + legacy[i]),
         VotingStickerCatalog.designs[i].id,
       );
     }
