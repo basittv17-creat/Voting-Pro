@@ -1239,22 +1239,42 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           padding: const EdgeInsets.fromLTRB(8, 3, 8, 6),
           child: Row(
             children: [
-              ChoiceChip(
-                key: const ValueKey('voting-sticker-side-A'),
-                label: const Text('A Side'),
-                selected: _votingStickerSideA,
-                onSelected: (_) => setState(() => _votingStickerSideA = true),
+              Expanded(
+                child: OutlinedButton(
+                  key: const ValueKey('voting-sticker-side-A'),
+                  onPressed: () => setState(() => _votingStickerSideA = true),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    backgroundColor: _votingStickerSideA
+                        ? const Color(0x5547D9E7)
+                        : null,
+                    side: BorderSide(
+                      color: _votingStickerSideA ? gold : Colors.white24,
+                    ),
+                  ),
+                  child: const Text('A'),
+                ),
               ),
-              const SizedBox(width: 7),
-              ChoiceChip(
-                key: const ValueKey('voting-sticker-side-B'),
-                label: const Text('B Side'),
-                selected: !_votingStickerSideA,
-                onSelected: (_) => setState(() => _votingStickerSideA = false),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton(
+                  key: const ValueKey('voting-sticker-side-B'),
+                  onPressed: () => setState(() => _votingStickerSideA = false),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    backgroundColor: !_votingStickerSideA
+                        ? const Color(0x5547D9E7)
+                        : null,
+                    side: BorderSide(
+                      color: !_votingStickerSideA ? gold : Colors.white24,
+                    ),
+                  ),
+                  child: const Text('B'),
+                ),
               ),
-              const Spacer(),
-              TextButton.icon(
+              IconButton(
                 key: const ValueKey('remove-voting-sticker'),
+                tooltip: 'Remove sticker from selected side',
                 onPressed: current == null
                     ? null
                     : () => setState(() {
@@ -1264,8 +1284,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             rightVotingSticker = null;
                           }
                         }),
-                icon: const Icon(Icons.delete_outline, size: 17),
-                label: const Text('Remove'),
+                icon: const Icon(Icons.delete_outline, size: 22),
               ),
             ],
           ),
