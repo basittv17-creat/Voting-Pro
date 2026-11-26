@@ -22,6 +22,7 @@ import 'widgets/text_background_plate.dart';
 import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
 import 'widgets/premium_vs.dart';
+import 'widgets/premium_voting_sticker.dart';
 import 'widgets/editor_options_panel.dart';
 import 'widgets/vs_styles_panel.dart';
 import 'services/poster_share_cache.dart';
@@ -403,18 +404,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   String? leftVotingSticker;
   String? rightVotingSticker;
-  static const List<String> votingStickerAssets = [
-    "assets/voting_stickers/01_lion.png",
-    "assets/voting_stickers/02_cheetah.png",
-    "assets/voting_stickers/03_tiger.png",
-    "assets/voting_stickers/04_elephant.png",
-    "assets/voting_stickers/05_eagle.png",
-    "assets/voting_stickers/06_wolf.png",
-    "assets/voting_stickers/07_panther.png",
-    "assets/voting_stickers/08_bear.png",
-    "assets/voting_stickers/09_cobra.png",
-    "assets/voting_stickers/10_crossed_swords.png",
-  ];
+  bool _votingStickerSideA = true;
   int? selectedTextIndex;
   final Map<int, Offset> textPositions = {};
   final Map<int, double> textScales = {};
@@ -946,8 +936,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             overlay.scale = (item['scale'] as num?)?.toDouble() ?? 1.0;
             return overlay;
           }));
-        leftVotingSticker = data['leftVotingSticker'] as String?;
-        rightVotingSticker = data['rightVotingSticker'] as String?;
+        leftVotingSticker = VotingStickerCatalog.migrate(
+          data['leftVotingSticker'] as String?,
+        );
+        rightVotingSticker = VotingStickerCatalog.migrate(
+          data['rightVotingSticker'] as String?,
+        );
         selectedStylishFrame = data['selectedStylishFrame'] as String?;
         selectedReadyMadeTemplate = data['selectedReadyMadeTemplate'] as String?;
         _templateANameEdited = data['templateANameEdited'] as bool? ?? false;
@@ -1235,6 +1229,110 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  Widget _votingStickerOptions() {
+    final current = _votingStickerSideA ? leftVotingSticker : rightVotingSticker;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 3, 8, 6),
+          child: Row(
+            children: [
+              ChoiceChip(
+                key: const ValueKey('voting-sticker-side-A'),
+                label: const Text('A Side'),
+                selected: _votingStickerSideA,
+                onSelected: (_) => setState(() => _votingStickerSideA = true),
+              ),
+              const SizedBox(width: 7),
+              ChoiceChip(
+                key: const ValueKey('voting-sticker-side-B'),
+                label: const Text('B Side'),
+                selected: !_votingStickerSideA,
+                onSelected: (_) => setState(() => _votingStickerSideA = false),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                key: const ValueKey('remove-voting-sticker'),
+                onPressed: current == null
+                    ? null
+                    : () => setState(() {
+                          if (_votingStickerSideA) {
+                            leftVotingSticker = null;
+                          } else {
+                            rightVotingSticker = null;
+                          }
+                        }),
+                icon: const Icon(Icons.delete_outline, size: 17),
+                label: const Text('Remove'),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            key: const ValueKey('premium-voting-stickers-grid'),
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 180,
+              mainAxisExtent: 86,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: VotingStickerCatalog.designs.length,
+            itemBuilder: (context, index) {
+              final design = VotingStickerCatalog.designs[index];
+              final selected = design.id == current;
+              return OutlinedButton(
+                key: ValueKey('voting-sticker-choice-' + design.id),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: selected
+                      ? const Color(0x443A3117)
+                      : const Color(0xFF142036),
+                  side: BorderSide(
+                    color: selected ? gold : Colors.white24,
+                    width: selected ? 2 : 1,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                ),
+                onPressed: () => setState(() {
+                  if (_votingStickerSideA) {
+                    leftVotingSticker = design.id;
+                  } else {
+                    rightVotingSticker = design.id;
+                  }
+                }),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: PremiumVotingSticker(id: design.id),
+                    ),
+                    Text(
+                      design.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _editVotingSticker(bool sideA) {
+    setState(() {
+      _votingStickerSideA = sideA;
+      _editorOptions = _EditorOptions.votingStickers;
+    });
   }
 
   String _assetOptionName(String asset, [String prefix = '']) => asset
@@ -2377,21 +2475,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         ),
       _EditorOptions.votingStickers => (
           'Voting Sticker',
-          _assetOptions(
-            options: [
-              for (final asset in votingStickerAssets)
-                (_assetOptionName(asset), asset)
-            ],
-            isSelected: (asset) =>
-                asset == leftVotingSticker || asset == rightVotingSticker,
-            onSelect: (asset) => setState(() {
-              if (leftVotingSticker == null) {
-                leftVotingSticker = asset;
-              } else {
-                rightVotingSticker = asset;
-              }
-            }),
-          )
+          _votingStickerOptions(),
         ),
       _EditorOptions.tagraStickers => (
           'تگڑا مقابلہ اسٹیکرز',
@@ -5569,7 +5653,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               top: 2,
               width: 42,
               height: 42,
-              child: Image.asset(leftVotingSticker!, fit: BoxFit.contain),
+              child: GestureDetector(
+                key: const ValueKey('voting-sticker-A'),
+                behavior: HitTestBehavior.opaque,
+                onTap: isExportingPoster ? null : () => _editVotingSticker(true),
+                child: PremiumVotingSticker(id: leftVotingSticker!),
+              ),
             ),
           if (selectedReadyMadeTemplate == null && rightVotingSticker != null)
             Positioned(
@@ -5577,7 +5666,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               top: 2,
               width: 42,
               height: 42,
-              child: Image.asset(rightVotingSticker!, fit: BoxFit.contain),
+              child: GestureDetector(
+                key: const ValueKey('voting-sticker-B'),
+                behavior: HitTestBehavior.opaque,
+                onTap: isExportingPoster ? null : () => _editVotingSticker(false),
+                child: PremiumVotingSticker(id: rightVotingSticker!),
+              ),
             ),
           if (selectedReadyMadeTemplate == null && showVs)
             Align(
