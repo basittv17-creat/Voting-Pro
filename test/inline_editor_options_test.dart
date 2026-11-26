@@ -70,8 +70,8 @@ void main() {
     expect(tester.getRect(_toolbar), toolbarBounds);
   });
 
-  testWidgets('Template grid exposes all nine choices and selects Royal Battle',
-      (
+  testWidgets(
+      'Template grid exposes all eleven choices and selects Royal Battle', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -85,7 +85,7 @@ void main() {
     final grid = tester.widget<GridView>(
       find.descendant(of: _panel, matching: find.byType(GridView)),
     );
-    expect(grid.childrenDelegate.estimatedChildCount, 9);
+    expect(grid.childrenDelegate.estimatedChildCount, 11);
     await tester.tap(find.text('Royal Battle'));
     await tester.pumpAndSettle();
     expect(_panel, findsNothing);

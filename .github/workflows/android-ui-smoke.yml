@@ -10,6 +10,9 @@ on:
       - 'test/premium_text_editor_panel_test.dart'
       - 'integration_test/text_toolbar_android_test.dart'
       - 'integration_test/photo_tools_android_test.dart'
+      - 'integration_test/tagra_arena_android_test.dart'
+      - 'lib/widgets/tagra_arena.dart'
+      - 'assets/templates/tagra_*.png'
       - 'lib/widgets/bg_remover_page.dart'
       - 'test/android_apk_workflow_test.dart'
       - '.github/workflows/android-ui-smoke.yml'
@@ -19,11 +22,12 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   vs-styles:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -82,6 +86,20 @@ jobs:
           flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/vs_styles_android_test.dart
           flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/text_toolbar_android_test.dart
           flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/photo_tools_android_test.dart
+          # Dismiss each native sharesheet and retain evidence of the real Android handoff.
+          (
+            for theme in thunder emerald; do
+              timeout 420 bash -c 'until adb shell dumpsys activity activities | grep -E "mResumedActivity.*ChooserActivity" >/dev/null; do sleep 1; done'
+              adb exec-out screencap -p > "build/android-screenshots/tagra-share-$theme.png"
+              adb shell input keyevent KEYCODE_BACK
+              sleep 2
+            done
+          ) &
+          share_watcher=$!
+          flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart --target=integration_test/tagra_arena_android_test.dart
+          wait "$share_watcher"
+          saved=$(adb shell content query --uri content://media/external/images/media --projection _display_name | grep -c 'voting_pro_')
+          test "$saved" -ge 2
 
       - name: Report emulator diagnostics
         if: failure()
@@ -111,6 +129,8 @@ jobs:
           cp "$RUNNER_TEMP/voting-pro-ui-screenshots/"*.png build/android-screenshots/
 
       - name: Install normal APK and verify app stays open after splash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           # The integration-test step deliberately kills its emulator on exit.
@@ -143,6 +163,27 @@ jobs:
           adb -s emulator-5554 exec-out screencap -p > build/android-screenshots/text-09-normal-app-launch.png
           test -s build/android-screenshots/text-09-normal-app-launch.png
           echo "NORMAL_VOTING_PRO_LAUNCH_PASSED: PID=$pid"
+
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            # Compare with the signed artifact built from exactly this commit.
+            release_id=''
+            for attempt in $(seq 1 60); do
+              release_id=$(gh run list --workflow flutter-build.yml --commit "$GITHUB_SHA" --event push --json databaseId --jq '.[0].databaseId // empty')
+              if [ -n "$release_id" ] && gh run download "$release_id" --name voting-pro-apk --dir "$RUNNER_TEMP/tagra-release"; then break; fi
+              sleep 15
+            done
+            signed="$RUNNER_TEMP/tagra-release/app-release.apk"
+            test -s "$signed"
+            adb uninstall "$PACKAGE"
+            adb install "$signed"
+            adb shell am force-stop "$PACKAGE"
+            adb logcat -c
+            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
+            sleep 8
+            adb shell pidof -s "$PACKAGE"
+            if adb logcat -d -s AndroidRuntime:E | grep -F 'FATAL EXCEPTION' >/dev/null; then exit 1; fi
+            adb exec-out screencap -p > build/android-screenshots/tagra-signed-cold-launch.png
+          fi
 
       - name: Upload Android screenshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

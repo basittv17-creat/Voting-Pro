@@ -64,7 +64,10 @@ void main() {
     final tiger = find.byKey(
       const ValueKey('voting-sticker-choice-vector:tiger'),
     );
-    await tester.ensureVisible(tiger);
+    final grid = find.byKey(const ValueKey('premium-voting-stickers-grid'));
+    await tester.dragUntilVisible(
+        tiger.hitTestable(), grid, const Offset(0, -45));
+    await tester.pumpAndSettle();
     await tester.tap(tiger);
     await tester.pumpAndSettle();
     expect(state.leftVotingSticker, 'vector:lion');

@@ -16,6 +16,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'widgets/neon_purple_vs_template.dart';
 import 'widgets/metallic_vs_battle_template.dart';
+import 'widgets/tagra_arena.dart';
 import 'widgets/advanced_text_overlay.dart';
 import 'widgets/scaled_overlay.dart';
 import 'widgets/text_background_plate.dart';
@@ -346,6 +347,26 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       aLabel: 'assets/label_bars/a_side/A_Side_Style_5.png',
       bLabel: 'assets/label_bars/b_side/B_Side_Style_3.png',
       vs: 'Golden Glow',
+    ),
+    (
+      key: 'tagra_royal_thunder',
+      name: 'Tagra Muqabla — Royal Thunder',
+      base: Color(0xFF172735),
+      accent: Color(0xFFEFC575),
+      frame: '',
+      aLabel: '',
+      bLabel: '',
+      vs: '',
+    ),
+    (
+      key: 'tagra_emerald_fire',
+      name: 'Tagra Muqabla — Emerald Fire',
+      base: Color(0xFF172735),
+      accent: Color(0xFFEFC575),
+      frame: '',
+      aLabel: '',
+      bLabel: '',
+      vs: '',
     ),
   ];
 
@@ -1577,6 +1598,28 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {
+    final arena = TagraArena.fromId(selectedReadyMadeTemplate);
+    if (arena != null) {
+      return TagraArenaPoster(
+        key: ValueKey(arena),
+        arena: arena,
+        urdu: AppLanguage.isUrdu,
+        photoA: preview ? null : a,
+        photoB: preview ? null : b,
+        nameA: aSideLabelText,
+        nameB: bSideLabelText,
+        exporting: isExportingPoster || preview,
+        scales: _templatePhotoScales,
+        offsets: _templatePhotoOffsets,
+        onPick: pick,
+        onName: editSideLabelText,
+        onSelect: (side) => _selectCanvasObject(templatePhotoSideA: side),
+        onTransform: (side, scale, offset) => setState(() {
+          _templatePhotoScales[side] = scale;
+          _templatePhotoOffsets[side] = offset;
+        }),
+      );
+    }
     if (selectedReadyMadeTemplate == 'royal_a_vs_b_battle') {
       return _buildRoyalBattleArtwork(preview: preview);
     }
@@ -2012,10 +2055,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       (item) => item.key == templateKey,
     );
 
+    final arena = TagraArena.fromId(templateKey);
+    final keepA = arena != null && (_templateANameEdited ||
+        (selectedReadyMadeTemplate == null && aSideLabelText != 'A SIDE'));
+    final keepB = arena != null && (_templateBNameEdited ||
+        (selectedReadyMadeTemplate == null && bSideLabelText != 'B SIDE'));
     setState(() {
       _editorOptions = null;
-      _templateANameEdited = false;
-      _templateBNameEdited = false;
+      _templateANameEdited = keepA;
+      _templateBNameEdited = keepB;
       _templatePhotoScales[true] = 1.0;
       _templatePhotoScales[false] = 1.0;
       _templatePhotoOffsets[true] = Offset.zero;
@@ -2030,7 +2078,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (templateKey == 'royal_a_vs_b_battle' ||
           templateKey == 'tagra_muqabla' ||
           templateKey == 'neon_purple_showdown' ||
-          templateKey == 'metallic_vs_battle') {
+          templateKey == 'metallic_vs_battle' || arena != null) {
         selectedReadyMadeTemplate = templateKey;
         canvasRatio = templateKey == 'tagra_muqabla' ? 1447 / 1087 : 4 / 3;
         background = dark;
@@ -2038,8 +2086,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         selectedStylishFrame = null;
         selectedASideLabel = null;
         selectedBSideLabel = null;
-        aSideLabelText = templateKey == 'neon_purple_showdown' ? 'رائے اویس' : 'اسد';
-        bSideLabelText = templateKey == 'neon_purple_showdown' ? 'شہزاد بھٹی برانڈ' : 'رقیہ';
+        if (arena == null) {
+          final neon = templateKey == 'neon_purple_showdown';
+          aSideLabelText = neon ? 'رائے اویس' : 'اسد';
+          bSideLabelText = neon ? 'شہزاد بھٹی برانڈ' : 'رقیہ';
+        } else {
+          if (!keepA) aSideLabelText = '';
+          if (!keepB) bSideLabelText = '';
+        }
         selectedTextIndex = null;
         selectedStickerIndex = null;
         selectedTagraStickerIndex = null;
@@ -2068,6 +2122,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     ({String key, String name, Color base, Color accent, String frame,
       String aLabel, String bLabel, String vs}) template,
   ) {
+    final arena = TagraArena.fromId(template.key);
+    if (arena != null) return TagraArenaPoster(arena: arena, urdu: AppLanguage.isUrdu);
     final isRoyal = template.key == 'royal_a_vs_b_battle';
     final isTagra = template.key == 'tagra_muqabla';
     final isNeonPurple = template.key == 'neon_purple_showdown';
@@ -2172,6 +2228,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         itemCount: _readyTemplateOptions.length,
         itemBuilder: (context, index) {
           final template = _readyTemplateOptions[index];
+          final arena = TagraArena.fromId(template.key);
+          final title = arena != null && AppLanguage.isUrdu
+              ? 'تگڑا مقابلہ — ${arena.urdu}' : template.name;
           final isSelected =
               (selectedReadyMadeTemplate ?? '') == template.key ||
                   (selectedReadyMadeTemplate == null &&
@@ -2205,8 +2264,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  template.name,
-                  maxLines: 1,
+                  title,
+                  maxLines: arena == null ? 1 : 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
