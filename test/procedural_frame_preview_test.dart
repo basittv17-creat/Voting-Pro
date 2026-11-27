@@ -26,7 +26,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('Measure candidate differences against original frame artwork', () async {
+  test('Compare candidate frame pixels with original', () async {
     for (final frame in ProceduralFrame.values) {
       final data = await rootBundle.load(frame.asset);
       final codec = await ui.instantiateImageCodec(
