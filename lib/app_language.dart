@@ -9,6 +9,8 @@ class AppLanguage {
       isUrdu ? TextDirection.rtl : TextDirection.ltr;
 
   static const Map<String, String> _urdu = {
+    "Previous edit restored": "پچھلی تبدیلی بحال ہوگئی",
+    "Edit reapplied": "تبدیلی دوبارہ لگ گئی",
     "None": "کوئی نہیں",
     "Premium photo backgrounds": "پریمیم تصویری پس منظر",
     "Use Remove Background first to reveal a photo background.": "منتخب پس منظر دیکھنے کے لیے تصویر کا اصل پس منظر ہٹائیں۔",

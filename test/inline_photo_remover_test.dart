@@ -105,4 +105,86 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Main dock can undo and redo Auto Remove without Manual mode', (
+    tester,
+  ) async {
+    final directory = Directory.systemTemp.createTempSync('auto-history-');
+    final original = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _Documents(directory);
+    addTearDown(() {
+      PathProviderPlatform.instance = original;
+      directory.deleteSync(recursive: true);
+    });
+    final file = File('${directory.path}/source.png');
+    file.writeAsBytesSync(img.encodePng(img.Image(width: 32, height: 40)));
+    File? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 350,
+            width: 393,
+            child: BackgroundRemoverPage(
+              initialPhotoA: file,
+              initialPhotoB: null,
+              onClose: () {},
+              onSelectSide: (side) {},
+              autoMask: (source, width, height) async =>
+                  Uint8List(width * height),
+              onApply: (side, cutout) async {
+                expect(side, isTrue);
+                result = cutout;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Future<void> waitFor(bool Function() done) async {
+      for (var attempt = 0; attempt < 100 && !done(); attempt++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(done(), isTrue);
+    }
+
+    final auto = find.widgetWithText(OutlinedButton, 'Auto Remove Background');
+    await waitFor(() => tester.widget<OutlinedButton>(auto).onPressed != null);
+    await tester.tap(auto);
+    await tester.pump();
+    await waitFor(() => result != null);
+    expect(
+      img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 0),
+      isTrue,
+    );
+    final undo = find.byTooltip('Undo');
+    await waitFor(() => undo.evaluate().isNotEmpty);
+    await tester.ensureVisible(undo);
+    await tester.pump();
+    result = null;
+    await tester.tap(undo);
+    await tester.pump();
+    await waitFor(() => result != null);
+    expect(
+      img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 255),
+      isTrue,
+    );
+    final redo = find.byTooltip('Redo');
+    await tester.ensureVisible(redo);
+    await tester.pump();
+    result = null;
+    await tester.tap(redo);
+    await tester.pump();
+    await waitFor(() => result != null);
+    expect(
+      img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 0),
+      isTrue,
+    );
+    expect(find.byKey(const ValueKey('inline-cutout-brush')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

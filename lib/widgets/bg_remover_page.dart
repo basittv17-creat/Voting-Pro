@@ -86,6 +86,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
 
   @override
   void dispose() {
+    _releaseLivePixels();
     _brushCursor.dispose();
     super.dispose();
   }
@@ -343,6 +344,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     await _runMaskEdit(() {
       _redo.add(Uint8List.fromList(_mask!));
       _mask = _undo.removeLast();
+      _status = 'Previous edit restored';
     });
   }
 
@@ -351,6 +353,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     await _runMaskEdit(() {
       _undo.add(Uint8List.fromList(_mask!));
       _mask = _redo.removeLast();
+      _status = 'Edit reapplied';
     });
   }
 
@@ -365,7 +368,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
 
   bool get manualBrush => _manual && _mask != null;
   bool get editing => _busy || _strokeActive;
-  Uint8List? get livePixels => _strokeActive ? _livePixels : null;
+  // Keep the last live frame visible until its final cutout is committed.
+  Uint8List? get livePixels => _livePixels;
   bool _strokeActive = false;
   List<Uint8List>? _undoBeforeStroke;
   List<Uint8List>? _redoBeforeStroke;
@@ -388,6 +392,17 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     _maskBeforeStroke = null;
   }
   Uint8List? _livePixels;
+
+  // Each composed frame has a new MemoryImage key. Evict superseded
+  // previews rather than allowing a long brush stroke to fill ImageCache.
+  void _releaseLivePixels() {
+    final previous = _livePixels;
+    _livePixels = null;
+    if (previous != null) {
+      PaintingBinding.instance.imageCache.evict(MemoryImage(previous));
+    }
+  }
+
   int _strokeRevision = 0;
   int _strokeSession = 0;
   bool _renderingStroke = false;
@@ -408,7 +423,10 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     try {
       final pixels = await OfflineBgRemover.compose(_sourcePng!, Uint8List.fromList(_mask!));
       if (mounted && _strokeActive && session == _strokeSession) {
-        setState(() => _livePixels = pixels);
+        setState(() {
+          _releaseLivePixels();
+          _livePixels = pixels;
+        });
         _notifyCanvas();
       }
     } catch (_) {
@@ -497,7 +515,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       _notice('Brush preview failed');
     } finally {
       _clearStrokeHistory();
-      _livePixels = null;
+      _releaseLivePixels();
       if (mounted) _notifyCanvas();
       if (mounted) setState(() => _busy = false);
     }
@@ -714,6 +732,11 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
               TextButton.icon(onPressed: _busy ? null : _reset, icon: const Icon(Icons.refresh, size: 16),
                 label: Text(label('Reset', 'ری سیٹ'))),
             ]),
+            if (_undo.isNotEmpty || _redo.isNotEmpty)
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                IconButton(tooltip: label('Undo', 'واپس'), onPressed: _busy || _undo.isEmpty ? null : _undoChange, icon: const Icon(Icons.undo)),
+                IconButton(tooltip: label('Redo', 'دوبارہ'), onPressed: _busy || _redo.isEmpty ? null : _redoChange, icon: const Icon(Icons.redo)),
+              ]),
           ],
           if (imageAvailable && _manual) ...[
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
