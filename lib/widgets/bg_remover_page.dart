@@ -93,7 +93,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   void _notice(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+      SnackBar(content: Text(AppLanguage.tr(message), textDirection: AppLanguage.direction), duration: const Duration(seconds: 3)),
     );
   }
 
@@ -126,7 +126,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         _brushCursor.value = null;
         _status = 'Image ready • Auto or Manual editing';
       });
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _status = _sourcePng == null
@@ -134,7 +134,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
               : 'Previous image kept • choose another picture';
         });
       }
-      _notice('Image could not be loaded: $error');
+      _notice('Image could not be loaded');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -178,8 +178,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       );
       if (picked == null || !mounted) return;
       await _loadFile(File(picked.path));
-    } catch (error) {
-      _notice('Could not open gallery: $error');
+    } catch (_) {
+      _notice('Could not open gallery');
     }
   }
 
@@ -281,7 +281,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       setState(() => _status = widget.onClose == null
           ? 'Auto cutout ready • Use Manual to refine edges'
           : 'Background removed • Saved');
-    } catch (error) {
+    } catch (_) {
       _undo..clear()..addAll(previousUndo);
       _redo..clear()..addAll(previousRedo);
       _mask = originalMask;
@@ -292,7 +292,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
           _status = previousStatus;
         });
       }
-      _notice('Offline auto removal unavailable: $error');
+      _notice('Offline auto removal unavailable');
       if (_sourcePng != null && mounted) {
         try {
           await _updatePreview(commit: false);
@@ -316,11 +316,11 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     try {
       edit();
       await _updatePreview();
-    } catch (error) {
+    } catch (_) {
       _mask = previous;
       _undo..clear()..addAll(undo);
       _redo..clear()..addAll(redo);
-      _notice('Could not update cutout preview: $error');
+      _notice('Could not update cutout preview');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -461,9 +461,9 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     setState(() => _busy = true);
     try {
       await _updatePreview();
-    } catch (error) {
+    } catch (_) {
       if (_undo.isNotEmpty) _mask = _undo.removeLast();
-      _notice('Brush preview failed: $error');
+      _notice('Brush preview failed');
     } finally {
       _livePixels = null;
       if (mounted) _notifyCanvas();
@@ -495,8 +495,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         setState(() => _allowExit = true);
         Navigator.of(context).pop();
       }
-    } catch (error) {
-      _notice('Could not apply cutout: $error');
+    } catch (_) {
+      _notice('Could not apply cutout');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -518,7 +518,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
           ),
         ),
         icon: Icon(icon, size: 19),
-        label: Text(label, maxLines: 2, textAlign: TextAlign.center),
+        label: Text(AppLanguage.tr(label), maxLines: 2, textAlign: TextAlign.center),
       );
 
   Widget _preview(bool imageAvailable) => imageAvailable
@@ -614,8 +614,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(icon, size: 18),
             const SizedBox(height: 2),
-            Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text(title,
-              textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)))),
+            Flexible(child: Text(title, maxLines: 2, textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 10, height: 1.05, fontWeight: FontWeight.w700))),
           ]),
         )));
     return Container(
@@ -626,7 +626,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         border: Border.all(color: const Color(0xFF7862A4)),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: LayoutBuilder(builder: (context, bounds) => SingleChildScrollView(
+      child: LayoutBuilder(builder: (context, bounds) => Padding(
         padding: const EdgeInsets.all(7),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(textDirection: TextDirection.ltr, children: [
@@ -651,7 +651,11 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
             control(label('Custom Remove', 'دستی پس منظر ہٹائیں'), Icons.brush_outlined,
               imageAvailable ? () => setState(() { _manual = true; _erase = true; _notifyCanvas(); }) : null, active: _manual),
           ]),
+          Expanded(child: SingleChildScrollView(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (_busy) const Padding(padding: EdgeInsets.only(top: 4), child: LinearProgressIndicator(color: mint, minHeight: 2)),
+          if (_busy) Text(AppLanguage.tr(_status), maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: mint, fontSize: 11)),
           const SizedBox(height: 5),
           Row(children: [
             for (final side in [true, false]) ...[
@@ -673,7 +677,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
               style: const TextStyle(color: mint, fontSize: 12)),
           if (imageAvailable && !_manual) ...[
             Row(children: [
-              Expanded(child: Text(label('Result appears on your poster', 'نتیجہ پوسٹر پر نظر آئے گا'),
+              Expanded(child: Text(AppLanguage.tr(_status),
                 style: const TextStyle(color: mint, fontSize: 12))),
               TextButton.icon(onPressed: _busy ? null : _reset, icon: const Icon(Icons.refresh, size: 16),
                 label: Text(label('Reset', 'ری سیٹ'))),
@@ -701,6 +705,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
               ])),
             ]),
           ],
+            ],
+          ))),
         ]),
       )),
     );
@@ -941,7 +947,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                             Icons.add_photo_alternate_outlined,
                             _uploadPicture, primary: true),
                           const SizedBox(height: 12),
-                          Text(_status,
+                          Text(AppLanguage.tr(_status),
                             textAlign: TextAlign.center,
                             style: const TextStyle(color: mint, fontSize: 12)),
                           const SizedBox(height: 10),

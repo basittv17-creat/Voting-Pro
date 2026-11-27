@@ -4161,9 +4161,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Future<void> _uploadMainRemoverPhoto(bool sideA) async {
+    final previous = (sideA ? a : b)?.path;
     await pick(sideA);
-    if (!mounted || (sideA ? a : b) == null) return;
-    if (_mainRemoverSide == sideA || _selectedPhotoSideA == sideA) {
+    if (!mounted) return;
+    final current = (sideA ? a : b)?.path;
+    if (current != null && current != previous && _selectedPhotoSideA == sideA) {
       setState(() => _setMainRemoverSide(sideA));
     }
   }
@@ -5270,6 +5272,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
+  // Transient brush frames are not project edits. Only the committed cutout
+  // schedules persistence, avoiding an autosave timer for every preview frame.
+  void _refreshCutoutPreview() {
+    if (mounted) super.setState(() {});
+  }
+
   Widget _buildPhotoPanel(bool sideA, {bool mainRemover = false}) {
     final source = sideA ? a : b;
     if (source == null && !mainRemover) return const SizedBox.shrink();
@@ -5286,7 +5294,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       }
       return BackgroundRemoverPage(
         key: _brushKey,
-        onCanvasChanged: () { if (mounted) setState(() {}); },
+        onCanvasChanged: _refreshCutoutPreview,
         onSelectSide: mainRemover ? (side) => setState(() => _setMainRemoverSide(side)) : null,
         onUpload: mainRemover ? () => _uploadMainRemoverPhoto(sideA) : null,
         initialOriginal: _inlineOriginalPhotos[sideA],

@@ -51,7 +51,7 @@ class PhotoBackgroundSettingsState extends State<PhotoBackgroundSettings> {
       builder: (context, snapshot) => SingleChildScrollView(
         padding: const EdgeInsets.all(8),
         child: snapshot.hasError
-            ? const Text('Could not read the selected photo.')
+            ? Text(AppLanguage.tr('Could not read the selected photo.'))
             : !snapshot.hasData
             ? const LinearProgressIndicator()
             : Wrap(
@@ -79,7 +79,7 @@ class PhotoBackgroundSettingsState extends State<PhotoBackgroundSettings> {
                         ),
                         child: const SizedBox.square(dimension: 20),
                       ),
-                      label: Text(key),
+                      label: Text(AppLanguage.tr(key)),
                       selected: widget.selected == key,
                       onSelected: (_) => widget.onSelected(key),
                     ),

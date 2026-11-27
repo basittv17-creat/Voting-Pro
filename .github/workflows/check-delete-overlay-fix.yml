@@ -455,8 +455,14 @@ jobs:
               "WidgetsBinding.instance.addObserver(this)",
               "AppLifecycleState.paused",
               "_persistProjectImage",
-              "side_a.img",
-              "side_b.img",
+              "\'imageA\': a",
+              "\'imageB\': b",
+              "_persistProjectImage(entry.value, entry.key)",
+              "data[entry.key] = path",
+              "snapshot_${slot}_",
+              "prefs.setString(_projectSaveKey, snapshot)",
+              "data[\'imageA\']",
+              "data[\'imageB\']",
           ]
           for item in required:
               if item not in source:
