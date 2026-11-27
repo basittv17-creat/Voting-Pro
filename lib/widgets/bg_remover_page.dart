@@ -519,21 +519,24 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
             );
           },
         )
-      : const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.image_outlined, color: mint, size: 62),
-              SizedBox(height: 10),
-              Text(
-                'Upload Your Picture',
-                style: TextStyle(color: Colors.white70),
-              ),
-              Text(
-                'Preview appears here',
-                style: TextStyle(color: Colors.white38),
-              ),
-            ],
+      : Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.image_outlined, color: mint, size: 48),
+                const SizedBox(height: 6),
+                Text(
+                  AppLanguage.current == 'ur' ? 'اپنی تصویر منتخب کریں' : 'Upload Your Picture',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                Text(
+                  AppLanguage.current == 'ur' ? 'تصویر یہاں دکھائی دے گی' : 'Preview appears here',
+                  style: const TextStyle(color: Colors.white38),
+                ),
+              ],
+            ),
           ),
         );
 
@@ -752,7 +755,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                 const SizedBox(width: 7),
                 Expanded(flex: 2, child: Column(children: [
                   Row(children: [
-                    tile(label('Auto Remove', 'خودکار ریموو'), Icons.auto_awesome,
+                    tile(label('Auto Remove', 'خودکار صفائی'), Icons.auto_awesome,
                       imageAvailable ? _autoRemove : null, selected: !_manual),
                     const SizedBox(width: 5),
                     tile(label('Erase', 'مٹائیں'), Icons.auto_fix_off,
