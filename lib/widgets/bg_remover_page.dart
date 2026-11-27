@@ -253,7 +253,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   }
 
   Future<void> _autoRemove() async {
-    if (_busy || _sourcePng == null || _mask == null) {
+    if (_busy || _strokeActive || _sourcePng == null || _mask == null) {
       if (_sourcePng == null) _notice('Upload Your Picture first');
       return;
     }
@@ -308,8 +308,10 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   // Serialize preview recomposition so quick Undo/Redo taps cannot show
   // an older PNG after a newer mask change finishes.
   Future<void> _runMaskEdit(VoidCallback edit) async {
-    if (_busy || _mask == null || _sourcePng == null) return;
+    if (_busy || _strokeActive || _mask == null || _sourcePng == null) return;
     final previous = Uint8List.fromList(_mask!);
+    final previousStatus = _status;
+    final previousDirty = _hasUnsavedEdits;
     final undo = List<Uint8List>.of(_undo);
     final redo = List<Uint8List>.of(_redo);
     setState(() => _busy = true);
@@ -318,6 +320,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       await _updatePreview();
     } catch (_) {
       _mask = previous;
+      _status = previousStatus;
+      _hasUnsavedEdits = previousDirty;
       _undo..clear()..addAll(undo);
       _redo..clear()..addAll(redo);
       _notice('Could not update cutout preview');
@@ -363,6 +367,26 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   bool get editing => _busy || _strokeActive;
   Uint8List? get livePixels => _strokeActive ? _livePixels : null;
   bool _strokeActive = false;
+  List<Uint8List>? _undoBeforeStroke;
+  List<Uint8List>? _redoBeforeStroke;
+  Uint8List? _maskBeforeStroke;
+  bool _dirtyBeforeStroke = false;
+
+  void _startStrokeHistory() {
+    if (_strokeActive) return;
+    _undoBeforeStroke = _undo.toList();
+    _redoBeforeStroke = _redo.toList();
+    _dirtyBeforeStroke = _hasUnsavedEdits;
+    _recordUndo();
+    _maskBeforeStroke = _undo.last;
+    _strokeActive = true;
+  }
+
+  void _clearStrokeHistory() {
+    _undoBeforeStroke = null;
+    _redoBeforeStroke = null;
+    _maskBeforeStroke = null;
+  }
   Uint8List? _livePixels;
   int _strokeRevision = 0;
   int _strokeSession = 0;
@@ -373,9 +397,14 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   Future<void> _renderStroke() async {
     if (_renderingStroke || !_strokeActive) return;
     _renderingStroke = true;
-    final revision = _strokeRevision;
+    var revision = _strokeRevision;
     final session = _strokeSession;
     try {
+      // Coalesce fast pointer events into a bounded preview cadence; the
+      // final stroke always uses the complete mask, not a sampled frame.
+      await Future<void>.delayed(const Duration(milliseconds: 45));
+      if (!mounted || !_strokeActive || session != _strokeSession) return;
+      revision = _strokeRevision;
       final pixels = await OfflineBgRemover.compose(_sourcePng!, Uint8List.fromList(_mask!));
       if (mounted && _strokeActive && session == _strokeSession) {
         setState(() => _livePixels = pixels);
@@ -397,8 +426,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     final rect = Alignment.center.inscribe(fitted.destination, Offset.zero & bounds);
     if (!rect.contains(local)) { _lastPoint = null; return; }
     if (start || !_strokeActive) {
-      _recordUndo();
-      _strokeActive = true;
+      _startStrokeHistory();
       _lastPoint = null;
     }
     _drawStroke(Offset((local.dx-rect.left)*_imageWidth/rect.width,
@@ -439,8 +467,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   void _beginStroke(Offset local) {
     if (_busy || !_manual || _mask == null ||
         _toImagePoint(local) == null) return;
-    _recordUndo();
-    _strokeActive = true;
+    _startStrokeHistory();
     _lastPoint = null;
     _paintAt(local);
   }
@@ -462,9 +489,13 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     try {
       await _updatePreview();
     } catch (_) {
-      if (_undo.isNotEmpty) _mask = _undo.removeLast();
+      if (_maskBeforeStroke != null) _mask = _maskBeforeStroke;
+      if (_undoBeforeStroke != null) _undo..clear()..addAll(_undoBeforeStroke!);
+      if (_redoBeforeStroke != null) _redo..clear()..addAll(_redoBeforeStroke!);
+      _hasUnsavedEdits = _dirtyBeforeStroke;
       _notice('Brush preview failed');
     } finally {
+      _clearStrokeHistory();
       _livePixels = null;
       if (mounted) _notifyCanvas();
       if (mounted) setState(() => _busy = false);

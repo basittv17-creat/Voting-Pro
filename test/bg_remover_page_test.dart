@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voting_pro/app_language.dart';
 import 'package:voting_pro/widgets/bg_remover_page.dart';
 
 void main() {
@@ -64,6 +65,44 @@ void main() {
     expect(tester.takeException(), isNull);
     cursor.value = null;
     await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Compact main remover keeps Back visible in Urdu', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    AppLanguage.current = 'ur';
+    addTearDown(() => AppLanguage.current = 'en');
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var closed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 144,
+            child: BackgroundRemoverPage(
+              initialPhotoA: null,
+              initialPhotoB: null,
+              onClose: () => closed = true,
+              onSelectSide: (_) {},
+              onUpload: () {},
+              onApply: (_, _) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+    final back = find.byKey(const ValueKey('main-remover-back'));
+    final before = tester.getRect(back);
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -80));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(back), before);
+    expect(find.text('واپس'), findsOneWidget);
+    await tester.tap(back);
+    expect(closed, isTrue);
     expect(tester.takeException(), isNull);
   });
 

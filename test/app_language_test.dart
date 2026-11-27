@@ -19,6 +19,18 @@ void main() {
     expect(AppLanguage.direction.name, 'rtl');
   });
 
+  test('remover actions and recoverable errors are bilingual', () {
+    AppLanguage.current = 'ur';
+    expect(AppLanguage.tr('Auto Remove'), 'خودکار صفائی');
+    expect(AppLanguage.tr('Restore'), 'بحال کریں');
+    expect(
+      AppLanguage.tr('Offline auto removal unavailable'),
+      isNot('Offline auto removal unavailable'),
+    );
+    AppLanguage.current = 'en';
+    expect(AppLanguage.tr('Auto Remove'), 'Auto Remove');
+  });
+
   test('user text and unknown asset labels are not altered', () {
     AppLanguage.current = 'ur';
     expect(AppLanguage.tr('My Custom Poster Name'), 'My Custom Poster Name');
