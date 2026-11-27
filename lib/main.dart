@@ -1554,6 +1554,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   // This prevents selection borders and edit/delete/resize handles from being
   // included in the saved image.
   void _clearCanvasSelection() {
+    _textSelectionRevision++;
     if (!isExportingPoster && _mainRemoverSide != null) _mainRemoverSession++;
     _mainRemoverSide = null;
     _photoPanel = null;
@@ -2717,15 +2718,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
-  int? get _activeTextIndex {
+  int? get _selectedTextForEditing {
     final index = selectedTextIndex;
     if (index == null || index < 0 || index >= overlays.length ||
         !textOverlayIds.contains(index)) {
-      msg('پہلے ٹیکسٹ منتخب کریں');
       return null;
     }
     return index;
   }
+
+  int? get _activeTextIndex {
+    final index = _selectedTextForEditing;
+    if (index == null) msg('پہلے ٹیکسٹ منتخب کریں');
+    return index;
+  }
+
+  int _textSelectionRevision = 0;
 
   void toggleTextItalic() {
     final index = _activeTextIndex;
@@ -2794,10 +2802,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Widget _buildBackgroundDock() {
-    final index = _activeTextIndex;
+    final index = _selectedTextForEditing;
+    final revision = _textSelectionRevision;
+    final tab = _backgroundTab;
+    bool isCurrent() => mounted &&
+        index != null &&
+        _selectedTextForEditing == index &&
+        _textSelectionRevision == revision &&
+        _activeTextSection == TextToolSection.background &&
+        _backgroundTab == tab &&
+        _editorOptions == null &&
+        !isExportingPoster;
     final enabled = index != null && textBgColors.containsKey(index);
     void change(VoidCallback action, {bool remember = true}) {
-      if (index == null || _activeTextIndex != index) return;
+      if (!isCurrent()) return;
       if (remember) _rememberTextEdit();
       setState(action);
     }
@@ -2846,10 +2864,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
       }),
       onPreset: (name) {
-        if (index != null) _applyTextBackgroundPreset(index, name);
+        if (index != null && isCurrent()) _applyTextBackgroundPreset(index, name);
       },
       onSliderStart: () {
-        if (index != null && _activeTextIndex == index) _rememberTextEdit();
+        if (isCurrent()) _rememberTextEdit();
       },
       onOpacity: (value) => setValue(textBgOpacities, value),
       onThickness: (value) => setValue(textBgPaddings, value),
@@ -2865,7 +2883,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
       }),
       onWhiteText: () => change(() => textColors[index!] = Colors.white),
-      onChooseFont: chooseTextFont,
+      onChooseFont: () {
+        if (isCurrent()) chooseTextFont();
+      },
       onUndo: undoTextEdit,
       onRedo: redoTextEdit,
     );
@@ -3642,30 +3662,31 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   void chooseTextFont() => _openTextOption(_EditorOptions.textFont);
 
   void _applyTextBackgroundPreset(int index, String? name) {
-    if (_activeTextIndex != index) return;
-      _rememberTextEdit();
-      setState(() {
-        if (name == null) {
-          textBgDesigns.remove(index);
-          textBgColors.remove(index);
-          textBgOpacities.remove(index);
-          textBgPaddings.remove(index);
-          textBgRadii.remove(index);
-          textBgBorders.remove(index);
-          textBgShadows.remove(index);
-          textBgGradients.remove(index);
-          return;
-        }
-        final preset = premiumTextBackgrounds[name]!;
-        textBgDesigns[index] = name;
-        textBgColors[index] = Color(preset.$1);
-        textBgOpacities[index] = .95;
-        textBgPaddings[index] = 6;
-        textBgRadii[index] = preset.$4;
-        textBgBorders[index] = 1.5;
-        textBgShadows[index] = 3;
-        textBgGradients.add(index);
-      });  }
+    if (_selectedTextForEditing != index) return;
+    _rememberTextEdit();
+    setState(() {
+      if (name == null) {
+        textBgDesigns.remove(index);
+        textBgColors.remove(index);
+        textBgOpacities.remove(index);
+        textBgPaddings.remove(index);
+        textBgRadii.remove(index);
+        textBgBorders.remove(index);
+        textBgShadows.remove(index);
+        textBgGradients.remove(index);
+        return;
+      }
+      final preset = premiumTextBackgrounds[name]!;
+      textBgDesigns[index] = name;
+      textBgColors[index] = Color(preset.$1);
+      textBgOpacities[index] = .95;
+      textBgPaddings[index] = 6;
+      textBgRadii[index] = preset.$4;
+      textBgBorders[index] = 1.5;
+      textBgShadows[index] = 3;
+      textBgGradients.add(index);
+    });
+  }
 
   Widget _premiumBackgroundOptions(int index) {
     void apply(String? name) => _applyTextBackgroundPreset(index, name);
@@ -3851,6 +3872,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     _rememberTextEdit();
     setState(() {
+      _textSelectionRevision++;
       overlays.removeAt(index);
 
       final oldPositions = Map<int, Offset>.from(textPositions);
@@ -3995,6 +4017,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     _textUndoHistory.clear();
     _textRedoHistory.clear();
     setState(() {
+      _textSelectionRevision++;
       overlays.removeAt(index);
 
       final oldPositions = Map<int, Offset>.from(textPositions);
@@ -5419,6 +5442,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     // movable object's selection. Label asset paths are content, not selection.
     selectedTagraStickerIndex = tagraIndex;
     selectedLetterOverlayIndex = letterIndex;
+    if (selectedTextIndex != textIndex) _textSelectionRevision++;
     selectedTextIndex = textIndex;
     selectedStickerIndex = stickerIndex;
     isVsSelected = isVs;

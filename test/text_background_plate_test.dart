@@ -51,6 +51,8 @@ void main() {
     expect(toolbar, findsNothing);
     expect(tester.getRect(dock), bounds);
     expect(find.text('Tap text on the poster to select'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(tester.takeException(), isNull);
     await tap(tester, find.text('تگڑا مقابلہ'));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
