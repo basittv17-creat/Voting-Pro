@@ -561,12 +561,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (previous == null) return;
     final data = jsonDecode(previous);
     if (data is! Map) return;
+    final candidates = <String>{
+      for (final key in ['imageA','imageB','inlineOriginalA','inlineOriginalB'])
+        if (data[key] case final String path) path,
+    }..removeAll(current);
+    if (candidates.isEmpty) return;
     final docs = await getApplicationDocumentsDirectory();
     final dir = await _projectDirectory();
-    for (final key in ['imageA','imageB','inlineOriginalA','inlineOriginalB']) {
-      final path = data[key];
-      if (path is! String || current.contains(path) ||
-          [a?.path, b?.path, ..._inlineOriginalPhotos.values.map((f) => f.path)].contains(path)) continue;
+    for (final path in candidates) {
+      if ([a?.path, b?.path, ..._inlineOriginalPhotos.values.map((f) => f.path)].contains(path)) continue;
       final file = File(path);
       final name = file.uri.pathSegments.last;
       final owned = (file.parent.path == docs.path && RegExp(r'^voting_pro_cutout_[0-9]+\.png$').hasMatch(name)) ||
@@ -2159,7 +2162,6 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       }
     });
 
-    msg('${template.name} ٹیمپلیٹ منتخب ہوگیا۔');
   }
 
   Widget _buildReadyTemplateThumbnail(

@@ -121,19 +121,17 @@ void main() {
               .initialSideA,
           left,
         );
-        final apply =
-            find.widgetWithText(OutlinedButton, 'Apply Cutout to Photo $side');
-        for (var i = 0;
-            i < 60 && tester.widget<OutlinedButton>(apply).onPressed == null;
-            i++) {
+        final priorPath = (left ? poster().photoA! : poster().photoB!).path;
+        await tap(find.text('Custom Remove'));
+        final brush = control('inline-cutout-brush');
+        await tester.ensureVisible(brush);
+        await tester.tap(brush);
+        for (var i = 0; i < 80 &&
+            (left ? poster().photoA! : poster().photoB!).path == priorPath; i++) {
           await tester.pump(const Duration(milliseconds: 100));
         }
-        await tap(apply);
-        for (var i = 0;
-            i < 60 && find.byType(BackgroundRemoverPage).evaluate().isNotEmpty;
-            i++) {
-          await tester.pump(const Duration(milliseconds: 100));
-        }
+        expect((left ? poster().photoA! : poster().photoB!).path, isNot(priorPath));
+        await tap(control('main-remover-back'));
         expect(find.byType(BackgroundRemoverPage), findsNothing);
         final result = left ? poster().photoA! : poster().photoB!;
         expect(result.path, contains('voting_pro_cutout_'));
