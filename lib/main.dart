@@ -139,9 +139,9 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'P O S T E R   M A K E R',
-                  style: TextStyle(
+                Text(
+                  AppLanguage.tr('Poster Maker'),
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     letterSpacing: 2,
@@ -165,7 +165,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Loading... ${(_controller.value * 100).round()}%',
+                        '${AppLanguage.tr('Loading...')} ${(_controller.value * 100).round()}%',
                         style: const TextStyle(
                           color: Color(0xFFFFD84D),
                           fontSize: 13,
@@ -1479,8 +1479,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           _selectCanvasObject(photoSideA: sideA);
         });
       }
-    } catch (e) {
-      msg('تصویر منتخب نہیں ہو سکی: $e');
+    } catch (_) {
+      msg('Could not select the photo.');
     }
   }
 
@@ -1614,8 +1614,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             'Download the app from Google Play:\n'
             '$_votingProPlayStoreUrl',
       );
-    } catch (e) {
-      msg('شیئر نہیں ہو سکا: $e');
+    } catch (_) {
+      msg('Could not share the poster.');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -1777,7 +1777,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                           color: Colors.white.withOpacity(0.82), size: w * 0.045),
                       const SizedBox(height: 4),
                       Text(
-                        sideA ? 'A کی تصویر' : 'B کی تصویر',
+                        AppLanguage.tr(sideA ? 'Photo A' : 'Photo B'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.82),
@@ -3127,7 +3127,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final index = _activeTextIndex;
     if (index == null) return;
     if (overlays[index].contains('\n')) {
-      msg('Curved Text کے لیے ایک سطر منتخب کریں (Urdu / English)');
+      msg('Choose a single line for curved text (Urdu / English).');
       return;
     }
     _rememberTextEdit();
@@ -3181,8 +3181,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(AppLanguage.tr('Import Font')),
-          content: const Text(
-            'پہلے پوسٹر پر ٹیکسٹ شامل کریں۔ کیا آپ نیا ٹیکسٹ بنانا چاہتے ہیں؟'),
+          content: Text(AppLanguage.tr('Add text to the poster first. Create new text?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -3220,7 +3219,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text('Text ${i + 1}'),
+                  subtitle: Text('${AppLanguage.tr('Text')} ${i + 1}'),
                   onTap: () => Navigator.pop(dialogContext, i),
                 ),
               const Divider(),
@@ -3295,8 +3294,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         textFonts[index] = family;
       });
       msg('Custom font منتخب ٹیکسٹ پر لاگو ہوگیا');
-    } catch (e) {
-      msg('Font import ناکام: $e');
+    } catch (_) {
+      msg('Font import failed.');
     }
   }
 

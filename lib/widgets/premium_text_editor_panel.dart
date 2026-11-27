@@ -198,11 +198,11 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                   ],
                 ),
               if (widget.selectedText == null)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    'Tap text on the poster to select',
-                    style: TextStyle(
+                    AppLanguage.tr('Tap text on the poster to select'),
+                    style: const TextStyle(
                       color: _gold,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
@@ -247,7 +247,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
                       Icon(action.icon, size: 22, color: _mint),
                       const SizedBox(height: 4),
                       Text(
-                        action.label,
+                        AppLanguage.tr(action.label),
                         maxLines: 2,
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
@@ -495,7 +495,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                name,
+                AppLanguage.tr(name),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -503,7 +503,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
               ),
             ),
             Semantics(
-              label: name,
+              label: AppLanguage.tr(name),
               child: Switch.adaptive(
                 value: enabled,
                 onChanged: (_) => toggle(),
@@ -525,7 +525,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
       return Semantics(
         selected: isSelected,
         child: Tooltip(
-          message: 'Color #$hex',
+          message: '${AppLanguage.tr('Color')} #$hex',
           child: InkWell(
             borderRadius: BorderRadius.circular(7),
             onTap: () => callback(color),
@@ -591,7 +591,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
         children: [
           Expanded(
             child: Text(
-              label,
+              AppLanguage.tr(label),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, color: Colors.white70),

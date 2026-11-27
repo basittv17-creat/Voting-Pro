@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_language.dart';
 
 import 'editor_options_panel.dart';
 import 'premium_vs.dart';
@@ -57,7 +58,7 @@ class VsStylesPanel extends StatelessWidget {
                             children: [
                               PremiumVsRenderer(style: style),
                               Text(
-                                style.name,
+                                AppLanguage.tr(style.name),
                                 textAlign: TextAlign.center,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

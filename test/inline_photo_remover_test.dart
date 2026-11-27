@@ -106,9 +106,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Auto Remove supports Undo and Redo in the main dock', (
-    tester,
-  ) async {
+  testWidgets('Auto Remove history', (tester) async {
     final directory = Directory.systemTemp.createTempSync('auto-history-');
     final original = PathProviderPlatform.instance;
     PathProviderPlatform.instance = _Documents(directory);
@@ -152,10 +150,7 @@ void main() {
       expect(done(), isTrue);
     }
 
-    final auto = find.widgetWithText(
-      OutlinedButton,
-      'Auto Remove Background',
-    );
+    final auto = find.widgetWithText(OutlinedButton, 'Auto Remove Background');
     await waitFor(() => tester.widget<OutlinedButton>(auto).onPressed != null);
     await tester.tap(auto);
     await tester.pump();
