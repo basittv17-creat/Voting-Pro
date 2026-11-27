@@ -96,14 +96,21 @@ class SideLabelPainter extends CustomPainter {
     );
     canvas.drawPath(
       _polygon(const [0, 17, 182, 17, 229, 47, 434, 47, 492, 12, 640, 12, 640, 0, 0, 0]),
-      Paint()..color = body.withAlpha(114),
+      Paint()..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [body.withAlpha(150), body.withAlpha(0)],
+      ).createShader(const Rect.fromLTWH(0, 0, 640, 55)),
     );
     canvas.drawPath(
       _polygon(const [124, 105, 187, 59, 456, 59, 525, 105]),
       Paint()..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [body, style == SideLabelStyle.gold ? Colors.black : _ink.withAlpha(165)],
+        colors: [
+          body.withAlpha(0),
+          style == SideLabelStyle.gold ? Colors.black : _ink.withAlpha(165),
+        ],
       ).createShader(const Rect.fromLTWH(0, 59, 640, 46)),
     );
 
@@ -223,12 +230,13 @@ class SideLabelPainter extends CustomPainter {
     ]) {
       canvas.drawCircle(tip, 3.7, Paint()..shader = _goldShader(Rect.fromCircle(center: tip, radius: 4)));
     }
-    final foot = Rect.fromCenter(center: const Offset(122, 79), width: 72, height: 13);
+    final foot = Rect.fromCenter(center: const Offset(124, 79), width: 72, height: 13);
+    canvas.drawOval(foot.shift(const Offset(0, 3)), Paint()..color = _bronze);
     canvas.drawOval(foot, Paint()..shader = _goldShader(foot));
-    for (final x in [105.0, 122.0, 140.0]) {
-      canvas.drawOval(Rect.fromCenter(center: Offset(x, 68), width: 6, height: 8),
-        Paint()..color = const Color(0xff643500));
-    }
+    canvas.drawPath(
+      _polygon(const [124, 58, 130, 66, 124, 73, 118, 66]),
+      Paint()..color = const Color(0xff442001),
+    );
   }
 
   void _electric(Canvas canvas, Color rim, Color light) {
@@ -246,6 +254,15 @@ class SideLabelPainter extends CustomPainter {
       canvas.drawPath(ray, Paint()
         ..color = const Color(0xffffeeee)..strokeWidth = 2..style = PaintingStyle.stroke);
     }
+    for (final y in [51.0, 53.0]) {
+      final beam = Rect.fromCenter(center: Offset(136, y), width: 150, height: 2);
+      canvas.drawRect(beam, Paint()..shader = LinearGradient(
+        colors: [Colors.transparent, light, Colors.transparent],
+      ).createShader(beam));
+    }
+    canvas.drawCircle(const Offset(151, 52), 7, Paint()
+      ..color = light.withAlpha(155)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
     final random = math.Random(235);
     for (var branch = 0; branch < 13; branch++) {
       final y = 9 + random.nextDouble() * 87;
@@ -281,7 +298,7 @@ class SideLabelPainter extends CustomPainter {
   void _leaves(Canvas canvas) {
     final random = math.Random(783);
     for (var i = 0; i < 20; i++) {
-      final x = 11 + random.nextDouble() * (147 - i * 4);
+      final x = 136 - i * 5.5 + random.nextDouble() * 32;
       final y = 13.0 + i * 4.3;
       final angle = random.nextDouble() * 2.4 - 1.35;
       final length = 16 + random.nextDouble() * 17;
@@ -306,8 +323,10 @@ class SideLabelPainter extends CustomPainter {
 
   void _metal(Canvas canvas, Color light, {required bool gold}) {
     final shape = gold
-        ? _polygon(const [0, 0, 38, 0, 123, 105, 0, 105])
-        : _polygon(const [0, 0, 59, 0, 25, 52, 47, 105, 24, 105, 0, 52]);
+        ? (sideA
+            ? _polygon(const [0, 0, 38, 0, 123, 105, 0, 105])
+            : _polygon(const [3, 8, 19, 0, 112, 105, 91, 105]))
+        : _polygon(const [29, 0, 146, 0, 146, 4, 54, 4, 23, 52, 48, 98, 144, 98, 147, 105, 31, 105, 9, 52]);
     const bounds = Rect.fromLTWH(0, 0, 155, 105);
     final shader = gold
         ? _goldShader(bounds)
@@ -316,12 +335,18 @@ class SideLabelPainter extends CustomPainter {
             end: Alignment.bottomRight,
             colors: [Colors.white, Color(0xff485660), Colors.white, Color(0xff697279)],
           ).createShader(bounds);
+    if (!gold) {
+      canvas.drawPath(
+        _polygon(const [47, 3, 158, 3, 177, 52, 146, 102, 43, 102, 14, 52]),
+        Paint()..color = _ink.withAlpha(210),
+      );
+    }
     canvas.drawPath(shape, Paint()..shader = shader);
     final accent = gold
         ? _polygon(const [19, 0, 111, 105], close: false)
         : _polygon(const [40, 1, 10, 51, 31, 104], close: false);
     canvas.drawPath(accent, Paint()
-      ..color = gold ? const Color(0xd9301e05) : light
+      ..color = gold ? (sideA ? const Color(0xd9301e05) : _cream) : light.withAlpha(155)
       ..style = PaintingStyle.stroke..strokeWidth = gold ? 6 : 4);
     final random = math.Random(630);
     for (var i = 0; i < 540; i++) {

@@ -33,7 +33,16 @@ jobs:
       - name: Compare the ten painted side labels against original artwork
         env:
           SIDE_LABEL_PREVIEW_DIR: build/side-label-comparisons
-        run: flutter test test/side_label_artwork_test.dart test/side_label_hit_test.dart
+          SIDE_LABEL_REFERENCE_DIR: ${{ runner.temp }}/side-label-references
+        run: |
+          set -euo pipefail
+          test ! -e assets/label_bars
+          if grep -Fq 'assets/label_bars/' pubspec.yaml; then exit 1; fi
+          git fetch --depth=1 origin refs/heads/backup/pre-procedural-art-2026-11-27
+          test "$(git rev-parse FETCH_HEAD)" = e1692860b47093cd5a68eefb00be627149b7bf6f
+          mkdir -p "$SIDE_LABEL_REFERENCE_DIR"
+          git archive FETCH_HEAD assets/label_bars | tar -x -C "$SIDE_LABEL_REFERENCE_DIR"
+          flutter test test/side_label_artwork_test.dart test/side_label_hit_test.dart
 
       - name: Upload original and Canvas side-label comparisons
         uses: actions/upload-artifact@v4

@@ -14,8 +14,10 @@ String _id(String side, int style) =>
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('Every legacy label resolves to a distinct, full-size Canvas design', () async {
+  test('Every legacy label resolves to a distinct, full-size Canvas design',
+      () async {
     final preview = Platform.environment['SIDE_LABEL_PREVIEW_DIR'];
+    final references = Platform.environment['SIDE_LABEL_REFERENCE_DIR'];
     final recorder = ui.PictureRecorder();
     final sheet = Canvas(recorder);
     sheet.drawColor(const Color(0xff253042), BlendMode.src);
@@ -29,13 +31,20 @@ void main() {
         final recording = ui.PictureRecorder();
         painter.paint(Canvas(recording), size);
         final picture = recording.endRecording();
-        final rendered = await picture.toImage(size.width.toInt(), size.height.toInt());
+        final rendered =
+            await picture.toImage(size.width.toInt(), size.height.toInt());
         final data = (await rendered.toByteData())!.buffer.asUint8List();
-        expect(data[(size.width.toInt() * (size.height.toInt() ~/ 2) + 320) * 4 + 3], 255);
+        expect(
+            data[(size.width.toInt() * (size.height.toInt() ~/ 2) + 320) * 4 +
+                3],
+            255);
         expect(data[3], lessThan(12));
         fingerprints.add(Object.hashAll(data));
         if (preview != null) {
-          final codec = await ui.instantiateImageCodec(await File(id).readAsBytes());
+          final source = File('$references/$id');
+          final codec = await ui.instantiateImageCodec(
+            await source.readAsBytes(),
+          );
           final original = (await codec.getNextFrame()).image;
           final x = column * 650.0 + 4;
           final y = style.index * 236.0 + 5;
@@ -85,7 +94,8 @@ void main() {
     expect(find.text('پاکستان'), findsOneWidget);
     expect(find.text('B SIDE'), findsOneWidget);
     final bytes = await tester.runAsync(() async {
-      final capture = state.capturePosterWithoutControls() as Future<List<int>?>;
+      final capture =
+          state.capturePosterWithoutControls() as Future<List<int>?>;
       await tester.pump();
       return capture.timeout(const Duration(seconds: 8));
     });
