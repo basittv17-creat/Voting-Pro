@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show compute;
-import 'package:image/image.dart' as img;
+import 'widgets/photo_background_settings.dart';
+import 'widgets/photo_scene.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,11 +28,6 @@ import 'widgets/editor_options_panel.dart';
 import 'widgets/vs_styles_panel.dart';
 import 'services/poster_share_cache.dart';
 import 'app_language.dart';
-
-bool _hasPhotoTransparency(Uint8List bytes) {
-  final image = img.decodeImage(bytes);
-  return image != null && image.any((pixel) => pixel.a < pixel.maxChannelValue);
-}
 
 enum _PhotoPanel { remover, backgrounds }
 
@@ -991,7 +986,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (photoBackgrounds is Map) {
           for (final sideA in [true, false]) {
             final preset = photoBackgrounds[sideA ? 'a' : 'b'];
-            if (_photoPalettes.containsKey(preset)) {
+            if (_photoPalettes.containsKey(preset) || PhotoScene.byId.containsKey(preset)) {
               _photoBackgrounds[sideA] = preset as String;
             }
           }
@@ -5283,10 +5278,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       );
     }
     if (source == null) return const SizedBox.shrink();
-    return _PhotoBackgroundSettings(
+    return PhotoBackgroundSettings(
+      sideA: sideA,
       key: ValueKey('photo-background-${source.path}-$sideA'),
       file: source,
-      title: 'Backgrounds — ${sideA ? "A" : "B"} Side',
+      title: AppLanguage.current == 'ur'
+          ? 'پس منظر — ${sideA ? "A" : "B"} سائیڈ'
+          : 'Backgrounds — ${sideA ? "A" : "B"} Side',
       palettes: _photoPalettes,
       selected: _photoBackgrounds[sideA],
       onClose: () => setState(() => _photoPanel = null),
@@ -5518,7 +5516,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         ),
         child: Stack(fit: StackFit.expand, children: [
           if (_photoBackgrounds[sideA] case final preset?)
-            DecoratedBox(
+            if (PhotoScene.byId[preset] case final scene?)
+              PhotoSceneArt(scene, sideA: sideA)
+            else DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: _photoPalettes[preset]!),
               ),
@@ -6816,77 +6816,4 @@ class _PhotoSelectionGlow extends CustomPainter {
 
   @override
   bool shouldRepaint(_PhotoSelectionGlow oldDelegate) => false;
-}
-
-class _PhotoBackgroundSettings extends StatefulWidget {
-  const _PhotoBackgroundSettings({
-    super.key,
-    required this.file,
-    required this.title,
-    required this.palettes,
-    required this.selected,
-    required this.onClose,
-    required this.onSelected,
-  });
-
-  final File file;
-  final String title;
-  final Map<String, List<Color>> palettes;
-  final String? selected;
-  final VoidCallback onClose;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  State<_PhotoBackgroundSettings> createState() =>
-      _PhotoBackgroundSettingsState();
-}
-
-class _PhotoBackgroundSettingsState extends State<_PhotoBackgroundSettings> {
-  late final Future<bool> _transparent = _checkTransparency();
-
-  Future<bool> _checkTransparency() async =>
-      compute(_hasPhotoTransparency, await widget.file.readAsBytes());
-
-  @override
-  Widget build(BuildContext context) => EditorOptionsPanel(
-    title: widget.title,
-    onClose: widget.onClose,
-    child: FutureBuilder<bool>(
-      future: _transparent,
-      builder: (context, snapshot) => SingleChildScrollView(
-        padding: const EdgeInsets.all(8),
-        child: snapshot.hasError
-            ? const Text('Could not read the selected photo.')
-            : !snapshot.hasData
-            ? const LinearProgressIndicator()
-            : snapshot.data == false
-            ? const Text(
-                'Use Remove Background first to reveal a photo background.',
-              )
-            : Wrap(
-                spacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: const Text('None'),
-                    selected: widget.selected == null,
-                    onSelected: (_) => widget.onSelected(null),
-                  ),
-                  for (final MapEntry(:key, :value) in widget.palettes.entries)
-                    ChoiceChip(
-                      avatar: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: value),
-                        ),
-                        child: const SizedBox.square(dimension: 20),
-                      ),
-                      label: Text(key),
-                      selected: widget.selected == key,
-                      onSelected: (_) => widget.onSelected(key),
-                    ),
-                ],
-              ),
-      ),
-    ),
-  );
 }
