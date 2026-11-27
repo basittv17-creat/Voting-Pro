@@ -54,7 +54,7 @@ void main() {
       await _tapTool(tester, tool);
       expect(_panel, findsOneWidget);
       expect(
-        find.descendant(of: _panel, matching: find.text(title)),
+        find.descendant(of: _panel, matching: find.text(AppLanguage.tr(title))),
         findsOneWidget,
       );
       expect(tester.getRect(_toolbar), toolbarBounds);
@@ -117,5 +117,35 @@ void main() {
     expect(
         find.descendant(of: poster, matching: find.text('⭐')), findsOneWidget);
     expect(_panel, findsOneWidget);
+  });
+
+  testWidgets('Language menu saves the chosen language', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(393, 820);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(() => AppLanguage.current = 'en');
+    await tester.pumpWidget(const MaterialApp(home: Editor()));
+    await tester.pumpAndSettle();
+    expect(find.text('Save Poster ↓'), findsOneWidget);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('हिन्दी'));
+    await tester.pumpAndSettle();
+    expect(find.text('पोस्टर सहेजें ↓'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(AppLanguage.preferenceKey), 'hi');
+    await tester.tap(find.byTooltip('सेटिंग्स'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اردو'));
+    await tester.pumpAndSettle();
+    expect(find.text('پوسٹر محفوظ کریں ↓'), findsOneWidget);
+    expect(prefs.getString(AppLanguage.preferenceKey), 'ur');
+    await tester.tap(find.byTooltip('ترتیبات'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+    expect(find.text('Save Poster ↓'), findsOneWidget);
+    expect(prefs.getString(AppLanguage.preferenceKey), 'en');
   });
 }

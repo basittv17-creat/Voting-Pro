@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../app_language.dart';
 
 enum TagraArena {
   thunder('tagra_royal_thunder', 'رائل تھنڈر'),
@@ -71,7 +72,7 @@ class TagraArenaPoster extends StatelessWidget {
                   offset: offsets[side] ?? Offset.zero,
                   label: urdu
                       ? (side ? 'تصویر اے' : 'تصویر بی')
-                      : 'Photo ${side ? "A" : "B"}',
+                      : AppLanguage.tr('Photo ${side ? "A" : "B"}'),
                   onTap: exporting || onPick == null
                       ? null
                       : () {
@@ -113,7 +114,7 @@ class TagraArenaPoster extends StatelessWidget {
                               ? (side ? nameA : nameB)
                               : (exporting || onName == null
                                   ? ''
-                                  : (urdu ? 'نام لکھیں' : 'Add name')),
+                                  : (urdu ? 'نام لکھیں' : AppLanguage.tr('Add name'))),
                           textDirection: RegExp(r'[\u0600-\u06FF]')
                                       .hasMatch(side ? nameA : nameB) ||
                                   (urdu && (side ? nameA : nameB).isEmpty)
