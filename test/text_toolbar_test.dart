@@ -244,20 +244,40 @@ void main() {
     await tester.pumpAndSettle();
     final toolbar = find.byKey(const ValueKey('text-toolbar'));
     final bounds = tester.getRect(toolbar);
-    for (final (section, control) in [
-      ('Glow', 'Glow intensity'),
-      ('Text Background', 'Background opacity'),
-    ]) {
-      final action = find.descendant(of: toolbar, matching: find.text(section));
-      await tester.ensureVisible(action);
-      await tester.tap(action);
+    Future<void> tapAction(Finder row, String label) async {
+      final target = find.descendant(of: row, matching: find.text(label));
+      await tester.ensureVisible(target);
+      await tester.tap(target);
       await tester.pumpAndSettle();
-      expect(tester.getRect(find.text(control)).bottom, lessThan(bounds.top));
-      final current = section == 'Text Background'
-          ? find.byKey(const ValueKey('text-background-toolbar'))
-          : toolbar;
-      expect(tester.getRect(current), bounds);
     }
+
+    await tapAction(toolbar, 'Glow');
+    expect(
+      tester.getRect(find.text('Glow intensity')).bottom,
+      lessThan(bounds.top),
+    );
+    expect(tester.getRect(toolbar), bounds);
+
+    await tapAction(toolbar, 'Text Background');
+    final backgroundToolbar = find.byKey(
+      const ValueKey('text-background-toolbar'),
+    );
+    final panel = find.byKey(const ValueKey('text-background-dock'));
+    expect(tester.getRect(panel).bottom, lessThan(bounds.top));
+    expect(find.text('Tap text on the poster to select'), findsOneWidget);
+    expect(tester.getRect(backgroundToolbar), bounds);
+
+    await tapAction(backgroundToolbar, 'Opacity');
+    final opacity = find.byKey(
+      const ValueKey('background-slider-Background opacity'),
+    );
+    await tester.ensureVisible(opacity);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(panel).contains(tester.getCenter(opacity)),
+      isTrue,
+    );
+    expect(tester.widget<Slider>(opacity).onChanged, isNull);
     expect(tester.takeException(), isNull);
   });
 

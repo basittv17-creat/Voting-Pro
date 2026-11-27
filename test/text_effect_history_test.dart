@@ -63,7 +63,17 @@ void main() {
     await toggle('Shadow');
     await toggle('Outline');
     await toggle('Gradient');
-    await toggle('Text Background');
+    await action('Text Background');
+    final dock = find.byKey(const ValueKey('text-background-dock'));
+    await tap(
+      find.descendant(of: dock, matching: find.byType(Switch)).first,
+    );
+    final backgroundToolbar = find.byKey(
+      const ValueKey('text-background-toolbar'),
+    );
+    await tap(
+      find.descendant(of: backgroundToolbar, matching: find.text('Back')),
+    );
 
     void expectEffects(AdvancedTextOverlay text, bool enabled) {
       expect(text.style.shadows?.isNotEmpty ?? false, enabled);
