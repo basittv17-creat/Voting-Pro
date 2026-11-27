@@ -391,20 +391,21 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   int _strokeRevision = 0;
   int _strokeSession = 0;
   bool _renderingStroke = false;
+  final Stopwatch _previewClock = Stopwatch()..start();
+  int _lastPreviewStart = -45;
 
   void _notifyCanvas() => widget.onCanvasChanged?.call();
 
   Future<void> _renderStroke() async {
-    if (_renderingStroke || !_strokeActive) return;
+    final now = _previewClock.elapsedMilliseconds;
+    if (_renderingStroke || !_strokeActive || now - _lastPreviewStart < 45) return;
+    // Bound preview frequency without delayed jobs surviving a closed panel.
+    // The final stroke always composes the complete mask.
+    _lastPreviewStart = now;
     _renderingStroke = true;
-    var revision = _strokeRevision;
+    final revision = _strokeRevision;
     final session = _strokeSession;
     try {
-      // Coalesce fast pointer events into a bounded preview cadence; the
-      // final stroke always uses the complete mask, not a sampled frame.
-      await Future<void>.delayed(const Duration(milliseconds: 45));
-      if (!mounted || !_strokeActive || session != _strokeSession) return;
-      revision = _strokeRevision;
       final pixels = await OfflineBgRemover.compose(_sourcePng!, Uint8List.fromList(_mask!));
       if (mounted && _strokeActive && session == _strokeSession) {
         setState(() => _livePixels = pixels);
