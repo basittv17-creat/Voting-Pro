@@ -16,6 +16,8 @@ class AppLanguage {
       isUrdu ? TextDirection.rtl : TextDirection.ltr;
 
   static const Map<String, String> _urdu = {
+    "Add photo": "تصویر شامل کریں",
+    "Could not restart. Your current poster is still open.": "نیا پروجیکٹ شروع نہیں ہو سکا۔ آپ کا موجودہ پوسٹر اب بھی کھلا ہے۔",
     "Glyph edge thickness": "حروف کے کنارے کی موٹائی",
     "Corners": "کونے",
     "Border width": "بارڈر کی چوڑائی",
