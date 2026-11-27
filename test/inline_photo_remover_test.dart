@@ -20,7 +20,8 @@ Future<Uint8List> _emptyMask(
   Uint8List source,
   int width,
   int height,
-) async => Uint8List(width * height);
+) async =>
+    Uint8List(width * height);
 
 void main() {
   testWidgets('Compact remover applies a manual stroke only to its B target', (
@@ -168,7 +169,8 @@ void main() {
       (widget) => widget is IconButton && widget.tooltip == 'Undo',
     );
     await waitFor(
-      () => undo.evaluate().isNotEmpty &&
+      () =>
+          undo.evaluate().isNotEmpty &&
           tester.widget<IconButton>(undo).onPressed != null,
     );
     await tester.ensureVisible(undo);
@@ -178,7 +180,9 @@ void main() {
     await tester.pump();
     await waitFor(() => result != null);
     expect(
-      img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 255),
+      img
+          .decodePng(result!.readAsBytesSync())!
+          .every((pixel) => pixel.a == 255),
       isTrue,
     );
     final redo = find.byWidgetPredicate(

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'widgets/photo_background_settings.dart';
 import 'widgets/photo_scene.dart';
+import 'widgets/procedural_frame_preview.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1282,7 +1283,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Image.asset(asset, fit: BoxFit.contain),
+                  child: FrameArtwork(asset, fit: BoxFit.contain),
                 ),
                 if (name.isNotEmpty)
                   Text(
@@ -2262,7 +2263,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             ),
             Positioned.fill(
               child: IgnorePointer(
-                child: Image.asset(template.frame, fit: BoxFit.fill),
+                child: FrameArtwork(template.frame, fit: BoxFit.fill),
               ),
             ),
           ],
@@ -6736,12 +6737,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 child: ClipRect(
                   child: Transform.scale(
                     scale: 1.10,
-                    child: Image.asset(
+                    child: FrameArtwork(
                       selectedStylishFrame!,
                       fit: BoxFit.fill,
                       width: double.infinity,
                       height: double.infinity,
-                      alignment: Alignment.center,
                       gaplessPlayback: true,
                     ),
                   ),
