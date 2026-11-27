@@ -536,26 +536,42 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     return dir;
   }
 
-  // Source photo files are immutable per gallery import / cutout, so avoid
-  // copying multi-megabyte PNG/JPEG data on every text-slider autosave.
-  final Map<String, String> _lastPersistedPhotoSources = {};
+  final Map<String, (String, String)> _persistedSources = {};
 
-  Future<String?> _persistProjectImage(File? source, String filename) async {
-    if (source == null || !await source.exists()) return null;
+  Future<String?> _persistProjectImage(File? source, String slot) async {
+    if (source == null) return null;
+    if (!await source.exists()) throw FileSystemException('Project image missing', source.path);
     final dir = await _projectDirectory();
-    final target = File('${dir.path}/$filename');
-    final sourcePath = source.absolute.path;
-    if (sourcePath == target.absolute.path) {
-      _lastPersistedPhotoSources[filename] = sourcePath;
-      return target.path;
+    if (source.absolute.parent.path == dir.absolute.path) return source.path;
+    if (RegExp(r'^voting_pro_cutout_[0-9]+\.png$').hasMatch(source.uri.pathSegments.last)) {
+      final docs = await getApplicationDocumentsDirectory();
+      if (source.absolute.parent.path == docs.absolute.path) return source.path;
     }
-    if (_lastPersistedPhotoSources[filename] == sourcePath &&
-        await target.exists()) {
-      return target.path;
+    final cached = _persistedSources[slot];
+    if (cached != null && cached.$1 == source.absolute.path && await File(cached.$2).exists()) {
+      return cached.$2;
     }
-    await source.copy(target.path);
-    _lastPersistedPhotoSources[filename] = sourcePath;
-    return target.path;
+    final copy = await source.copy('${dir.path}/snapshot_${slot}_${DateTime.now().microsecondsSinceEpoch}.img');
+    _persistedSources[slot] = (source.absolute.path, copy.path);
+    return copy.path;
+  }
+
+  Future<void> _cleanPreviousProjectImages(String? previous, Set<String> current) async {
+    if (previous == null) return;
+    final data = jsonDecode(previous);
+    if (data is! Map) return;
+    final docs = await getApplicationDocumentsDirectory();
+    final dir = await _projectDirectory();
+    for (final key in ['imageA','imageB','inlineOriginalA','inlineOriginalB']) {
+      final path = data[key];
+      if (path is! String || current.contains(path) ||
+          [a?.path, b?.path, ..._inlineOriginalPhotos.values.map((f) => f.path)].contains(path)) continue;
+      final file = File(path);
+      final name = file.uri.pathSegments.last;
+      final owned = (file.parent.path == docs.path && RegExp(r'^voting_pro_cutout_[0-9]+\.png$').hasMatch(name)) ||
+          (file.parent.path == dir.path && RegExp(r'^(?:snapshot_[A-Za-z]+_|inline_original_[ab]_|side_[ab]_)[0-9]+\.[a-z0-9]+$').hasMatch(name));
+      if (owned && await FileSystemEntity.type(path, followLinks: false) == FileSystemEntityType.file) await file.delete();
+    }
   }
 
   List<double> _offsetJson(Offset value) => <double>[value.dx, value.dy];
@@ -620,22 +636,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Future<void> _saveProjectSnapshot() async {
     if (_isRestoringProject || _isRestartingProject) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final imageA = await _persistProjectImage(a, 'side_a.img');
-      final imageB = await _persistProjectImage(b, 'side_b.img');
-      final originalA = await _persistProjectImage(_inlineOriginalPhotos[true], 'original_a.img');
-      final originalB = await _persistProjectImage(_inlineOriginalPhotos[false], 'original_b.img');
+      final sources = <String,File?>{
+        'imageA': a, 'imageB': b,
+        'inlineOriginalA': _inlineOriginalPhotos[true],
+        'inlineOriginalB': _inlineOriginalPhotos[false],
+      };
       final data = <String, dynamic>{
         'version': 1,
-        'imageA': imageA,
-        'imageB': imageB,
-        'inlineOriginalA': originalA,
-        'inlineOriginalB': originalB,
         'background': background.value,
         'frameColor': frameColor.value,
         'frameWidth': frameWidth,
         'canvasRatio': canvasRatio,
-        'overlays': overlays,
+        'overlays': overlays.toList(),
         'textOverlayIds': textOverlayIds.toList(),
         'stickerOverlayIds': stickerOverlayIds.toList(),
         'textPositions': _offsetMapJson(textPositions),
@@ -704,7 +716,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           'b': _offsetJson(_templatePhotoOffsets[false] ?? Offset.zero),
         },
       };
-      await prefs.setString(_projectSaveKey, jsonEncode(data));
+      final current = <String>{};
+      for (final entry in sources.entries) {
+        final path = await _persistProjectImage(entry.value, entry.key);
+        data[entry.key] = path;
+        if (path != null) current.add(path);
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final previous = prefs.getString(_projectSaveKey);
+      final snapshot = jsonEncode(data);
+      if (previous != snapshot && await prefs.setString(_projectSaveKey, snapshot)) {
+        await _cleanPreviousProjectImages(previous, current);
+      }
     } catch (_) {
       // Autosave is best-effort; keep editing even if storage is temporarily unavailable.
     }
