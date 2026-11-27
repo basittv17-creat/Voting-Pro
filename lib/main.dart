@@ -8,6 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'widgets/photo_background_settings.dart';
 import 'widgets/photo_scene.dart';
 import 'widgets/procedural_frame_preview.dart';
+import 'widgets/side_label_artwork.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1283,7 +1284,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Expanded(
-                  child: FrameArtwork(asset, fit: BoxFit.contain, thumbnail: true),
+                  child: SideLabelArtwork.supports(asset)
+                      ? SideLabelArtwork(asset)
+                      : FrameArtwork(asset, fit: BoxFit.contain, thumbnail: true),
                 ),
                 if (name.isNotEmpty)
                   Text(
@@ -2255,9 +2258,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               left: 2, right: 2, bottom: 7, height: 22,
               child: Row(
                 children: [
-                  Expanded(child: Image.asset(template.aLabel, fit: BoxFit.contain)),
+                  Expanded(child: SideLabelArtwork(template.aLabel)),
                   const SizedBox(width: 4),
-                  Expanded(child: Image.asset(template.bLabel, fit: BoxFit.contain)),
+                  Expanded(child: SideLabelArtwork(template.bLabel)),
                 ],
               ),
             ),
@@ -5680,11 +5683,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 }),
                 child: Stack(fit: StackFit.expand, children: [
                   // Keep the selected label artwork unchanged while only its name text updates.
-                  Image.asset(
-                    label,
-                    fit: BoxFit.contain,
-                    gaplessPlayback: true,
-                  ),
+                  SideLabelArtwork(label),
                   Positioned.fill(
                     child: Align(
                       alignment: Alignment.center,
