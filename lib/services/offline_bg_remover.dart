@@ -15,6 +15,9 @@ class OfflineBgRemover {
   static Future<Uint8List> prepare(Uint8List original) =>
       compute(_prepareImage, original);
 
+  static Future<PreparedCutout> open(Uint8List source, Uint8List? applied) =>
+      compute(_openCutout, (source, applied));
+
   static Future<Uint8List> compose(
     Uint8List sourcePng,
     Uint8List alpha,
@@ -168,7 +171,7 @@ class OfflineBgRemover {
   }
 }
 
-Uint8List _prepareImage(Uint8List bytes) {
+img.Image _preparePixels(Uint8List bytes) {
   final decoded = img.decodeImage(bytes);
   if (decoded == null) throw const FormatException('Unsupported image format');
   final oriented = img.bakeOrientation(decoded);
@@ -182,7 +185,39 @@ Uint8List _prepareImage(Uint8List bytes) {
           interpolation: img.Interpolation.linear,
         )
       : oriented;
-  return Uint8List.fromList(img.encodePng(picture));
+  return picture;
+}
+
+Uint8List _prepareImage(Uint8List bytes) => img.encodePng(_preparePixels(bytes));
+
+typedef PreparedCutout = ({
+  Uint8List source, Uint8List preview, Uint8List mask, int width, int height,
+});
+
+PreparedCutout _openCutout((Uint8List, Uint8List?) files) {
+  final original = _preparePixels(files.$1);
+  final source = img.encodePng(original);
+  final count = original.width * original.height;
+  final mask = Uint8List(count)..fillRange(0, count, 255);
+  var preview = source;
+  final applied = files.$2;
+  if (applied != null) {
+    final cutout = _preparePixels(applied);
+    if (cutout.width == original.width && cutout.height == original.height) {
+      preview = img.encodePng(cutout);
+      for (var y = 0; y < original.height; y++) {
+        for (var x = 0; x < original.width; x++) {
+          final alpha = original.getPixel(x, y).a;
+          if (alpha != 0) {
+            mask[y * original.width + x] =
+                (cutout.getPixel(x, y).a * 255 / alpha).round().clamp(0, 255);
+          }
+        }
+      }
+    }
+  }
+  return (source: source, preview: preview, mask: mask,
+      width: original.width, height: original.height);
 }
 
 Uint8List _composeImage(List<Object> parts) {

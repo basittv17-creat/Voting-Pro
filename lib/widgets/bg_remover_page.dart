@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -101,32 +100,17 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       _status = 'Preparing image locally…';
     });
     try {
-      final prepared = await OfflineBgRemover.prepare(await file.readAsBytes());
-      final decoded = img.decodeImage(prepared);
-      if (decoded == null) throw const FormatException('Unsupported image');
-      final mask = Uint8List(decoded.width * decoded.height)..fillRange(0, decoded.width * decoded.height, 255);
-      var preview = prepared;
-      if (applied != null && applied.path != file.path) {
-        final appliedBytes = await OfflineBgRemover.prepare(await applied.readAsBytes());
-        final cutout = img.decodeImage(appliedBytes);
-        if (cutout != null && cutout.width == decoded.width && cutout.height == decoded.height) {
-          for (var y = 0; y < decoded.height; y++) {
-            for (var x = 0; x < decoded.width; x++) {
-              final originalAlpha = decoded.getPixel(x, y).a;
-              mask[y * decoded.width + x] = originalAlpha == 0 ? 255 :
-                  (cutout.getPixel(x, y).a * 255 / originalAlpha).round().clamp(0, 255).toInt();
-            }
-          }
-          preview = appliedBytes;
-        }
-      }
+      final prepared = await OfflineBgRemover.open(
+        await file.readAsBytes(),
+        applied != null && applied.path != file.path ? await applied.readAsBytes() : null,
+      );
       if (!mounted) return;
       setState(() {
-        _sourcePng = prepared;
-        _previewPng = preview;
-        _imageWidth = decoded.width;
-        _imageHeight = decoded.height;
-        _mask = mask;
+        _sourcePng = prepared.source;
+        _previewPng = prepared.preview;
+        _imageWidth = prepared.width;
+        _imageHeight = prepared.height;
+        _mask = prepared.mask;
         _manual = false;
         _compare = false;
         _undo.clear();
