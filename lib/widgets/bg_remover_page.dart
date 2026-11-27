@@ -23,6 +23,8 @@ class BackgroundRemoverPage extends StatefulWidget {
     this.onClose,
     this.initialOriginal,
     this.autoMask,
+    this.onSelectSide,
+    this.onUpload,
   });
 
   final File? initialPhotoA;
@@ -31,6 +33,8 @@ class BackgroundRemoverPage extends StatefulWidget {
   final VoidCallback? onClose;
   // Inline editor retains the original independently of the applied cutout.
   final File? initialOriginal;
+  final ValueChanged<bool>? onSelectSide;
+  final VoidCallback? onUpload;
   final Future<Uint8List> Function(Uint8List, int, int)? autoMask;
   final Future<void> Function(bool sideA, File result) onApply;
 
@@ -533,6 +537,113 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
           ),
         );
 
+  Widget _mainDock(bool imageAvailable) {
+    String label(String en, String ur) => AppLanguage.current == 'ur' ? ur : en;
+    Widget control(String title, IconData icon, VoidCallback? action, {bool active = false}) =>
+        Expanded(child: SizedBox(height: 50, child: OutlinedButton(
+          onPressed: _busy ? null : action,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            foregroundColor: active ? gold : Colors.white,
+            backgroundColor: active ? const Color(0xFF45345C) : const Color(0xFF172B43),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            side: BorderSide(color: active ? gold : const Color(0xFF45617A)),
+          ),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, size: 18),
+            const SizedBox(height: 2),
+            Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text(title,
+              textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)))),
+          ]),
+        )));
+    return Container(
+      key: const ValueKey('main-remover-dock'),
+      margin: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF18263E), Color(0xFF101827)]),
+        border: Border.all(color: const Color(0xFF7862A4)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: LayoutBuilder(builder: (context, bounds) => SingleChildScrollView(
+        padding: const EdgeInsets.all(7),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(textDirection: TextDirection.ltr, children: [
+            SizedBox(width: 62, height: 52, child: OutlinedButton(
+              key: const ValueKey('main-remover-back'),
+              onPressed: widget.onClose,
+              style: OutlinedButton.styleFrom(
+                padding: EdgeInsets.zero, foregroundColor: gold,
+                backgroundColor: const Color(0xFF493715),
+                side: const BorderSide(color: gold, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.arrow_back_rounded, size: 22),
+                Text(label('Back', 'واپس'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ]),
+            )),
+            const SizedBox(width: 5),
+            control(label('Auto Remove Background', 'خودکار پس منظر ہٹائیں'), Icons.auto_awesome,
+              imageAvailable ? _autoRemove : null, active: !_manual),
+            const SizedBox(width: 5),
+            control(label('Custom Remove', 'دستی پس منظر ہٹائیں'), Icons.brush_outlined,
+              imageAvailable ? () => setState(() { _manual = true; _erase = true; }) : null, active: _manual),
+          ]),
+          if (_busy) const Padding(padding: EdgeInsets.only(top: 4), child: LinearProgressIndicator(color: mint, minHeight: 2)),
+          const SizedBox(height: 5),
+          Row(children: [
+            for (final side in [true, false]) ...[
+              Expanded(child: ChoiceChip(
+                label: Center(child: Text(label(side ? 'Photo A' : 'Photo B', side ? 'تصویر A' : 'تصویر B'))),
+                selected: _sideA == side,
+                selectedColor: const Color(0xFF493715),
+                onSelected: _busy ? null : (_) => widget.onSelectSide!(side),
+              )),
+              if (side) const SizedBox(width: 5),
+            ],
+            const SizedBox(width: 5),
+            IconButton(tooltip: label('Upload Your Picture', 'تصویر منتخب کریں'),
+              onPressed: _busy ? null : widget.onUpload,
+              icon: const Icon(Icons.add_photo_alternate_outlined, color: gold)),
+          ]),
+          if (!imageAvailable && !_busy)
+            Text(label('Choose or upload a photo', 'تصویر منتخب کریں'), textAlign: TextAlign.center,
+              style: const TextStyle(color: mint, fontSize: 12)),
+          if (imageAvailable && !_manual) ...[
+            Row(children: [
+              Expanded(child: Text(label('Result appears on your poster', 'نتیجہ پوسٹر پر نظر آئے گا'),
+                style: const TextStyle(color: mint, fontSize: 12))),
+              TextButton.icon(onPressed: _busy ? null : _reset, icon: const Icon(Icons.refresh, size: 16),
+                label: Text(label('Reset', 'ری سیٹ'))),
+            ]),
+          ],
+          if (imageAvailable && _manual) ...[
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: SizedBox(height: (bounds.maxHeight - 100).clamp(95.0, 130.0).toDouble(), child: _preview(true))),
+              const SizedBox(width: 6),
+              Expanded(flex: 2, child: Column(children: [
+                Row(children: [
+                  control(label('Erase', 'مٹائیں'), Icons.auto_fix_off,
+                    () => setState(() => _erase = true), active: _erase),
+                  const SizedBox(width: 4),
+                  control(label('Restore', 'بحال کریں'), Icons.brush_outlined,
+                    () => setState(() => _erase = false), active: !_erase),
+                ]),
+                SizedBox(height: 30, child: Slider(value: _brushSize, min: 5, max: 90,
+                  label: label('Brush size', 'برش کا سائز'), onChanged: _busy ? null : (v) => setState(() => _brushSize = v))),
+                Wrap(children: [
+                  IconButton(tooltip: label('Undo', 'واپس'), onPressed: _busy || _undo.isEmpty ? null : _undoChange, icon: const Icon(Icons.undo)),
+                  IconButton(tooltip: label('Redo', 'دوبارہ'), onPressed: _busy || _redo.isEmpty ? null : _redoChange, icon: const Icon(Icons.redo)),
+                  IconButton(tooltip: label('Reset', 'ری سیٹ'), onPressed: _busy ? null : _reset, icon: const Icon(Icons.refresh)),
+                ]),
+              ])),
+            ]),
+          ],
+        ]),
+      )),
+    );
+  }
+
   Widget _inline(bool imageAvailable) {
     String label(String en, String ur) => AppLanguage.current == 'ur' ? ur : en;
     void brush(bool erase) => setState(() {
@@ -687,6 +798,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   @override
   Widget build(BuildContext context) {
     final imageAvailable = _previewPng != null && _sourcePng != null;
+    if (widget.onSelectSide != null) return _mainDock(imageAvailable);
     if (widget.onClose != null) return _inline(imageAvailable);
     return PopScope(
       canPop: _allowExit || (!_busy && !_hasUnsavedEdits),

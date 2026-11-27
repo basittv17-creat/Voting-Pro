@@ -1458,6 +1458,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final previousVs = isVsSelected;
     final previousPhoto = _selectedPhotoSideA;
     final previousPhotoPanel = _photoPanel;
+    final previousMainRemover = _mainRemoverSide;
     final previousTemplatePhoto = _selectedTemplatePhotoSideA;
     final previousADelete = showASideLabelDelete;
     final previousBDelete = showBSideLabelDelete;
@@ -1465,6 +1466,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       _clearCanvasSelection();
       _selectedPhotoSideA = previousPhoto;
       _photoPanel = previousPhotoPanel;
+      _mainRemoverSide = previousMainRemover;
       isExportingPoster = true;
     });
     try {
@@ -1506,6 +1508,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   // This prevents selection borders and edit/delete/resize handles from being
   // included in the saved image.
   void _clearCanvasSelection() {
+    if (_mainRemoverSide != null) _mainRemoverSession++;
+    _mainRemoverSide = null;
     _photoPanel = null;
     selectedTextIndex = null;
     selectedStickerIndex = null;
@@ -4098,37 +4102,40 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void openBackgroundRemover() {
     if (busy) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => BackgroundRemoverPage(
-          initialPhotoA: a,
-          initialPhotoB: b,
-          initialSideA: _selectedPhotoSideA ?? _selectedTemplatePhotoSideA ?? true,
-          onApply: (sideA, cutout) async {
-            if (!mounted) return;
-            setState(() {
-              _inlineOriginalPhotos.remove(sideA);
-              // Replace only the requested picture. Keep text, stickers,
-              // poster layout, other photo and selection state unchanged.
-              if (sideA) {
-                a = cutout;
-              } else {
-                b = cutout;
-              }
-              _photoScales[sideA] = 1.0;
-              _photoOffsets[sideA] = Offset.zero;
-              _photoStartScales[sideA] = 1.0;
-              _templatePhotoScales[sideA] = 1.0;
-              _templatePhotoOffsets[sideA] = Offset.zero;
-              _templatePhotoStartScales[sideA] = 1.0;
-              // Applying a photo cutout explicitly changes editing target.
-              _clearCanvasSelection();
-              _selectCanvasObject(photoSideA: sideA);
-            });
-          },
-        ),
-      ),
-    );
+    setState(() {
+      if (_mainRemoverSide != null) {
+        _closeMainRemover();
+        return;
+      }
+      final side = _selectedPhotoSideA ?? _selectedTemplatePhotoSideA ??
+          (a != null || b == null);
+      _clearCanvasSelection();
+      showTextTools = false;
+      _activeTextSection = TextToolSection.none;
+      _editorOptions = null;
+      _setMainRemoverSide(side);
+    });
+  }
+
+  void _setMainRemoverSide(bool sideA) {
+    if (_mainRemoverSide != sideA) _mainRemoverSession++;
+    _mainRemoverSide = sideA;
+    _selectedPhotoSideA = selectedReadyMadeTemplate == null ? sideA : null;
+    _selectedTemplatePhotoSideA = selectedReadyMadeTemplate != null ? sideA : null;
+  }
+
+  void _closeMainRemover() {
+    _mainRemoverSession++;
+    _mainRemoverSide = null;
+    _clearCanvasSelection();
+  }
+
+  Future<void> _uploadMainRemoverPhoto(bool sideA) async {
+    await pick(sideA);
+    if (!mounted || (sideA ? a : b) == null) return;
+    if (_mainRemoverSide == sideA || _selectedPhotoSideA == sideA) {
+      setState(() => _setMainRemoverSide(sideA));
+    }
   }
 
   void openTextTools() {
@@ -5137,6 +5144,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   );
 
   _PhotoPanel? _photoPanel;
+  bool? _mainRemoverSide;
+  int _mainRemoverSession = 0;
   final _photoBackgrounds = <bool, String>{};
   final _inlineOriginalPhotos = <bool, File>{};
 
@@ -5148,7 +5157,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   };
 
   bool? get _photoToolsSide =>
-      selectedReadyMadeTemplate == null && !showTextTools
+      _mainRemoverSide == null && selectedReadyMadeTemplate == null && !showTextTools
       ? _selectedPhotoSideA
       : null;
 
@@ -5228,31 +5237,34 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildPhotoPanel(bool sideA) {
+  Widget _buildPhotoPanel(bool sideA, {bool mainRemover = false}) {
     final source = sideA ? a : b;
-    if (source == null) return const SizedBox.shrink();
-    if (_photoPanel == _PhotoPanel.remover) {
+    if (source == null && !mainRemover) return const SizedBox.shrink();
+    if (mainRemover || _photoPanel == _PhotoPanel.remover) {
+      final session = _mainRemoverSession;
+      bool stillActive() => mounted && (mainRemover
+          ? _mainRemoverSide == sideA && _mainRemoverSession == session
+          : _photoToolsSide == sideA && _photoPanel == _PhotoPanel.remover) &&
+          (sideA ? a : b)?.path == source?.path;
       return BackgroundRemoverPage(
-        key: ValueKey('inline-remover-$sideA'),
+        key: ValueKey(mainRemover ? 'main-remover-$sideA-$session' : 'inline-remover-$sideA'),
+        onSelectSide: mainRemover ? (side) => setState(() => _setMainRemoverSide(side)) : null,
+        onUpload: mainRemover ? () => _uploadMainRemoverPhoto(sideA) : null,
         initialOriginal: _inlineOriginalPhotos[sideA],
         initialPhotoA: sideA ? source : null,
         initialPhotoB: sideA ? null : source,
         initialSideA: sideA,
-        onClose: () => setState(() => _photoPanel = null),
+        onClose: () => setState(() {
+          if (mainRemover) { _closeMainRemover(); } else { _photoPanel = null; }
+        }),
         onApply: (target, cutout) async {
-          if (!mounted ||
-              target != sideA ||
-              _photoToolsSide != sideA ||
-              _photoPanel != _PhotoPanel.remover ||
-              (sideA ? a : b)?.path != source.path)
-            return;
+          if (source == null || target != sideA || !stillActive()) return;
           // Keep the original in a distinct file before autosave overwrites the
           // persisted side image. The stable widget key retains the live mask.
           if (!_inlineOriginalPhotos.containsKey(sideA)) {
             final dir = await _projectDirectory();
             final original = await source.copy('${dir.path}/inline_original_${sideA ? 'a' : 'b'}_${DateTime.now().microsecondsSinceEpoch}.img');
-            if (!mounted || _photoToolsSide != sideA ||
-                _photoPanel != _PhotoPanel.remover || (sideA ? a : b)?.path != source.path) return;
+            if (!stillActive()) return;
             _inlineOriginalPhotos[sideA] = original;
           }
           setState(() {
@@ -5265,6 +5277,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         },
       );
     }
+    if (source == null) return const SizedBox.shrink();
     return _PhotoBackgroundSettings(
       key: ValueKey('photo-background-${source.path}-$sideA'),
       file: source,
@@ -5319,6 +5332,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }) {
     // Selected text is the editing target until another text is tapped or deleted.
     if (_textOwnsCanvasGestures && textIndex == null) return;
+    if (_mainRemoverSide != null) {
+      final target = photoSideA ?? templatePhotoSideA;
+      if (target != null) {
+        _setMainRemoverSide(target);
+        return;
+      }
+      _closeMainRemover();
+    }
     // Centralized exclusive selection: passing one target clears every other
     // movable object's selection. Label asset paths are content, not selection.
     selectedTagraStickerIndex = tagraIndex;
@@ -5650,10 +5671,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: _editorOptions == null && !showTextTools && _photoToolsSide == null,
+    canPop: _mainRemoverSide == null && _editorOptions == null && !showTextTools && _photoToolsSide == null,
     onPopInvokedWithResult: (didPop, _) {
       if (didPop) return;
-      if (_photoToolsSide != null) {
+      if (_mainRemoverSide != null) {
+        setState(_closeMainRemover);
+      } else if (_photoToolsSide != null) {
         if (_photoPanel != null) {
           setState(() => _photoPanel = null);
         } else {
@@ -6688,7 +6711,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         duration: const Duration(milliseconds: 180),
         alignment: Alignment.bottomCenter,
         curve: Curves.easeOutCubic,
-        child: _photoToolsSide != null && _photoPanel != null
+        child: _mainRemoverSide != null
+            ? SizedBox(height: panelHeight, child: _buildPhotoPanel(_mainRemoverSide!, mainRemover: true))
+            : _photoToolsSide != null && _photoPanel != null
             ? SizedBox(height: panelHeight, child: _buildPhotoPanel(_photoToolsSide!))
             : _editorOptions != null
             ? SizedBox(

@@ -78,6 +78,23 @@ void main() {
         (tester.widget<Image>(imageFor(side)).image as FileImage).file.path;
 
     await capture('photo-01-default');
+    final mainRemoverButton = find.descendant(of: normal, matching: find.text('BG Remover'));
+    await tester.scrollUntilVisible(mainRemoverButton, 180, scrollable: find.descendant(of: normal, matching: find.byType(Scrollable)));
+    await tap(mainRemoverButton);
+    final mainDock = find.byKey(const ValueKey('main-remover-dock'));
+    expect(mainDock, findsOneWidget);
+    expect(normal, findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.text('Auto Remove Background'), findsOneWidget);
+    expect(find.text('Custom Remove'), findsOneWidget);
+    await tap(find.text('Photo B'));
+    await tap(find.text('Custom Remove'));
+    expect(find.byKey(const ValueKey('inline-cutout-brush')), findsOneWidget);
+    await tap(find.byKey(const ValueKey('main-remover-back')));
+    expect(mainDock, findsNothing);
+    expect(normal, findsOneWidget);
+    expect(pathOf('A'), a.path);
+    expect(pathOf('B'), b.path);
     await tap(imageFor('A'));
     expect(normal, findsNothing);
     expect(tester.getRect(toolbar), bounds);
