@@ -23,7 +23,33 @@ void main() {
       ),
     );
     expect(find.byType(Image), findsOneWidget);
+    expect(tester.widget<Image>(find.byType(Image)).image, isA<AssetImage>());
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Gallery decodes within the physical tile size', (tester) async {
+    await tester.pumpWidget(
+      const MediaQuery(
+        data: MediaQueryData(devicePixelRatio: 2),
+        child: Center(
+          child: SizedBox(
+            width: 80,
+            height: 60,
+            child: FrameArtwork(
+              'assets/stylish_frames/04_modern_gold_frame.png',
+              fit: BoxFit.contain,
+              preview: false,
+              thumbnail: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    final provider = tester.widget<Image>(find.byType(Image)).image;
+    final resize = provider as ResizeImage;
+    expect(resize.width, 160);
+    expect(resize.height, 120);
+    expect(resize.policy, ResizeImagePolicy.fit);
   });
 
   test('Compare candidate frame pixels with original', () async {

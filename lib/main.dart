@@ -1283,7 +1283,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Expanded(
-                  child: FrameArtwork(asset, fit: BoxFit.contain),
+                  child: FrameArtwork(asset, fit: BoxFit.contain, thumbnail: true),
                 ),
                 if (name.isNotEmpty)
                   Text(
@@ -4582,7 +4582,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               SizedBox(
                 height: 35,
                 width: 58,
-                child: Image.asset(asset, fit: BoxFit.contain),
+                child: FrameArtwork(asset, fit: BoxFit.contain, thumbnail: true),
               ),
               const SizedBox(height: 3),
               Text(

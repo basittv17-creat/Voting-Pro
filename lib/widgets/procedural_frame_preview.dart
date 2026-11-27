@@ -31,17 +31,40 @@ class FrameArtwork extends StatelessWidget {
     this.height,
     this.gaplessPlayback = false,
     this.preview = proceduralFramePreviewEnabled,
+    this.thumbnail = false,
   });
 
   final String asset;
   final BoxFit fit;
   final double? width, height;
   final bool gaplessPlayback, preview;
+  final bool thumbnail;
 
   @override
   Widget build(BuildContext context) {
     final frame = ProceduralFrame.forAsset(asset);
     if (!preview || frame == null) {
+      if (thumbnail && fit == BoxFit.contain) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final ratio = MediaQuery.devicePixelRatioOf(context);
+            if (!constraints.hasBoundedWidth ||
+                !constraints.hasBoundedHeight ||
+                constraints.biggest.isEmpty) {
+              return Image.asset(asset, fit: fit);
+            }
+            return Image(
+              image: ResizeImage(
+                AssetImage(asset),
+                width: (constraints.maxWidth * ratio).ceil(),
+                height: (constraints.maxHeight * ratio).ceil(),
+                policy: ResizeImagePolicy.fit,
+              ),
+              fit: fit,
+            );
+          },
+        );
+      }
       return Image.asset(
         asset,
         fit: fit,
@@ -97,13 +120,12 @@ class ProceduralFramePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeJoin = StrokeJoin.miter;
 
-    void rect(Rect bounds, Color color, double width) {
-      canvas.drawRect(
-        bounds,
-        paint
-          ..color = color
-          ..strokeWidth = width,
-      );
+    void band(Rect outside, Rect inside, Color color) {
+      final path = Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(outside)
+        ..addRect(inside);
+      canvas.drawPath(path, Paint()..color = color);
     }
 
     void trace(List<Offset> points, Color color, double width, {
@@ -140,15 +162,19 @@ class ProceduralFramePainter extends CustomPainter {
     final highlight = turquoise
         ? const Color(0xffb5fff0)
         : const Color(0xfffff1ac);
-    const border = Rect.fromLTRB(54, 34, 1146, 866);
-    rect(border, outer.withAlpha(90), 18);
-    rect(border, outer.withAlpha(180), 14);
-    rect(border, rim, 10);
-    rect(border.deflate(4), highlight, 2);
-    rect(border.deflate(10), const Color(0xff9c7207), 3);
-    rect(border.deflate(12), highlight, 2);
-    rect(border.deflate(17), rim, 2);
-    rect(border.deflate(20), highlight, 1);
+    // The two axes have different bevel widths in the source artwork.
+    const edge = Rect.fromLTRB(48, 28.8, 1152.5, 871.5);
+    const face = Rect.fromLTRB(53, 31.8, 1147, 868.5);
+    const lip = Rect.fromLTRB(57.8, 34.8, 1142.5, 865.5);
+    const opening = Rect.fromLTRB(60, 36, 1140, 864);
+    band(edge, face, turquoise ? const Color(0xff007354) : const Color(0xffa15c00));
+    band(face, lip, turquoise ? const Color(0xff1affbb) : const Color(0xffffcf42));
+    band(lip, opening, turquoise ? const Color(0xffffe04c) : const Color(0xfffff8cb));
+    band(
+      const Rect.fromLTRB(71, 42.4, 1129.5, 858),
+      const Rect.fromLTRB(73, 44, 1127.5, 856),
+      turquoise ? const Color(0xdc1affb9) : const Color(0xdcffcf41),
+    );
 
     if (turquoise) {
       for (final sx in [1.0, -1.0]) {
