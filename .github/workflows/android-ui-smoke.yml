@@ -22,6 +22,8 @@ on:
       - 'lib/services/mask_history.dart'
       - 'lib/app_language.dart'
       - 'test/android_apk_workflow_test.dart'
+      - 'scripts/retry_dependency_download.sh'
+      - '.github/workflows/flutter-build.yml'
       - '.github/workflows/android-ui-smoke.yml'
   pull_request:
     branches: [main]
@@ -245,6 +247,8 @@ jobs:
             adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
             sleep 8
             adb shell pidof -s "$PACKAGE"
+            adb shell dumpsys meminfo "$PACKAGE" > build/android-screenshots/signed-startup-memory.txt
+            adb shell dumpsys gfxinfo "$PACKAGE" > build/android-screenshots/signed-startup-frames.txt
             if adb logcat -d -s AndroidRuntime:E | grep -F 'FATAL EXCEPTION' >/dev/null; then exit 1; fi
             adb exec-out screencap -p > build/android-screenshots/tagra-signed-cold-launch.png
           fi
@@ -253,7 +257,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: voting-pro-android-screenshots
-          path: build/android-screenshots/*.png
+          path: build/android-screenshots/
           if-no-files-found: error
 
       - name: Upload installable normal-app debug APK
