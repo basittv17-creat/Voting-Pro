@@ -6,6 +6,8 @@ on:
     paths:
       - 'lib/main.dart'
       - 'lib/widgets/premium_text_editor_panel.dart'
+      - 'lib/widgets/text_background_dock.dart'
+      - 'test/text_background_plate_test.dart'
       - 'test/text_toolbar_test.dart'
       - 'test/premium_text_editor_panel_test.dart'
       - 'integration_test/text_toolbar_android_test.dart'
@@ -140,8 +142,8 @@ jobs:
               start_emulator
             done
           }
-          run_ui_suite --target=integration_test/vs_styles_android_test.dart
           run_ui_suite --target=integration_test/text_toolbar_android_test.dart
+          run_ui_suite --target=integration_test/vs_styles_android_test.dart
           run_ui_suite --target=integration_test/photo_tools_android_test.dart
           stop_emulator
           start_emulator
@@ -164,6 +166,11 @@ jobs:
         if: failure()
         timeout-minutes: 2
         run: |
+          free -m
+          timeout 10s adb devices -l || true
+          if [ -r /sys/fs/cgroup/memory.events ]; then
+            cat /sys/fs/cgroup/memory.events
+          fi
           if [ -f "$RUNNER_TEMP/voting-pro-emulator.log" ]; then
             tail -150 "$RUNNER_TEMP/voting-pro-emulator.log"
           fi
@@ -173,6 +180,14 @@ jobs:
           else
             echo '::warning::Emulator unavailable; see the host emulator log above.'
           fi
+
+      - name: Retain screenshots from completed Android suites on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: voting-pro-partial-android-screenshots
+          path: build/android-screenshots/*.png
+          if-no-files-found: ignore
 
       # flutter drive leaves an integration-test entrypoint in app-debug.apk.
       # NEVER publish that test-runner APK as the installable Voting Pro app.

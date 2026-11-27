@@ -118,6 +118,26 @@ void main() {
         'Royal Gold');
     expect(tester.getRect(bgTools), bounds);
     await capture('text-12-premium-backgrounds');
+    for (final (tab, control, screenshot) in [
+      ('Border', 'Border width', 'text-15-background-border'),
+      ('Shadow Blur', 'Shadow blur', 'text-16-background-shadow'),
+      ('Opacity', 'Background opacity', 'text-17-background-opacity'),
+    ]) {
+      await tap(action(bgTools, tab));
+      final slider = find.byKey(ValueKey('background-slider-$control'));
+      final before = tester.widget<Slider>(slider).value;
+      await tester.ensureVisible(slider);
+      await tester.pumpAndSettle();
+      await tester.tapAt(
+        tester.getTopLeft(slider) + Offset(tester.getSize(slider).width * .7, 22),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<Slider>(slider).value, isNot(before));
+      expect(tester.getRect(bgTools), bounds);
+      await capture(screenshot);
+    }
+    await tap(action(bgTools, 'Gradient'));
+    await capture('text-18-background-gradient');
     await tap(action(bgTools, 'Back'));
     expect(text, findsOneWidget);
     await tap(action(text, 'Font'));
@@ -144,6 +164,13 @@ void main() {
         tester.getRect(overlay).top, greaterThan(tester.getRect(poster).top));
     expect(tester.getRect(text), bounds);
     await capture('text-14-top-edge');
+
+    await tester.drag(overlay, const Offset(0, 350));
+    await tester.pumpAndSettle();
+    final floor = tester.getRect(poster).bottom;
+    expect(tester.getRect(overlay).bottom, lessThanOrEqualTo(floor + .01));
+    expect(tester.getRect(overlay).center.dy, greaterThan(floor - 120));
+    await capture('text-19-bottom-edge');
 
     final delete = action(text, 'Delete Text');
     await tester.ensureVisible(delete);
