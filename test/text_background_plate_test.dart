@@ -125,12 +125,22 @@ void main() {
     await changeSlider('Shadow blur', 12);
     expect(artwork().backgroundShadowBlur, 12);
     await tab('Opacity');
+    final opacity = find.byKey(
+      const ValueKey('background-slider-Background opacity'),
+    );
+    final oldOpacityHandler = tester.widget<Slider>(opacity).onChanged!;
     await changeSlider('Background opacity', 0);
     expect(plates, findsNothing);
     await tap(tester, switches().first);
     expect(artwork().backgroundOpacity, .85);
     expect(artwork().backgroundColor, savedColor);
     expect(artwork().backgroundDesign, 'Royal Gold');
+
+    await tab('Advanced Backgrounds');
+    await tab('Opacity');
+    oldOpacityHandler(.25);
+    await tester.pumpAndSettle();
+    expect(artwork().backgroundOpacity, .85);
 
     await tab('Advanced Backgrounds');
     await tap(tester, find.text('Glyph-only background'));

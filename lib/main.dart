@@ -2815,6 +2815,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void _openBackgroundDock(TextBackgroundTab tab) {
     setState(() {
+      _textSelectionRevision++;
       _editorOptions = null;
       _activeTextSection = TextToolSection.background;
       _backgroundTab = tab;
@@ -2823,6 +2824,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void _closeBackgroundDock() {
     setState(() {
+      _textSelectionRevision++;
       _editorOptions = null;
       _activeTextSection = TextToolSection.none;
       _backgroundTab = TextBackgroundTab.overview;
@@ -2871,17 +2873,16 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         _editorOptions == null &&
         !isExportingPoster;
     final enabled = _textBackgroundVisible(index);
-    void change(VoidCallback action, {bool remember = true}) {
-      if (!isCurrent()) return;
+    void change(ValueChanged<int> action, {bool remember = true}) {
+      if (index == null || !isCurrent()) return;
       if (remember) _rememberTextEdit();
-      setState(action);
+      setState(() => action(index));
     }
 
     void setValue(Map<int, double> values, double value) {
-      if (index == null) return;
-      change(() {
-        _enableTextBackground(index);
-        values[index] = value;
+      change((target) {
+        _enableTextBackground(target);
+        values[target] = value;
       }, remember: false);
     }
 
@@ -2900,12 +2901,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       shadow: textBgShadows[index] ?? 0,
       gradient: textBgGradients.contains(index),
       onClose: _closeBackgroundDock,
-      onToggle: () => change(() => _toggleTextBackground(index!)),
-      onColor: (value) => change(() => _recolorTextBackground(index!, value)),
-      onGlyphBackground: () => change(() {
-        _enableTextBackground(index!);
-        textBgDesigns.remove(index);
-        if (textBgOpacities[index] == 0) textBgOpacities[index] = .85;
+      onToggle: () => change(_toggleTextBackground),
+      onColor: (value) => change((target) => _recolorTextBackground(target, value)),
+      onGlyphBackground: () => change((target) {
+        _enableTextBackground(target);
+        textBgDesigns.remove(target);
+        if (textBgOpacities[target] == 0) textBgOpacities[target] = .85;
       }),
       onPreset: (name) {
         if (index != null && isCurrent()) _applyTextBackgroundPreset(index, name);
@@ -2918,15 +2919,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       onCorners: (value) => setValue(textBgRadii, value),
       onBorder: (value) => setValue(textBgBorders, value),
       onShadow: (value) => setValue(textBgShadows, value),
-      onGradient: (value) => change(() {
-        _enableTextBackground(index!);
+      onGradient: (value) => change((target) {
+        _enableTextBackground(target);
         if (value) {
-          textBgGradients.add(index!);
+          textBgGradients.add(target);
         } else {
-          textBgGradients.remove(index);
+          textBgGradients.remove(target);
         }
       }),
-      onWhiteText: () => change(() => textColors[index!] = Colors.white),
+      onWhiteText: () => change((target) => textColors[target] = Colors.white),
       onChooseFont: () {
         if (isCurrent()) chooseTextFont();
       },
