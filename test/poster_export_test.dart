@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:screenshot/screenshot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voting_pro/main.dart';
 
@@ -51,6 +52,19 @@ void main() {
     expect(find.byIcon(Icons.delete), findsOneWidget);
     final selected = await save();
     expect(selected, orderedEquals(plain));
+    expect(find.byIcon(Icons.delete), findsOneWidget);
+    final state = tester.state(find.byType(Editor)) as dynamic;
+    state.openTextTools();
+    await tester.pumpAndSettle();
+    state.editTextBackground();
+    await tester.pumpAndSettle();
+    final dock = find.byKey(const ValueKey('text-background-dock'));
+    final poster = find.byType(Screenshot);
+    final posterBounds = tester.getRect(poster);
+    final dockBounds = tester.getRect(dock);
+    expect(await save(), orderedEquals(plain));
+    expect(tester.getRect(poster), posterBounds);
+    expect(tester.getRect(dock), dockBounds);
     expect(find.byIcon(Icons.delete), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

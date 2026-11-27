@@ -146,7 +146,6 @@ void main() {
     await tab('Text Backgrounds');
     expect(tester.getRect(dock), bounds);
     expect(tester.takeException(), isNull);
-
   });
 
   for (final width in [320.0, 360.0, 393.0, 412.0]) {

@@ -1446,7 +1446,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLanguage.tr(s), textDirection: AppLanguage.direction)));
   }
 
-  Future<void> pick(
+  Future<void> pick(bool sideA) async {
+    await _pickPhoto(sideA);
+  }
+
+  Future<void> _pickPhoto(
     bool sideA, {
     bool Function()? isCurrent,
     bool keepRemoverOpen = false,
@@ -2901,7 +2905,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       onGlyphBackground: () => change(() {
         _enableTextBackground(index!);
         textBgDesigns.remove(index);
-        if (textBgOpacities[index] == 0) textBgOpacities[index!] = .85;
+        if (textBgOpacities[index] == 0) textBgOpacities[index] = .85;
       }),
       onPreset: (name) {
         if (index != null && isCurrent()) _applyTextBackgroundPreset(index, name);
@@ -4258,7 +4262,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Future<void> _uploadMainRemoverPhoto(bool sideA) {
     final session = _mainRemoverSession;
     final template = selectedReadyMadeTemplate;
-    return pick(
+    return _pickPhoto(
       sideA,
       keepRemoverOpen: true,
       isCurrent: () =>
@@ -5925,6 +5929,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final panelHeight = (constraints.maxHeight - posterHeight)
           .clamp(minPanelHeight, maxPanelHeight)
           .toDouble();
+      final backgroundDockHeight = panelHeight
+          .clamp(0.0, constraints.maxHeight * 0.46)
+          .toDouble();
       return Column(children: [
       Expanded(child: SingleChildScrollView(
           key: const ValueKey('poster-scroll'),
@@ -6942,13 +6949,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   child: _buildEditorOptions(_editorOptions!),
                 ),
               )
-            : showTextTools && !isExportingPoster &&
-                _activeTextSection == TextToolSection.background
+            : showTextTools &&
+                _activeTextSection == TextToolSection.background &&
+                backgroundDockHeight >= 70
             ? SizedBox(
-                height: panelHeight,
+                height: backgroundDockHeight,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                  child: _buildBackgroundDock(),
+                  child: IgnorePointer(
+                    ignoring: isExportingPoster,
+                    child: _buildBackgroundDock(),
+                  ),
                 ),
               )
             : const SizedBox.shrink(),
