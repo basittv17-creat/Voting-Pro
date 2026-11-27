@@ -6244,7 +6244,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             final scale = (textScales[index] ?? 1.0).clamp(0.4, 4.0);
             // Enlarge the hit target without changing the painted text position.
             final textTouchInset = isText ? 15.0 : 0.0;
-            Widget buildOverlay(BuildContext? placementContext) => GestureDetector(
+            Widget textHandle(
+              Size canvasSize,
+              Alignment alignment,
+              Widget child,
+            ) => Positioned.fill(
+              child: CustomSingleChildLayout(
+                delegate: TextHandlePlacement(
+                  placement: TextCanvasPlacement(position, textTouchInset),
+                  canvasSize: canvasSize,
+                  alignment: alignment,
+                  margin: alignment == Alignment.bottomRight ? 2 : 0,
+                ),
+                child: child,
+              ),
+            );
+            Widget buildOverlay(BuildContext? placementContext, [Size? canvasSize]) => GestureDetector(
                 key: ValueKey(index),
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (_) {
@@ -6312,8 +6327,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                         if (overlayBox is RenderBox && canvas is RenderBox) {
                           final anchor =
                               textPositions[index] ?? textGestureStartPosition;
+                          final delta = canvas.globalToLocal(details.focalPoint) -
+                              canvas.globalToLocal(
+                                details.focalPoint - details.focalPointDelta,
+                              );
                           final placement = TextCanvasPlacement(
-                            anchor + details.focalPointDelta, textTouchInset,
+                            anchor + delta, textTouchInset,
                           );
                           textPositions[index] = placement.getPositionForChild(
                             canvas.size, overlayBox.size,
@@ -6596,10 +6615,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       if (!isExportingPoster &&
                           isText &&
                           selectedTextIndex == index)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: GestureDetector(
+                        textHandle(
+                          canvasSize!,
+                          Alignment.topRight,
+                          GestureDetector(
                             behavior: HitTestBehavior
                                 .opaque,
                             onTap: () =>
@@ -6626,10 +6645,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       if (!isExportingPoster &&
                           isText &&
                           selectedTextIndex == index)
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          child: GestureDetector(
+                        textHandle(
+                          canvasSize!,
+                          Alignment.topLeft,
+                          GestureDetector(
                             behavior: HitTestBehavior
                                 .opaque,
                             onTap: editSelectedText,
@@ -6656,10 +6675,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       if (!isExportingPoster &&
                           isText &&
                           selectedTextIndex == index)
-                        Positioned(
-                          right: 2,
-                          bottom: 2,
-                          child: GestureDetector(
+                        textHandle(
+                          canvasSize!,
+                          Alignment.bottomRight,
+                          GestureDetector(
                             behavior: HitTestBehavior
                                 .opaque,
                             onVerticalDragStart: (details) {
@@ -6722,9 +6741,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             if (isText) {
               return Positioned.fill(
                 key: ValueKey('text-overlay-$index'),
-                child: CustomSingleChildLayout(
-                  delegate: TextCanvasPlacement(position, textTouchInset),
-                  child: Builder(builder: buildOverlay),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => CustomSingleChildLayout(
+                    delegate: TextCanvasPlacement(position, textTouchInset),
+                    child: Builder(
+                      builder: (context) => buildOverlay(context, constraints.biggest),
+                    ),
+                  ),
                 ),
               );
             }
@@ -6749,7 +6772,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             ),
           // Paint no extra artwork: only reserve bottom name-strip taps above
           // transparent sticker/letter hitboxes, including overlapping ones.
-          if (selectedReadyMadeTemplate == null && !isExportingPoster)
+          if (selectedReadyMadeTemplate == null && !isExportingPoster &&
+              !showTextTools && !_textOwnsCanvasGestures)
             Positioned(
               left: 0,
               right: 0,

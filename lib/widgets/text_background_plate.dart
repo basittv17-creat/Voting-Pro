@@ -85,7 +85,7 @@ class TextBackgroundPlate extends StatelessWidget {
   }
 }
 
-/// Positions the complete measured overlay inside the actual poster content.
+/// Constrains the measured artwork, not its invisible editing touch margin.
 class TextCanvasPlacement extends SingleChildLayoutDelegate {
   const TextCanvasPlacement(this.anchor, this.touchInset);
 
@@ -96,15 +96,62 @@ class TextCanvasPlacement extends SingleChildLayoutDelegate {
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
       constraints.loosen();
 
+  double _axis(double position, double extent, double childExtent) {
+    final last = (extent - childExtent + touchInset)
+        .clamp(-touchInset, double.infinity)
+        .toDouble();
+    return (position - touchInset).clamp(-touchInset, last).toDouble();
+  }
+
   @override
   Offset getPositionForChild(Size size, Size childSize) => Offset(
-        (anchor.dx - touchInset).clamp(
-            0.0, (size.width - childSize.width).clamp(0.0, double.infinity)),
-        (anchor.dy - touchInset).clamp(
-            0.0, (size.height - childSize.height).clamp(0.0, double.infinity)),
+        _axis(anchor.dx, size.width, childSize.width),
+        _axis(anchor.dy, size.height, childSize.height),
       );
 
   @override
   bool shouldRelayout(TextCanvasPlacement oldDelegate) =>
       anchor != oldDelegate.anchor || touchInset != oldDelegate.touchInset;
+}
+
+/// Keeps editing controls inside the canvas independently of the artwork.
+class TextHandlePlacement extends SingleChildLayoutDelegate {
+  const TextHandlePlacement({
+    required this.placement,
+    required this.canvasSize,
+    required this.alignment,
+    this.margin = 0,
+  });
+
+  final TextCanvasPlacement placement;
+  final Size canvasSize;
+  final Alignment alignment;
+  final double margin;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      constraints.loosen();
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    final origin = placement.getPositionForChild(canvasSize, size);
+    final desired = origin +
+        alignment
+            .inscribe(childSize, (Offset.zero & size).deflate(margin))
+            .topLeft;
+    final x = desired.dx
+        .clamp(0.0, (canvasSize.width - childSize.width).clamp(0.0, double.infinity))
+        .toDouble();
+    final y = desired.dy
+        .clamp(0.0, (canvasSize.height - childSize.height).clamp(0.0, double.infinity))
+        .toDouble();
+    return Offset(x, y) - origin;
+  }
+
+  @override
+  bool shouldRelayout(TextHandlePlacement oldDelegate) =>
+      placement.shouldRelayout(oldDelegate.placement) ||
+      canvasSize != oldDelegate.canvasSize ||
+      alignment != oldDelegate.alignment ||
+      margin != oldDelegate.margin;
 }
