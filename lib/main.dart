@@ -2825,6 +2825,35 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     });
   }
 
+  bool _textBackgroundVisible(int? index) =>
+      textBgColors.containsKey(index) &&
+      !_disabledTextBackgrounds.contains(index) &&
+      textBgOpacities[index] != 0;
+
+  void _enableTextBackground(int index) {
+    if (!textBgColors.containsKey(index) && !textBgDesigns.containsKey(index)) {
+      textBgDesigns[index] = 'solid';
+    }
+    textBgColors.putIfAbsent(index, () => const Color(0xFF0C1430));
+    _disabledTextBackgrounds.remove(index);
+    textBgOpacities.putIfAbsent(index, () => .85);
+  }
+
+  void _toggleTextBackground(int index) {
+    if (_textBackgroundVisible(index)) {
+      _disabledTextBackgrounds.add(index);
+    } else {
+      _enableTextBackground(index);
+      if (textBgOpacities[index] == 0) textBgOpacities[index] = .85;
+    }
+  }
+
+  void _recolorTextBackground(int index, Color color) {
+    _enableTextBackground(index);
+    textBgColors[index] = color;
+    if (textBgOpacities[index] == 0) textBgOpacities[index] = .85;
+  }
+
   Widget _buildBackgroundDock() {
     final index = _selectedTextForEditing;
     final revision = _textSelectionRevision;
@@ -2837,29 +2866,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         _backgroundTab == tab &&
         _editorOptions == null &&
         !isExportingPoster;
-    final enabled = index != null &&
-        textBgColors.containsKey(index) &&
-        !_disabledTextBackgrounds.contains(index);
+    final enabled = _textBackgroundVisible(index);
     void change(VoidCallback action, {bool remember = true}) {
       if (!isCurrent()) return;
       if (remember) _rememberTextEdit();
       setState(action);
     }
 
-    void enable() {
-      if (index == null) return;
-      if (!textBgColors.containsKey(index) && !textBgDesigns.containsKey(index)) {
-        textBgDesigns[index] = 'solid';
-      }
-      textBgColors.putIfAbsent(index, () => const Color(0xFF0C1430));
-      _disabledTextBackgrounds.remove(index);
-      textBgOpacities.putIfAbsent(index, () => .85);
-    }
-
     void setValue(Map<int, double> values, double value) {
       if (index == null) return;
       change(() {
-        enable();
+        _enableTextBackground(index);
         values[index] = value;
       }, remember: false);
     }
@@ -2867,7 +2884,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     return TextBackgroundDock(
       tab: _backgroundTab,
       hasSelection: index != null,
-      enabled: enabled && textBgOpacities[index] != 0,
+      enabled: enabled,
       color: textBgColors[index] ?? const Color(0xFF0C1430),
       design: textBgDesigns[index],
       glyphMode: textBgColors.containsKey(index) &&
@@ -2879,24 +2896,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       shadow: textBgShadows[index] ?? 0,
       gradient: textBgGradients.contains(index),
       onClose: _closeBackgroundDock,
-      onToggle: () => change(() {
-        if (enabled && textBgOpacities[index] != 0) {
-          _disabledTextBackgrounds.add(index!);
-        } else {
-          enable();
-          if (textBgOpacities[index] == 0) textBgOpacities[index!] = .85;
-        }
-      }),
-      onColor: (value) => change(() {
-        enable();
-        textBgColors[index!] = value;
-        // Preserve the selected premium plate and its outline when recoloring.
-        if ((textBgOpacities[index] ?? 0) <= 0) {
-          textBgOpacities[index] = .85;
-        }
-      }),
+      onToggle: () => change(() => _toggleTextBackground(index!)),
+      onColor: (value) => change(() => _recolorTextBackground(index!, value)),
       onGlyphBackground: () => change(() {
-        enable();
+        _enableTextBackground(index!);
         textBgDesigns.remove(index);
         if (textBgOpacities[index] == 0) textBgOpacities[index!] = .85;
       }),
@@ -2912,7 +2915,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       onBorder: (value) => setValue(textBgBorders, value),
       onShadow: (value) => setValue(textBgShadows, value),
       onGradient: (value) => change(() {
-        enable();
+        _enableTextBackground(index!);
         if (value) {
           textBgGradients.add(index!);
         } else {
@@ -3302,13 +3305,20 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Future<void> importSelectedTextFont() async {
     final index = await _chooseFontImportTarget();
     if (index == null || !mounted) return;
+    final revision = _textSelectionRevision;
+    bool isCurrent() =>
+        mounted &&
+        _selectedTextForEditing == index &&
+        _textSelectionRevision == revision;
+    File? staged;
+    var committed = false;
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
         withData: true,
       );
-      if (result == null || !mounted) return;
+      if (result == null || !isCurrent()) return;
       final chosen = result.files.single;
       final bytes = chosen.bytes;
       if (bytes == null || bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
@@ -3329,18 +3339,32 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final dir = await _projectDirectory();
       final extension = isOpenType ? 'otf' : 'ttf';
       final path = '${dir.path}/custom_font_$stamp.$extension';
-      await File(path).writeAsBytes(bytes, flush: true);
+      if (!isCurrent()) return;
       await ui.loadFontFromList(bytes, fontFamily: family);
-      if (!mounted || index >= overlays.length || !textOverlayIds.contains(index)) return;
+      if (!isCurrent()) return;
+      final file = File(path);
+      staged = file;
+      await file.writeAsBytes(bytes, flush: true);
+      if (!isCurrent()) return;
       _rememberTextEdit();
       setState(() {
         _loadedCustomFontFamilies.add(family);
         customFontPaths[index] = path;
         textFonts[index] = family;
       });
+      committed = true;
       msg('Custom font منتخب ٹیکسٹ پر لاگو ہوگیا');
     } catch (_) {
-      msg('Font import failed.');
+      if (isCurrent()) msg('Font import failed.');
+    } finally {
+      final file = staged;
+      if (file != null && !committed) {
+        try {
+          await file.delete();
+        } on FileSystemException {
+          // A failed write may leave no file to remove.
+        }
+      }
     }
   }
 
@@ -3391,6 +3415,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
 
+    final revision = _textSelectionRevision;
     final initialText = overlays[index];
     var input = initialText;
 
@@ -3431,11 +3456,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
 
 
-    if (value != null && value.isNotEmpty && mounted) {
+    if (value != null && value.isNotEmpty && mounted &&
+        _textSelectionRevision == revision &&
+        _selectedTextForEditing == index) {
       _rememberTextEdit();
       setState(() {
         overlays[index] = value;
-        selectedTextIndex = index;
       });
     }
   }
@@ -4665,19 +4691,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
 
   Widget _buildPremiumTextPanel() {
-    final index = selectedTextIndex;
-    final valid =
-        index != null &&
-        index >= 0 &&
-        index < overlays.length &&
-        textOverlayIds.contains(index);
-    final active = valid ? index : null;
+    final active = _selectedTextForEditing;
+    final revision = _textSelectionRevision;
+    final section = _activeTextSection;
+
+    bool isCurrent() =>
+        mounted &&
+        !isExportingPoster &&
+        active != null &&
+        _selectedTextForEditing == active &&
+        _textSelectionRevision == revision &&
+        _activeTextSection == section &&
+        _editorOptions == null;
 
     void updateSelected(VoidCallback mutation) {
       if (active == null) {
         msg('پہلے ٹیکسٹ منتخب کریں');
         return;
       }
+      if (!isCurrent()) return;
       _rememberTextEdit();
       setState(mutation);
     }
@@ -4761,10 +4793,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       onMoreColors: chooseTextColor,
       textOpacity: active == null ? 1 : (textOpacities[active] ?? 1),
       onOpacityStart: () {
-        if (active != null) _rememberTextEdit();
+        if (isCurrent()) _rememberTextEdit();
       },
       onTextOpacity: (value) {
-        if (active == null) return;
+        if (active == null || !isCurrent()) return;
         setState(() => textOpacities[active] = value);
       },
       glowEnabled: active != null && (textGlowStrengths[active] ?? 0) > 0,
@@ -4775,10 +4807,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       }),
       glowStrength: active == null ? 0 : (textGlowStrengths[active] ?? 0),
       onGlowStart: () {
-        if (active != null) _rememberTextEdit();
+        if (isCurrent()) _rememberTextEdit();
       },
       onGlowStrength: (value) {
-        if (active == null) return;
+        if (active == null || !isCurrent()) return;
         setState(() => textGlowStrengths[active] = value);
       },
       glowColor: active == null
@@ -4799,10 +4831,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
       }),
       onShadowStart: () {
-        if (active != null) _rememberTextEdit();
+        if (isCurrent()) _rememberTextEdit();
       },
       onShadowStrength: (value) {
-        if (active == null) return;
+        if (active == null || !isCurrent()) return;
         setState(() => textShadowStrengths[active] = value);
       },
       gradientEnabled:
@@ -4818,10 +4850,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       }),
       outlineColor: textOutlineColors[active] ?? Colors.black,
       onOutlineStart: () {
-        if (active != null) _rememberTextEdit();
+        if (isCurrent()) _rememberTextEdit();
       },
       onOutlineWidth: (value) {
-        if (active == null) return;
+        if (active == null || !isCurrent()) return;
         setState(() => textOutlineWidths[active] = value);
       },
       onOutlineColor: (color) => updateSelected(() {
@@ -4830,35 +4862,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           textOutlineWidths[active] = 1.5;
         }
       }),
-      backgroundEnabled: active != null && textBgColors.containsKey(active),
-      onBackgroundToggle: () => updateSelected(() {
-        if (textBgColors.containsKey(active)) {
-          textBgColors.remove(active);
-        } else {
-          textBgDesigns[active!] = 'solid';
-          textBgColors[active] = const Color(0xFF0C1430);
-          textBgOpacities[active] = 0.85;
-        }
-      }),
-      backgroundColor: active == null
-          ? const Color(0xFF0C1430)
-          : (textBgColors[active] ?? const Color(0xFF0C1430)),
-      onBackgroundColor: (color) => updateSelected(() {
-        textBgDesigns[active!] = 'solid';
-        textBgColors[active] = color;
-        if ((textBgOpacities[active] ?? 0) <= 0) textBgOpacities[active] = .85;
-      }),
+      backgroundEnabled: _textBackgroundVisible(active),
+      onBackgroundToggle: () =>
+          updateSelected(() => _toggleTextBackground(active!)),
+      backgroundColor: textBgColors[active] ?? const Color(0xFF0C1430),
+      onBackgroundColor: (color) =>
+          updateSelected(() => _recolorTextBackground(active!, color)),
       backgroundOpacity: active == null
           ? 0.85
           : (textBgOpacities[active] ?? 0.85),
       onBackgroundOpacityStart: () {
-        if (active != null) _rememberTextEdit();
+        if (isCurrent()) _rememberTextEdit();
       },
       onBackgroundOpacity: (value) {
-        if (active == null) return;
+        if (active == null || !isCurrent()) return;
         setState(() {
-          textBgColors.putIfAbsent(active, () => const Color(0xFF0C1430));
-          textBgDesigns.putIfAbsent(active, () => 'solid');
+          _enableTextBackground(active);
           textBgOpacities[active] = value;
         });
       },
