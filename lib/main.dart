@@ -5258,13 +5258,18 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           if (mainRemover) { _closeMainRemover(); } else { _photoPanel = null; }
         }),
         onApply: (target, cutout) async {
-          if (source == null || target != sideA || !stillActive()) return;
+          if (source == null || target != sideA || !stillActive()) {
+            throw StateError('The selected photo changed.');
+          }
           // Keep the original in a distinct file before autosave overwrites the
           // persisted side image. The stable widget key retains the live mask.
           if (!_inlineOriginalPhotos.containsKey(sideA)) {
             final dir = await _projectDirectory();
             final original = await source.copy('${dir.path}/inline_original_${sideA ? 'a' : 'b'}_${DateTime.now().microsecondsSinceEpoch}.img');
-            if (!stillActive()) return;
+            if (!stillActive()) {
+              await original.delete();
+              throw StateError('The selected photo changed.');
+            }
             _inlineOriginalPhotos[sideA] = original;
           }
           setState(() {

@@ -229,14 +229,18 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   }
 
   Future<void> _commitInline(Uint8List bytes) async {
+    final apply = widget.onApply;
+    final side = _sideA;
     final folder = await getApplicationDocumentsDirectory();
     final file = File('${folder.path}/voting_pro_cutout_${DateTime.now().microsecondsSinceEpoch}.png');
-    await file.writeAsBytes(bytes, flush: true);
-    if (!mounted) {
-      await file.delete();
-      return;
+    try {
+      await file.writeAsBytes(bytes, flush: true);
+      if (!mounted) throw StateError('The editor was closed.');
+      await apply(side, file);
+    } catch (_) {
+      if (await file.exists()) await file.delete();
+      rethrow;
     }
-    await widget.onApply(_sideA, file);
   }
 
   Future<void> _autoRemove() async {
