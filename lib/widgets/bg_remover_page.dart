@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../services/offline_bg_remover.dart';
+import '../services/mask_history.dart';
 import '../app_language.dart';
 
 /// Full-screen editor following the three approved Voting Pro mockups.
@@ -107,6 +108,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         await file.readAsBytes(),
         applied != null && applied.path != file.path ? await applied.readAsBytes() : null,
       );
+      final history = applied == null ? (<Uint8List>[], <Uint8List>[]) :
+          await MaskHistory.read(applied, prepared.width, prepared.height);
       if (!mounted) return;
       setState(() {
         _sourcePng = prepared.source;
@@ -116,8 +119,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         _mask = prepared.mask;
         _manual = false;
         _compare = false;
-        _undo.clear();
-        _redo.clear();
+        _undo..clear()..addAll(history.$1);
+        _redo..clear()..addAll(history.$2);
         _hasUnsavedEdits = false;
         _lastPoint = null;
         _brushCursor.value = null;
@@ -207,7 +210,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     if (current == null) return;
     _hasUnsavedEdits = true;
     _undo.add(Uint8List.fromList(current));
-    if (_undo.length > 8) _undo.removeAt(0);
+    if (_undo.length > MaskHistory.limit(_mask!.length)) _undo.removeAt(0);
     _redo.clear();
   }
 
@@ -238,9 +241,12 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     final file = File('${folder.path}/voting_pro_cutout_${DateTime.now().microsecondsSinceEpoch}.png');
     try {
       await file.writeAsBytes(bytes, flush: true);
+      await MaskHistory.save(file, _imageWidth, _imageHeight, _undo, _redo);
       if (!mounted) throw StateError('The editor was closed.');
       await apply(side, file);
     } catch (_) {
+      final history = MaskHistory.sidecar(file);
+      if (await history.exists()) await history.delete();
       if (await file.exists()) await file.delete();
       rethrow;
     }
@@ -252,6 +258,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       return;
     }
     final originalMask = Uint8List.fromList(_mask!);
+    final previousUndo = _undo.toList();
+    final previousRedo = _redo.toList();
     final wasManual = _manual;
     final previousStatus = _status;
     setState(() {
@@ -265,17 +273,17 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       );
       if (!mounted) return;
       _mask = result;
+      _undo.add(originalMask);
+      if (_undo.length > MaskHistory.limit(result.length)) _undo.removeAt(0);
+      _redo.clear();
       await _updatePreview();
       if (!mounted) return;
-      // Commit Undo only after inference AND preview composition succeed.
-      // A failed Auto attempt must never erase the user's existing Redo stack.
-      _undo.add(originalMask);
-      if (_undo.length > 8) _undo.removeAt(0);
-      _redo.clear();
       setState(() => _status = widget.onClose == null
           ? 'Auto cutout ready • Use Manual to refine edges'
           : 'Background removed • Saved');
     } catch (error) {
+      _undo..clear()..addAll(previousUndo);
+      _redo..clear()..addAll(previousRedo);
       _mask = originalMask;
       _hasUnsavedEdits = originalMask.any((pixel) => pixel != 255);
       if (mounted) {

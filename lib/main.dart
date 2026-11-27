@@ -27,6 +27,7 @@ import 'widgets/premium_voting_sticker.dart';
 import 'widgets/editor_options_panel.dart';
 import 'widgets/vs_styles_panel.dart';
 import 'services/poster_share_cache.dart';
+import 'services/mask_history.dart';
 import 'app_language.dart';
 
 enum _PhotoPanel { remover, backgrounds }
@@ -570,7 +571,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final name = file.uri.pathSegments.last;
       final owned = (file.parent.path == docs.path && RegExp(r'^voting_pro_cutout_[0-9]+\.png$').hasMatch(name)) ||
           (file.parent.path == dir.path && RegExp(r'^(?:snapshot_[A-Za-z]+_|inline_original_[ab]_|side_[ab]_)[0-9]+\.[a-z0-9]+$').hasMatch(name));
-      if (owned && await FileSystemEntity.type(path, followLinks: false) == FileSystemEntityType.file) await file.delete();
+      if (owned && await FileSystemEntity.type(path, followLinks: false) == FileSystemEntityType.file) {
+        await file.delete();
+        if (file.parent.path == docs.path) {
+          final history = MaskHistory.sidecar(file);
+          if (await FileSystemEntity.type(history.path, followLinks: false) == FileSystemEntityType.file) await history.delete();
+        }
+      }
     }
   }
 
