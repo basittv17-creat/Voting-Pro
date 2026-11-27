@@ -31,6 +31,18 @@ void main() {
     expect(AppLanguage.tr('Auto Remove'), 'Auto Remove');
   });
 
+  test('Hindi selection and invalid locale fallback', () {
+    expect(AppLanguage.normalize(null), 'en');
+    expect(AppLanguage.normalize('invalid'), 'en');
+    AppLanguage.current = 'hi';
+    expect(AppLanguage.tr('Save Poster'), 'पोस्टर सहेजें');
+    expect(AppLanguage.tr('Auto Remove'), 'अपने आप हटाएँ');
+    expect(AppLanguage.tr('متن شامل کریں'), 'टेक्स्ट जोड़ें');
+    expect(AppLanguage.tr('Neon arena'), 'नीऑन अखाड़ा');
+    expect(AppLanguage.direction.name, 'ltr');
+    expect(AppLanguage.tr('My Custom Poster Name'), 'My Custom Poster Name');
+  });
+
   test('user text and unknown asset labels are not altered', () {
     AppLanguage.current = 'ur';
     expect(AppLanguage.tr('My Custom Poster Name'), 'My Custom Poster Name');

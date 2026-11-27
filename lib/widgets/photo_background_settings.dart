@@ -152,7 +152,7 @@ class PhotoSceneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = AppLanguage.isUrdu ? scene.ur : scene.en;
+    final label = AppLanguage.isUrdu ? scene.ur : AppLanguage.tr(scene.en);
     final radius = BorderRadius.circular(10);
     return Semantics(
       button: true,

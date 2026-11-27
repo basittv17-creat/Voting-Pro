@@ -466,7 +466,7 @@ class _PremiumTextEditorPanelState extends State<PremiumTextEditorPanel> {
         TextButton.icon(
           onPressed: widget.onBackgroundSettings,
           icon: const Icon(Icons.tune),
-          label: const Text('Advanced background settings'),
+          label: Text(AppLanguage.tr('Advanced background settings')),
         ),
       ],
     ),

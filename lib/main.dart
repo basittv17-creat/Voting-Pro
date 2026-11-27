@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'widgets/photo_background_settings.dart';
 import 'widgets/photo_scene.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
@@ -36,8 +37,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     final prefs = await SharedPreferences.getInstance();
-    AppLanguage.current =
-        prefs.getString(AppLanguage.preferenceKey) == 'ur' ? 'ur' : 'en';
+    AppLanguage.current = AppLanguage.normalize(prefs.getString(AppLanguage.preferenceKey));
   } catch (_) {
     AppLanguage.current = 'en';
   }
@@ -48,10 +48,20 @@ const mint = Color(0xFF79F0D6), gold = Color(0xFFFFD84D), dark = Color(0xFF080E1
 class PosterApp extends StatelessWidget {
   const PosterApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false, title: 'Voting Pro',
-    theme: ThemeData.dark().copyWith(scaffoldBackgroundColor: dark),
-    home: const SplashScreen(),
+  Widget build(BuildContext context) => ValueListenableBuilder<String>(
+    valueListenable: AppLanguage.changes,
+    builder: (context, language, child) => MaterialApp(
+      debugShowCheckedModeBanner: false, title: 'Voting Pro',
+      locale: Locale(language),
+      supportedLocales: AppLanguage.languages.keys.map(Locale.new).toList(),
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      theme: ThemeData.dark().copyWith(scaffoldBackgroundColor: dark),
+      // Keep A/B poster geometry fixed when switching the interface language.
+      builder: (context, child) => Directionality(
+        textDirection: TextDirection.ltr, child: child!,
+      ),
+      home: const SplashScreen(),
+    ),
   );
 }
 
@@ -1117,7 +1127,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Future<void> _changeAppLanguage(String language) async {
-    if (language != 'en' && language != 'ur') return;
+    if (!AppLanguage.languages.containsKey(language)) return;
     if (AppLanguage.current != language && mounted) {
       setState(() => AppLanguage.current = language);
     }
@@ -1140,10 +1150,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         '$_votingProPlayStoreUrl',
         subject: 'Voting Pro',
       );
-    } catch (error) {
-      msg(AppLanguage.isUrdu
-          ? 'ایپ شیئر نہیں ہو سکی: $error'
-          : 'Could not share the app: $error');
+    } catch (_) {
+      msg('Could not share the app');
     }
   }
 
@@ -1179,9 +1187,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 style: const TextStyle(color: gold,
                   fontWeight: FontWeight.bold, fontSize: 15)),
               const SizedBox(height: 10),
-              _languageOption('ur', 'اردو'),
-              const SizedBox(height: 6),
-              _languageOption('en', 'English'),
+              for (final entry in AppLanguage.languages.entries) ...[
+                _languageOption(entry.key, entry.value),
+                const SizedBox(height: 6),
+              ],
               const SizedBox(height: 20),
               const Divider(color: Color(0xFF303B50)),
               const SizedBox(height: 10),
@@ -1334,7 +1343,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
               IconButton(
                 key: const ValueKey('remove-voting-sticker'),
-                tooltip: 'Remove sticker from selected side',
+                tooltip: AppLanguage.tr('Remove sticker from selected side'),
                 onPressed: current == null
                     ? null
                     : () => setState(() {
@@ -1478,7 +1487,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   Future<Uint8List?> capturePosterWithoutControls() async {
     if (!mounted || isExportingPoster) return null;
     if (_brushKey.currentState?.editing == true) {
-      throw StateError(AppLanguage.current == 'ur' ? 'تصویر کی ترمیم مکمل ہونے دیں۔' : 'Finish the photo edit before exporting.');
+      throw StateError(AppLanguage.tr('Finish the photo edit before exporting.'));
     }
     // Hide handles for export without permanently discarding the selection.
     // Users can resume manipulating the same text after saving or sharing.
@@ -2276,7 +2285,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           final template = _readyTemplateOptions[index];
           final arena = TagraArena.fromId(template.key);
           final title = arena != null && AppLanguage.isUrdu
-              ? 'تگڑا مقابلہ — ${arena.urdu}' : template.name;
+              ? 'تگڑا مقابلہ — ${arena.urdu}' : AppLanguage.tr(template.name);
           final isSelected =
               (selectedReadyMadeTemplate ?? '') == template.key ||
                   (selectedReadyMadeTemplate == null &&
@@ -2786,7 +2795,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('$label: ${value.toStringAsFixed(label == "Opacity" ? 2 : 0)}'),
+              Text('${AppLanguage.tr(label)}: ${value.toStringAsFixed(label == "Opacity" ? 2 : 0)}'),
               Slider(
                 value: value.clamp(0.0, max).toDouble(),
                 min: 0, max: max,
@@ -2795,7 +2804,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             ],
           );
           return AlertDialog(
-            title: const Text('Text Background'),
+            title: Text(AppLanguage.tr('Text Background')),
             content: SizedBox(
               width: double.maxFinite,
               child: SingleChildScrollView(
@@ -2805,11 +2814,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   children: [
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Enable tight-fit background'),
+                      title: Text(AppLanguage.tr('Enable tight-fit background')),
                       value: enabled,
                       onChanged: (v) => update(() => enabled = v),
                     ),
-                    const Text('Background color'),
+                    Text(AppLanguage.tr('Background color')),
                     Wrap(spacing: 7, runSpacing: 7, children: [
                       for (final swatch in palette)
                         InkWell(
@@ -2831,13 +2840,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     control('Corners', radius, 36, (v) => radius = v),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Gradient background'),
+                      title: Text(AppLanguage.tr('Gradient background')),
                       value: gradient,
                       onChanged: (v) => update(() => gradient = v),
                     ),
                     control('Border width', border, 6, (v) => border = v),
                     control('Shadow blur', shadow, 24, (v) => shadow = v),
-                    const Text('Background follows only the shapes of letters, not the line box.'),
+                    Text(AppLanguage.tr('Background follows only the shapes of letters, not the line box.')),
                   ],
                 ),
               ),
@@ -2845,10 +2854,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Cancel')),
+                child: Text(AppLanguage.tr('Cancel'))),
               FilledButton(
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Apply')),
+                child: Text(AppLanguage.tr('Apply'))),
             ],
           );
         },
@@ -3171,17 +3180,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final create = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Import Font'),
+          title: Text(AppLanguage.tr('Import Font')),
           content: const Text(
             'پہلے پوسٹر پر ٹیکسٹ شامل کریں۔ کیا آپ نیا ٹیکسٹ بنانا چاہتے ہیں؟'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: Text(AppLanguage.tr('Cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Add Text'),
+              child: Text(AppLanguage.tr('Add Text')),
             ),
           ],
         ),
@@ -3197,7 +3206,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final picked = await showDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Choose Text for Font'),
+        title: Text(AppLanguage.tr('Choose Text for Font')),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
@@ -3217,7 +3226,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.add),
-                title: const Text('Add New Text'),
+                title: Text(AppLanguage.tr('Add New Text')),
                 onTap: () => Navigator.pop(dialogContext, -1),
               ),
             ],
@@ -3226,7 +3235,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(AppLanguage.tr('Cancel')),
           ),
         ],
       ),
@@ -3510,7 +3519,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Text('Hue: ${hue.round()}°',
+                  Text('${AppLanguage.tr('Hue')}: ${hue.round()}°',
                       style: const TextStyle(color: Colors.white)),
                   Slider(
                     value: hue,
@@ -3522,7 +3531,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       updateColor();
                     },
                   ),
-                  Text('Saturation: ${(saturation * 100).round()}%',
+                  Text('${AppLanguage.tr('Saturation')}: ${(saturation * 100).round()}%',
                       style: const TextStyle(color: Colors.white)),
                   Slider(
                     value: saturation,
@@ -3534,7 +3543,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       updateColor();
                     },
                   ),
-                  Text('Brightness: ${(value * 100).round()}%',
+                  Text('${AppLanguage.tr('Brightness')}: ${(value * 100).round()}%',
                       style: const TextStyle(color: Colors.white)),
                   Slider(
                     value: value,
@@ -3688,22 +3697,22 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             spacing: 8,
             children: [
               ActionChip(
-                label: const Text('None / Reset'),
+                label: Text(AppLanguage.tr('None / Reset')),
                 onPressed: () => apply(null),
               ),
               ActionChip(
-                label: const Text('Adjust background'),
+                label: Text(AppLanguage.tr('Adjust background')),
                 onPressed: editTextBackground,
               ),
               ActionChip(
-                label: const Text('Use white text'),
+                label: Text(AppLanguage.tr('Use white text')),
                 onPressed: () {
                   _rememberTextEdit();
                   setState(() => textColors[index] = Colors.white);
                 },
               ),
               ActionChip(
-                label: const Text('Choose a matching font'),
+                label: Text(AppLanguage.tr('Choose a matching font')),
                 onPressed: chooseTextFont,
               ),
             ],
@@ -5334,9 +5343,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       sideA: sideA,
       key: ValueKey('photo-background-${source.path}-$sideA'),
       file: source,
-      title: AppLanguage.current == 'ur'
-          ? 'پس منظر — ${sideA ? "A" : "B"} سائیڈ'
-          : 'Backgrounds — ${sideA ? "A" : "B"} Side',
+      title: AppLanguage.tr('Backgrounds — ${sideA ? "A" : "B"} Side'),
       palettes: _photoPalettes,
       selected: _photoBackgrounds[sideA],
       onClose: () => setState(() => _photoPanel = null),
@@ -5637,14 +5644,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ),
             )
           else
-            const Center(child: Column(
+            Center(child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_photo_alternate_outlined, color: mint, size: 34),
-                SizedBox(height: 8),
+                const Icon(Icons.add_photo_alternate_outlined, color: mint, size: 34),
+                const SizedBox(height: 8),
                 Flexible(
                   child: Text(
-                    "تصویر شامل کریں",
+                    AppLanguage.tr('Add photo'),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
@@ -5776,7 +5783,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           children: [
             const Text('Voting Pro', style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.w900, color: gold)),
-            Text(AppLanguage.isUrdu ? 'پوسٹر میکر' : 'P O S T E R   M A K E R',
+            Text(AppLanguage.tr('Poster Maker'),
               textDirection: AppLanguage.direction,
               style: const TextStyle(fontSize: 10, letterSpacing: 2)),
           ])),

@@ -1,14 +1,58 @@
 import 'package:flutter/material.dart';
+import 'l10n/hindi.dart';
 
 /// Persisted editor interface language; user-created poster text is untouched.
 class AppLanguage {
   static const preferenceKey = 'voting_pro_ui_language_v1';
-  static String current = 'en';
+  static const defaultCode = 'en';
+  static const languages = {'en': 'English', 'ur': 'اردو', 'hi': 'हिन्दी'};
+  static final changes = ValueNotifier<String>(defaultCode);
+  static String get current => changes.value;
+  static set current(String code) => changes.value = normalize(code);
+  static String normalize(String? code) =>
+      languages.containsKey(code) ? code! : defaultCode;
   static bool get isUrdu => current == 'ur';
   static TextDirection get direction =>
       isUrdu ? TextDirection.rtl : TextDirection.ltr;
 
   static const Map<String, String> _urdu = {
+    "Hindi": "ہندی",
+    "Poster Maker": "پوسٹر میکر",
+    "Could not share the app": "ایپ شیئر نہیں ہو سکی",
+    "Finish the photo edit before exporting.": "ایکسپورٹ سے پہلے تصویر کی ترمیم مکمل کریں۔",
+    "Remove sticker from selected side": "منتخب سائیڈ سے اسٹیکر ہٹائیں",
+    "Enable tight-fit background": "حروف کے مطابق پس منظر لگائیں",
+    "Background color": "پس منظر کا رنگ",
+    "Gradient background": "گریڈینٹ پس منظر",
+    "Background follows only the shapes of letters, not the line box.": "پس منظر صرف حروف کی شکل پر لگے گا۔",
+    "Apply": "لاگو کریں",
+    "Import Font": "فونٹ شامل کریں",
+    "Choose Text for Font": "فونٹ کے لیے متن منتخب کریں",
+    "Add New Text": "نیا متن شامل کریں",
+    "None / Reset": "کوئی نہیں / اصل بحال کریں",
+    "Adjust background": "پس منظر ایڈجسٹ کریں",
+    "Use white text": "سفید متن استعمال کریں",
+    "Choose a matching font": "مناسب فونٹ منتخب کریں",
+    "Advanced background settings": "پس منظر کی جدید ترتیبات",
+    "More colors": "مزید رنگ",
+    "Solid": "ایک رنگ",
+    "Presets": "تیار انداز",
+    "Text Color": "متن کا رنگ",
+    "Opacity": "شفافیت",
+    "Preview appears here": "تصویر یہاں دکھائی دے گی",
+    "Choose or upload a photo": "تصویر منتخب کریں",
+    "Brush size": "برش کا سائز",
+    "Remove Background — A Side": "پس منظر ہٹائیں — A سائیڈ",
+    "Remove Background — B Side": "پس منظر ہٹائیں — B سائیڈ",
+    "Backgrounds — A Side": "پس منظر — A سائیڈ",
+    "Backgrounds — B Side": "پس منظر — B سائیڈ",
+    "Upload picture for side A": "سائیڈ A کی تصویر منتخب کریں",
+    "Upload picture for side B": "سائیڈ B کی تصویر منتخب کریں",
+    "Apply Cutout to Photo A": "تصویر A پر کٹ آؤٹ لگائیں",
+    "Apply Cutout to Photo B": "تصویر B پر کٹ آؤٹ لگائیں",
+    "Leaving or switching pictures will discard the current cutout and its Undo history. Use Apply Cutout to save your work first.": "تصویر بدلنے سے موجودہ کٹ آؤٹ اور تبدیلیوں کی ہسٹری ختم ہو جائے گی۔ پہلے کٹ آؤٹ محفوظ کریں۔",
+    "Add name": "نام لکھیں",
+    "Tagra Muqabla Stickers": "تگڑا مقابلہ اسٹیکرز",
     "Previous edit restored": "پچھلی تبدیلی بحال ہوگئی",
     "Edit reapplied": "تبدیلی دوبارہ لگ گئی",
     "None": "کوئی نہیں",
@@ -235,7 +279,7 @@ class AppLanguage {
   };
 
   static const Map<String, String> _english = {
-    "تگڑا مقابلہ اسٹیکرز": "تگڑا مقابلہ اسٹیکرز",
+    "تگڑا مقابلہ اسٹیکرز": "Tagra Muqabla Stickers",
     "متن شامل کریں": "Add Text",
     "پہلے ٹیکسٹ منتخب کریں": "Select text first",
     "تصویر شامل کریں": "Add photo",
@@ -262,6 +306,12 @@ class AppLanguage {
   };
 
   static String tr(String input) {
+    if (current == 'hi') {
+      final english = _english[input] ?? input;
+      if (english.startsWith('A Style ')) return 'A स्टाइल ${english.substring(8)}';
+      if (english.startsWith('B Style ')) return 'B स्टाइल ${english.substring(8)}';
+      return hindiStrings[english] ?? english;
+    }
     if (isUrdu) {
       final explicit = _urdu[input];
       if (explicit != null) return explicit;

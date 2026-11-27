@@ -106,7 +106,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Main dock can undo and redo Auto Remove without Manual mode', (
+  testWidgets('Auto Remove supports Undo and Redo in the main dock', (
     tester,
   ) async {
     final directory = Directory.systemTemp.createTempSync('auto-history-');
@@ -152,7 +152,10 @@ void main() {
       expect(done(), isTrue);
     }
 
-    final auto = find.widgetWithText(OutlinedButton, 'Auto Remove Background');
+    final auto = find.widgetWithText(
+      OutlinedButton,
+      'Auto Remove Background',
+    );
     await waitFor(() => tester.widget<OutlinedButton>(auto).onPressed != null);
     await tester.tap(auto);
     await tester.pump();

@@ -148,19 +148,19 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     final discard = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Discard background edits?'),
-        content: const Text(
+        title: Text(AppLanguage.tr('Discard background edits?')),
+        content: Text(AppLanguage.tr(
           'Leaving or switching pictures will discard the current cutout and its Undo history. '
           'Use Apply Cutout to save your work first.',
-        ),
+        )),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Keep Editing'),
+            child: Text(AppLanguage.tr('Keep Editing')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Discard Changes'),
+            child: Text(AppLanguage.tr('Discard Changes')),
           ),
         ],
       ),
@@ -637,11 +637,11 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                 const Icon(Icons.image_outlined, color: mint, size: 48),
                 const SizedBox(height: 6),
                 Text(
-                  AppLanguage.current == 'ur' ? 'اپنی تصویر منتخب کریں' : 'Upload Your Picture',
+                  AppLanguage.tr('Upload Your Picture'),
                   style: const TextStyle(color: Colors.white70),
                 ),
                 Text(
-                  AppLanguage.current == 'ur' ? 'تصویر یہاں دکھائی دے گی' : 'Preview appears here',
+                  AppLanguage.tr('Preview appears here'),
                   style: const TextStyle(color: Colors.white38),
                 ),
               ],
@@ -650,7 +650,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         );
 
   Widget _mainDock(bool imageAvailable) {
-    String label(String en, String ur) => AppLanguage.current == 'ur' ? ur : en;
+    String label(String en, String ur) => AppLanguage.isUrdu ? ur : AppLanguage.tr(en);
     Widget control(String title, IconData icon, VoidCallback? action, {bool active = false}) =>
         Expanded(child: SizedBox(height: 50, child: OutlinedButton(
           onPressed: _busy ? null : action,
@@ -768,7 +768,7 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   }
 
   Widget _inline(bool imageAvailable) {
-    String label(String en, String ur) => AppLanguage.current == 'ur' ? ur : en;
+    String label(String en, String ur) => AppLanguage.isUrdu ? ur : AppLanguage.tr(en);
     void brush(bool erase) => setState(() {
       _manual = true;
       _erase = erase;
@@ -938,22 +938,22 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       appBar: AppBar(
         backgroundColor: dark,
         foregroundColor: gold,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Voting Pro', style: TextStyle(
+            const Text('Voting Pro', style: TextStyle(
               fontWeight: FontWeight.w800, color: gold,
             )),
-            Text('BG REMOVER', style: TextStyle(
+            Text(AppLanguage.tr('BG REMOVER'), style: const TextStyle(
               color: Colors.white70, fontSize: 11, letterSpacing: 3,
             )),
           ],
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Center(child: Text('Offline • Free',
-              style: TextStyle(color: mint, fontSize: 12))),
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(child: Text(AppLanguage.tr('Offline • Free'),
+              style: const TextStyle(color: mint, fontSize: 12))),
           ),
         ],
       ),
@@ -976,21 +976,21 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Row(children: [
-                            Icon(Icons.auto_fix_high, color: gold),
-                            SizedBox(width: 8),
-                            Expanded(child: Text('Picture Background Remover',
-                              style: TextStyle(fontSize: 18,
+                          Row(children: [
+                            const Icon(Icons.auto_fix_high, color: gold),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(AppLanguage.tr('Picture Background Remover'),
+                              style: const TextStyle(fontSize: 18,
                                 fontWeight: FontWeight.bold, color: gold))),
                           ]),
                           const SizedBox(height: 10),
-                          const Text('Choose the target photo slot',
-                            style: TextStyle(color: Colors.white70)),
+                          Text(AppLanguage.tr('Choose the target photo slot'),
+                            style: const TextStyle(color: Colors.white70)),
                           const SizedBox(height: 6),
                           SegmentedButton<bool>(
-                            segments: const [
-                              ButtonSegment(value: true, label: Text('Photo A')),
-                              ButtonSegment(value: false, label: Text('Photo B')),
+                            segments: [
+                              ButtonSegment(value: true, label: Text(AppLanguage.tr('Photo A'))),
+                              ButtonSegment(value: false, label: Text(AppLanguage.tr('Photo B'))),
                             ],
                             selected: {_sideA},
                             onSelectionChanged: _busy
@@ -1035,8 +1035,8 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                           if (_manual && imageAvailable) ...[
                             const SizedBox(height: 10),
                             Row(children: [
-                              const Text('Brush Size',
-                                style: TextStyle(color: Colors.white70)),
+                              Text(AppLanguage.tr('Brush Size'),
+                                style: const TextStyle(color: Colors.white70)),
                               Expanded(
                                 child: Slider(
                                   value: _brushSize,
@@ -1063,9 +1063,9 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                               )),
                             ]),
                             const SizedBox(height: 7),
-                            const Text(
-                              'Draw directly on the image to erase or restore.',
-                              style: TextStyle(
+                            Text(
+                              AppLanguage.tr('Draw directly on the image to erase or restore.'),
+                              style: const TextStyle(
                                 color: Colors.white60, fontSize: 12),
                             ),
                           ],
@@ -1089,11 +1089,11 @@ class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'AI removes person backgrounds. Manual tools also work '
-                      'on objects. Processing stays on this device.',
+                    Text(
+                      AppLanguage.tr('AI removes person backgrounds. Manual tools also work '
+                      'on objects. Processing stays on this device.'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white54, fontSize: 12),
                     ),
                   ],
