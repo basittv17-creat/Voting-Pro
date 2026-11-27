@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -22,10 +23,12 @@ class BackgroundRemoverPage extends StatefulWidget {
     this.onClose,
     this.initialOriginal,
     this.autoMask,
+    this.onCanvasChanged,
     this.onSelectSide,
     this.onUpload,
   });
 
+  final VoidCallback? onCanvasChanged;
   final File? initialPhotoA;
   final File? initialPhotoB;
   final bool initialSideA;
@@ -38,10 +41,10 @@ class BackgroundRemoverPage extends StatefulWidget {
   final Future<void> Function(bool sideA, File result) onApply;
 
   @override
-  State<BackgroundRemoverPage> createState() => _BackgroundRemoverPageState();
+  State<BackgroundRemoverPage> createState() => BackgroundRemoverPageState();
 }
 
-class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
+class BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   static const mint = Color(0xFF79F0D6);
   static const gold = Color(0xFFFFD84D);
   static const dark = Color(0xFF080E19);
@@ -348,6 +351,54 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     );
   }
 
+  bool get manualBrush => _manual && _mask != null;
+  bool get editing => _busy || _strokeActive;
+  Uint8List? get livePixels => _strokeActive ? _livePixels : null;
+  bool _strokeActive = false;
+  Uint8List? _livePixels;
+  int _strokeRevision = 0;
+  int _strokeSession = 0;
+  bool _renderingStroke = false;
+
+  void _notifyCanvas() => widget.onCanvasChanged?.call();
+
+  Future<void> _renderStroke() async {
+    if (_renderingStroke || !_strokeActive) return;
+    _renderingStroke = true;
+    final revision = _strokeRevision;
+    final session = _strokeSession;
+    try {
+      final pixels = await OfflineBgRemover.compose(_sourcePng!, Uint8List.fromList(_mask!));
+      if (mounted && _strokeActive && session == _strokeSession) {
+        setState(() => _livePixels = pixels);
+        _notifyCanvas();
+      }
+    } catch (_) {
+      // Stroke-end composition handles errors and restores the previous mask.
+    } finally {
+      _renderingStroke = false;
+      if (mounted && _strokeActive && revision != _strokeRevision) unawaited(_renderStroke());
+    }
+  }
+
+  // The photo widget already converts pointers through its pan/zoom transforms.
+  // Fit the original pixels inside that local viewport just as Image.file does.
+  void canvasStroke(Offset local, Size bounds, {required bool start, required double zoom}) {
+    if (!manualBrush || _busy) return;
+    final fitted = applyBoxFit(BoxFit.contain, Size(_imageWidth.toDouble(), _imageHeight.toDouble()), bounds);
+    final rect = Alignment.center.inscribe(fitted.destination, Offset.zero & bounds);
+    if (!rect.contains(local)) { _lastPoint = null; return; }
+    if (start || !_strokeActive) {
+      _recordUndo();
+      _strokeActive = true;
+      _lastPoint = null;
+    }
+    _drawStroke(Offset((local.dx-rect.left)*_imageWidth/rect.width,
+        (local.dy-rect.top)*_imageHeight/rect.height), _brushSize*_imageWidth/(2*rect.width*zoom));
+  }
+
+  Future<void> finishCanvasStroke() => _endStroke();
+
   void _paintAt(Offset local) {
     if (!_manual || _busy || _mask == null || _sourcePng == null) return;
     final point = _toImagePoint(local);
@@ -357,6 +408,11 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     }
     final rect = _previewRect!;
     final radius = _brushSize * _imageWidth / rect.width / 2;
+    _drawStroke(point, radius);
+    _brushCursor.value = local;
+  }
+
+  void _drawStroke(Offset point, double radius) {
     final last = _lastPoint ?? point;
     final distance = (point - last).distance;
     final steps = math.max(1, (distance / math.max(1, radius / 3)).ceil());
@@ -368,13 +424,15 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       );
     }
     _lastPoint = point;
-    _brushCursor.value = local;
+    _strokeRevision++;
+    unawaited(_renderStroke());
   }
 
   void _beginStroke(Offset local) {
     if (_busy || !_manual || _mask == null ||
         _toImagePoint(local) == null) return;
     _recordUndo();
+    _strokeActive = true;
     _lastPoint = null;
     _paintAt(local);
   }
@@ -388,7 +446,10 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
 
   Future<void> _endStroke() async {
     _lastPoint = null;
-    if (!_manual || _busy || _mask == null) return;
+    if (!_manual || _busy || _mask == null || !_strokeActive) return;
+    _strokeActive = false;
+    _strokeSession++;
+    _strokeRevision++;
     setState(() => _busy = true);
     try {
       await _updatePreview();
@@ -396,6 +457,8 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       if (_undo.isNotEmpty) _mask = _undo.removeLast();
       _notice('Brush preview failed: $error');
     } finally {
+      _livePixels = null;
+      if (mounted) _notifyCanvas();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -480,7 +543,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                     child: CustomPaint(
                       painter: _CheckerboardPainter(),
                       child: Image.memory(
-                        _compare ? _sourcePng! : _previewPng!,
+                        _compare ? _sourcePng! : (_livePixels ?? _previewPng!),
                         gaplessPlayback: true,
                         fit: BoxFit.fill,
                         filterQuality: FilterQuality.high,
@@ -578,7 +641,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
               imageAvailable ? _autoRemove : null, active: !_manual),
             const SizedBox(width: 5),
             control(label('Custom Remove', 'دستی پس منظر ہٹائیں'), Icons.brush_outlined,
-              imageAvailable ? () => setState(() { _manual = true; _erase = true; }) : null, active: _manual),
+              imageAvailable ? () => setState(() { _manual = true; _erase = true; _notifyCanvas(); }) : null, active: _manual),
           ]),
           if (_busy) const Padding(padding: EdgeInsets.only(top: 4), child: LinearProgressIndicator(color: mint, minHeight: 2)),
           const SizedBox(height: 5),
@@ -640,6 +703,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     void brush(bool erase) => setState(() {
       _manual = true;
       _erase = erase;
+      _notifyCanvas();
     });
     Widget tile(String title, IconData icon, VoidCallback? action,
         {bool selected = false}) => Expanded(

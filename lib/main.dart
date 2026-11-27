@@ -1443,7 +1443,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
   Future<Uint8List?> capturePosterWithoutControls() async {
-    if (!mounted) return null;
+    if (!mounted || isExportingPoster) return null;
+    if (_brushKey.currentState?.editing == true) {
+      throw StateError(AppLanguage.current == 'ur' ? 'تصویر کی ترمیم مکمل ہونے دیں۔' : 'Finish the photo edit before exporting.');
+    }
     // Hide handles for export without permanently discarding the selection.
     // Users can resume manipulating the same text after saving or sharing.
     final previousText = selectedTextIndex;
@@ -1458,7 +1461,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final previousADelete = showASideLabelDelete;
     final previousBDelete = showBSideLabelDelete;
     setState(() {
-      _clearCanvasSelection();
+      _clearCanvasSelection(preserveRemover: true);
       _selectedPhotoSideA = previousPhoto;
       _photoPanel = previousPhotoPanel;
       _mainRemoverSide = previousMainRemover;
@@ -1502,8 +1505,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   // Clear selection state only; keep poster objects and their content intact.
   // This prevents selection borders and edit/delete/resize handles from being
   // included in the saved image.
-  void _clearCanvasSelection() {
-    if (_mainRemoverSide != null) _mainRemoverSession++;
+  void _clearCanvasSelection({bool preserveRemover = false}) {
+    if (!preserveRemover && _mainRemoverSide != null) _mainRemoverSession++;
     _mainRemoverSide = null;
     _photoPanel = null;
     selectedTextIndex = null;
@@ -5141,6 +5144,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   _PhotoPanel? _photoPanel;
   bool? _mainRemoverSide;
   int _mainRemoverSession = 0;
+  GlobalKey<BackgroundRemoverPageState> _brushKey = GlobalKey();
+  String? _brushIdentity;
+
   final _photoBackgrounds = <bool, String>{};
   final _inlineOriginalPhotos = <bool, File>{};
 
@@ -5241,8 +5247,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           ? _mainRemoverSide == sideA && _mainRemoverSession == session
           : _photoToolsSide == sideA && _photoPanel == _PhotoPanel.remover) &&
           (sideA ? a : b)?.path == source?.path;
+      final identity = '$mainRemover-$sideA-$session';
+      if (identity != _brushIdentity) {
+        _brushKey = GlobalKey();
+        _brushIdentity = identity;
+      }
       return BackgroundRemoverPage(
-        key: ValueKey(mainRemover ? 'main-remover-$sideA-$session' : 'inline-remover-$sideA'),
+        key: _brushKey,
+        onCanvasChanged: () { if (mounted) setState(() {}); },
         onSelectSide: mainRemover ? (side) => setState(() => _setMainRemoverSide(side)) : null,
         onUpload: mainRemover ? () => _uploadMainRemoverPhoto(sideA) : null,
         initialOriginal: _inlineOriginalPhotos[sideA],
@@ -5496,6 +5508,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         !isExportingPoster &&
         _selectedPhotoSideA == sideA;
     final isUrduLabelText = RegExp(r'[\u0600-\u06FF]').hasMatch(labelText);
+    final brush = (_mainRemoverSide ?? (_photoPanel == _PhotoPanel.remover ? _photoToolsSide : null)) == sideA
+        ? _brushKey.currentState : null;
     return GestureDetector(
       onTap: () {
         if (file == null) {
@@ -5552,7 +5566,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   offset: _photoOffsets[sideA] ?? Offset.zero,
                   child: Transform.scale(
                     scale: _photoScales[sideA] ?? 1.0,
-                    child: Image.file(
+                    child: LayoutBuilder(builder: (context, bounds) {
+                      final image = Image.file(
                       file,
                       key: ValueKey<String>(
                         'editor-photo-${sideA ? "A" : "B"}-${file.path}',
@@ -5562,7 +5577,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                       height: double.infinity,
                       gaplessPlayback: true,
                       filterQuality: FilterQuality.medium,
-                    ),
+                    );
+                      if (brush == null || !brush.manualBrush || isExportingPoster) return image;
+                      final live = brush.livePixels;
+                      void stroke(Offset position, bool start) => brush.canvasStroke(
+                        position, bounds.biggest, start: start, zoom: _photoScales[sideA] ?? 1);
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onPanStart: (event) => stroke(event.localPosition, true),
+                        onPanUpdate: (event) => stroke(event.localPosition, false),
+                        onPanEnd: (_) => brush.finishCanvasStroke(),
+                        onPanCancel: brush.finishCanvasStroke,
+                        onTapUp: (event) { stroke(event.localPosition, true); unawaited(brush.finishCanvasStroke()); },
+                        child: live == null ? image : Image.memory(live, fit: BoxFit.contain, gaplessPlayback: true),
+                      );
+                    }),
                   ),
                 ),
               ),
