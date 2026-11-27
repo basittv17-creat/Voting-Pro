@@ -89,7 +89,7 @@ void main() {
               onClose: () => closed = true,
               onSelectSide: (_) {},
               onUpload: () {},
-              onApply: (_, _) async {},
+              onApply: (sideA, result) async {},
             ),
           ),
         ),
