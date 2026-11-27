@@ -54,10 +54,19 @@ class _ScenePainter extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
     final scale = math.max(size.width / 100, size.height / 140);
     canvas.translate(size.width / 2, size.height / 2);
-    canvas.scale(sideA ? scale : -scale, scale);
+    // Preserve the crescent/star orientation on both sides. Other scenes
+    // can mirror their composition to frame the opposing portrait.
+    canvas.scale(sideA || scene == PhotoScene.pakistan ? scale : -scale, scale);
     canvas.translate(-50, -70);
     const bounds = Rect.fromLTWH(0, 0, 100, 140);
-    final base = Color(scene.base), light = Color(scene.light);
+    final base = Color(scene.base);
+    final light = !sideA && const {
+      PhotoScene.arena,
+      PhotoScene.cage,
+      PhotoScene.lightning,
+      PhotoScene.duel,
+      PhotoScene.stone,
+    }.contains(scene) ? const Color(0xff55c8ff) : Color(scene.light);
     final shadow = Color.lerp(base, Colors.black, .67)!;
     final paint = Paint();
     canvas.drawRect(
@@ -70,6 +79,12 @@ class _ScenePainter extends CustomPainter {
           stops: const [0, .52, 1],
         ).createShader(bounds),
     );
+    paint.shader = RadialGradient(
+      center: const Alignment(0, -.55),
+      radius: .85,
+      colors: [light.withAlpha(55), Colors.transparent],
+    ).createShader(bounds);
+    canvas.drawRect(bounds, paint);
     paint.shader = null;
     final rng = math.Random(403 + scene.index);
     void line(num x, num y, num u, num v, Color c, [double w = 1]) {
@@ -177,7 +192,22 @@ class _ScenePainter extends CustomPainter {
           line(x + 25, 64, x + 25, 114, light, 3);
         }
         if (scene == PhotoScene.throne) {
+          final arch = Path()
+            ..moveTo(29, 93)
+            ..lineTo(29, 43)
+            ..quadraticBezierTo(29, 10, 50, 8)
+            ..quadraticBezierTo(71, 10, 71, 43)
+            ..lineTo(71, 93);
+          for (final width in [5.0, 1.4]) {
+            canvas.drawPath(arch, paint
+              ..style = PaintingStyle.stroke
+              ..color = width > 2 ? shadow : light
+              ..strokeWidth = width);
+          }
+          paint.style = PaintingStyle.fill;
           poly([44, 85, 56, 85, 85, 140, 15, 140], const Color(0xff8b213a));
+          line(44, 85, 15, 140, light.withAlpha(170), 1.3);
+          line(56, 85, 85, 140, light.withAlpha(170), 1.3);
         } else {
           for (double y = 69; y < 119; y += 7) {
             for (final x in [0.0, 72.0]) {
@@ -244,6 +274,12 @@ class _ScenePainter extends CustomPainter {
         skyline(false);
       case PhotoScene.city:
         skyline(true);
+        for (var i = 0; i < 24; i++) {
+          final x = rng.nextDouble() * 100;
+          final y = 110 + rng.nextDouble() * 27;
+          line(x, y, x + 2 + rng.nextDouble() * 14, y,
+            (i.isEven ? light : const Color(0xff57d9f6)).withAlpha(70), .7);
+        }
       case PhotoScene.studio:
         for (final x in [5.0, 17.0, 80.0, 92.0]) {
           box(x, 0, 4, 104, shadow);
@@ -332,6 +368,9 @@ class _ScenePainter extends CustomPainter {
           poly([x - 5, 140, x, y, x + 6, 140], shadow);
         }
       case PhotoScene.tunnel:
+        for (final x in [3, 25, 75, 97]) {
+          line(50, 71, x, 140, light.withAlpha(60), 1.2);
+        }
         for (var i = 0; i < 9; i++) {
           final inset = 44 * (1 - math.pow(.76, i)).toDouble();
           final r = Rect.fromLTRB(inset, 9 + inset, 100 - inset, 134 - inset);
@@ -351,6 +390,15 @@ class _ScenePainter extends CustomPainter {
           paint.style = PaintingStyle.fill;
         }
     }
+    // A restrained edge vignette gives depth without covering the subject.
+    canvas.drawRect(bounds, paint
+      ..style = PaintingStyle.fill
+      ..shader = const RadialGradient(
+        radius: .85,
+        colors: [Colors.transparent, Color(0x10000000), Color(0x65000000)],
+        stops: [0, .65, 1],
+      ).createShader(bounds));
+    paint.shader = null;
     canvas.restore();
   }
 

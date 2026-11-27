@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voting_pro/main.dart' as voting_pro;
 import 'package:voting_pro/widgets/bg_remover_page.dart';
+import 'package:voting_pro/widgets/photo_scene.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -174,5 +175,72 @@ void main() {
     expect(tester.getRect(normal), bounds);
     expect(find.byKey(const ValueKey('photo-selection-B')), findsNothing);
     await capture('photo-07-back-restored');
+
+    // Capture the real procedural painter on Android, not a generated
+    // reference image. The two sheets expose every A/B scene for review.
+    for (final side in [true, false]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: const Color(0xff101827),
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Column(
+                  children: [
+                    for (var row = 0; row < 5; row++)
+                      Expanded(
+                        child: Row(
+                          children: [
+                            for (var column = 0; column < 4; column++)
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(3),
+                                  child: Column(
+                                    children: [
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(5),
+                                          child: SizedBox.expand(
+                                            child: PhotoSceneArt(
+                                              PhotoScene.values[row * 4 + column],
+                                              sideA: side,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: 24,
+                                        child: Center(
+                                          child: Text(
+                                            PhotoScene.values[row * 4 + column].en,
+                                            maxLines: 2,
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PhotoSceneArt), findsNWidgets(20));
+      expect(tester.takeException(), isNull);
+      await capture(side ? 'photo-09-all-scenes-a' : 'photo-10-all-scenes-b');
+    }
   });
 }
