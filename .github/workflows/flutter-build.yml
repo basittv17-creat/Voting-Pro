@@ -140,14 +140,14 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: flutter build apk --release
+        run: bash scripts/retry_dependency_download.sh flutter build apk --release
 
       - name: Build Signed Android App Bundle
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: flutter build appbundle --release
+        run: bash scripts/retry_dependency_download.sh flutter build appbundle --release
 
       - name: Verify Android signatures
         run: |
