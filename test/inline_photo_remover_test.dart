@@ -16,6 +16,12 @@ class _Documents extends PathProviderPlatform {
   Future<String?> getApplicationDocumentsPath() async => directory.path;
 }
 
+Future<Uint8List> _emptyMask(
+  Uint8List source,
+  int width,
+  int height,
+) async => Uint8List(width * height);
+
 void main() {
   testWidgets('Compact remover applies a manual stroke only to its B target', (
     tester,
@@ -47,8 +53,7 @@ void main() {
               initialPhotoB: file,
               initialSideA: false,
               onClose: () {},
-              autoMask: (source, width, height) async =>
-                  Uint8List(width * height),
+              autoMask: _emptyMask,
               onApply: (sideA, cutout) async {
                 expect(sideA, isFalse);
                 result = cutout;
@@ -128,8 +133,7 @@ void main() {
               initialPhotoB: null,
               onClose: () {},
               onSelectSide: (side) {},
-              autoMask: (source, width, height) async =>
-                  Uint8List(width * height),
+              autoMask: _emptyMask,
               onApply: (side, cutout) async {
                 expect(side, isTrue);
                 result = cutout;
@@ -150,7 +154,8 @@ void main() {
       expect(done(), isTrue);
     }
 
-    final auto = find.widgetWithText(OutlinedButton, 'Auto Remove Background');
+    const autoLabel = 'Auto Remove Background';
+    final auto = find.widgetWithText(OutlinedButton, autoLabel);
     await waitFor(() => tester.widget<OutlinedButton>(auto).onPressed != null);
     await tester.tap(auto);
     await tester.pump();
@@ -159,8 +164,13 @@ void main() {
       img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 0),
       isTrue,
     );
-    final undo = find.byTooltip('Undo');
-    await waitFor(() => undo.evaluate().isNotEmpty);
+    final undo = find.byWidgetPredicate(
+      (widget) => widget is IconButton && widget.tooltip == 'Undo',
+    );
+    await waitFor(
+      () => undo.evaluate().isNotEmpty &&
+          tester.widget<IconButton>(undo).onPressed != null,
+    );
     await tester.ensureVisible(undo);
     await tester.pump();
     result = null;
@@ -171,7 +181,10 @@ void main() {
       img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 255),
       isTrue,
     );
-    final redo = find.byTooltip('Redo');
+    final redo = find.byWidgetPredicate(
+      (widget) => widget is IconButton && widget.tooltip == 'Redo',
+    );
+    await waitFor(() => tester.widget<IconButton>(redo).onPressed != null);
     await tester.ensureVisible(redo);
     await tester.pump();
     result = null;

@@ -38,7 +38,12 @@ jobs:
         run: flutter pub get
 
       - name: Check Dart formatting
-        run: dart format --output=none --set-exit-if-changed test
+        run: |
+          if ! dart format --output=none --set-exit-if-changed test; then
+            dart format test
+            git diff -- test
+            exit 1
+          fi
 
       - name: Analyze Dart and Flutter code
         run: flutter analyze --fatal-warnings --no-fatal-infos
