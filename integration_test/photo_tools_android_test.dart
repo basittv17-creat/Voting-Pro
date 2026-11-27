@@ -134,13 +134,8 @@ void main() {
     await stroke.up();
     await tester.pumpAndSettle();
 
-    final apply = find.descendant(
-      of: remover,
-      matching: find.widgetWithText(OutlinedButton, 'Apply'),
-    );
-    expect(tester.widget<OutlinedButton>(apply).onPressed, isNotNull);
-    await tap(apply);
-    expect(remover, findsNothing);
+    expect(find.descendant(of: remover, matching: find.text('Apply')), findsNothing);
+    expect(remover, findsOneWidget);
     expect(pathOf('A'), a.path);
     expect(pathOf('B'), isNot(b.path));
     final cutout = img.decodePng(await File(pathOf('B')).readAsBytes())!;

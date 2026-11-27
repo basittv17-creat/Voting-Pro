@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -45,6 +46,7 @@ void main() {
             initialPhotoB: file,
             initialSideA: false,
             onClose: () {},
+            autoMask: (source, width, height) async => Uint8List(width * height),
             onApply: (sideA, cutout) async {
               expect(sideA, isFalse);
               result = cutout;
@@ -76,14 +78,20 @@ void main() {
     await stroke.up();
     await tester.pump();
 
-    final apply = find.widgetWithText(OutlinedButton, 'Apply');
-    await waitFor(() => tester.widget<OutlinedButton>(apply).onPressed != null);
-    await tester.ensureVisible(apply);
-    await tester.pump();
-    await tester.tap(apply);
-    await tester.pump();
+    expect(find.text('Apply'), findsNothing);
     await waitFor(() => result != null);
     final cutout = img.decodePng(result!.readAsBytesSync())!;
     expect(cutout.any((pixel) => pixel.a == 0), isTrue);
+    result = null;
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Reset'));
+    await tester.pump();
+    await waitFor(() => result != null);
+    expect(img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 255), isTrue);
+    result = null;
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Auto Remove'));
+    await tester.pump();
+    await waitFor(() => result != null);
+    expect(img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 0), isTrue);
+    expect(tester.takeException(), isNull);
   });
 }

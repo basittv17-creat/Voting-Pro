@@ -628,10 +628,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       final imageA = await _persistProjectImage(a, 'side_a.img');
       final imageB = await _persistProjectImage(b, 'side_b.img');
+      final originalA = await _persistProjectImage(_inlineOriginalPhotos[true], 'original_a.img');
+      final originalB = await _persistProjectImage(_inlineOriginalPhotos[false], 'original_b.img');
       final data = <String, dynamic>{
         'version': 1,
         'imageA': imageA,
         'imageB': imageB,
+        'inlineOriginalA': originalA,
+        'inlineOriginalB': originalB,
         'background': background.value,
         'frameColor': frameColor.value,
         'frameWidth': frameWidth,
@@ -729,6 +733,13 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       setState(() {
         a = imageA != null && imageA.existsSync() ? imageA : null;
         b = imageB != null && imageB.existsSync() ? imageB : null;
+        _inlineOriginalPhotos.clear();
+        for (final side in [true, false]) {
+          final path = data[side ? 'inlineOriginalA' : 'inlineOriginalB'];
+          if (path is String && File(path).existsSync() && (side ? a : b) != null) {
+            _inlineOriginalPhotos[side] = File(path);
+          }
+        }
         background = Color((data['background'] as num?)?.toInt() ?? const Color(0xFF000000).value);
         frameColor = Color((data['frameColor'] as num?)?.toInt() ?? gold.value);
         frameWidth = (data['frameWidth'] as num?)?.toDouble() ?? 3;
@@ -1416,6 +1427,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           // A replacement photo starts with its own default crop/zoom.
           // Keep the opposite side's photo and transform untouched.
           _photoBackgrounds.remove(sideA);
+          _inlineOriginalPhotos.remove(sideA);
           _photoPanel = null;
           showTextTools = false;
           _editorOptions = null;
@@ -4095,6 +4107,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           onApply: (sideA, cutout) async {
             if (!mounted) return;
             setState(() {
+              _inlineOriginalPhotos.remove(sideA);
               // Replace only the requested picture. Keep text, stickers,
               // poster layout, other photo and selection state unchanged.
               if (sideA) {
@@ -5125,6 +5138,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   _PhotoPanel? _photoPanel;
   final _photoBackgrounds = <bool, String>{};
+  final _inlineOriginalPhotos = <bool, File>{};
 
   static const _photoPalettes = <String, List<Color>>{
     'Navy': [Color(0xFF102342), Color(0xFF102342)],
@@ -5219,7 +5233,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (source == null) return const SizedBox.shrink();
     if (_photoPanel == _PhotoPanel.remover) {
       return BackgroundRemoverPage(
-        key: ValueKey('inline-remover-${source.path}-$sideA'),
+        key: ValueKey('inline-remover-$sideA'),
+        initialOriginal: _inlineOriginalPhotos[sideA],
         initialPhotoA: sideA ? source : null,
         initialPhotoB: sideA ? null : source,
         initialSideA: sideA,
@@ -5231,13 +5246,21 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               _photoPanel != _PhotoPanel.remover ||
               (sideA ? a : b)?.path != source.path)
             return;
+          // Keep the original in a distinct file before autosave overwrites the
+          // persisted side image. The stable widget key retains the live mask.
+          if (!_inlineOriginalPhotos.containsKey(sideA)) {
+            final dir = await _projectDirectory();
+            final original = await source.copy('${dir.path}/inline_original_${sideA ? 'a' : 'b'}_${DateTime.now().microsecondsSinceEpoch}.img');
+            if (!mounted || _photoToolsSide != sideA ||
+                _photoPanel != _PhotoPanel.remover || (sideA ? a : b)?.path != source.path) return;
+            _inlineOriginalPhotos[sideA] = original;
+          }
           setState(() {
             if (sideA) {
               a = cutout;
             } else {
               b = cutout;
             }
-            _photoPanel = null;
           });
         },
       );

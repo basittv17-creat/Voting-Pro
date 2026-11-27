@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../services/offline_bg_remover.dart';
+import '../app_language.dart';
 
 /// Full-screen editor following the three approved Voting Pro mockups.
 /// The AI model, manual brush and PNG export run on the device without an API.
@@ -20,12 +21,17 @@ class BackgroundRemoverPage extends StatefulWidget {
     required this.onApply,
     this.initialSideA = true,
     this.onClose,
+    this.initialOriginal,
+    this.autoMask,
   });
 
   final File? initialPhotoA;
   final File? initialPhotoB;
   final bool initialSideA;
   final VoidCallback? onClose;
+  // Inline editor retains the original independently of the applied cutout.
+  final File? initialOriginal;
+  final Future<Uint8List> Function(Uint8List, int, int)? autoMask;
   final Future<void> Function(bool sideA, File result) onApply;
 
   @override
@@ -65,7 +71,8 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     final initial = _sideA ? widget.initialPhotoA : widget.initialPhotoB;
     if (initial != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadFile(initial);
+        if (mounted) _loadFile(widget.initialOriginal ?? initial,
+            applied: widget.initialOriginal == null ? null : initial);
       });
     }
   }
@@ -83,7 +90,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     );
   }
 
-  Future<void> _loadFile(File file) async {
+  Future<void> _loadFile(File file, {File? applied}) async {
     if (_busy) return;
     setState(() {
       _busy = true;
@@ -93,15 +100,29 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       final prepared = await OfflineBgRemover.prepare(await file.readAsBytes());
       final decoded = img.decodeImage(prepared);
       if (decoded == null) throw const FormatException('Unsupported image');
+      final mask = Uint8List(decoded.width * decoded.height)..fillRange(0, decoded.width * decoded.height, 255);
+      var preview = prepared;
+      if (applied != null && applied.path != file.path) {
+        final appliedBytes = await OfflineBgRemover.prepare(await applied.readAsBytes());
+        final cutout = img.decodeImage(appliedBytes);
+        if (cutout != null && cutout.width == decoded.width && cutout.height == decoded.height) {
+          for (var y = 0; y < decoded.height; y++) {
+            for (var x = 0; x < decoded.width; x++) {
+              final originalAlpha = decoded.getPixel(x, y).a;
+              mask[y * decoded.width + x] = originalAlpha == 0 ? 255 :
+                  (cutout.getPixel(x, y).a * 255 / originalAlpha).round().clamp(0, 255).toInt();
+            }
+          }
+          preview = appliedBytes;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _sourcePng = prepared;
-        _previewPng = prepared;
+        _previewPng = preview;
         _imageWidth = decoded.width;
         _imageHeight = decoded.height;
-        _mask = Uint8List.fromList(
-          List<int>.filled(decoded.width * decoded.height, 255),
-        );
+        _mask = mask;
         _manual = false;
         _compare = false;
         _undo.clear();
@@ -199,13 +220,17 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     _redo.clear();
   }
 
-  Future<void> _updatePreview() async {
+  Future<void> _updatePreview({bool commit = true}) async {
     if (_sourcePng == null || _mask == null) return;
     final bytes = await OfflineBgRemover.compose(
       _sourcePng!, Uint8List.fromList(_mask!),
     );
     if (!mounted) return;
-    final hasUnsavedEdits = _mask!.any((pixel) => pixel != 255);
+    if (commit && widget.onClose != null) {
+      await _commitInline(bytes);
+      if (!mounted) return;
+    }
+    final hasUnsavedEdits = widget.onClose == null && _mask!.any((pixel) => pixel != 255);
     setState(() {
       _previewPng = bytes;
       _brushCursor.value = null;
@@ -213,6 +238,17 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       // Always show the updated result after editing, not stale Compare view.
       _compare = false;
     });
+  }
+
+  Future<void> _commitInline(Uint8List bytes) async {
+    final folder = await getApplicationDocumentsDirectory();
+    final file = File('${folder.path}/voting_pro_cutout_${DateTime.now().microsecondsSinceEpoch}.png');
+    await file.writeAsBytes(bytes, flush: true);
+    if (!mounted) {
+      await file.delete();
+      return;
+    }
+    await widget.onApply(_sideA, file);
   }
 
   Future<void> _autoRemove() async {
@@ -229,18 +265,21 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       _status = 'Removing background offline…';
     });
     try {
-      final result = await OfflineBgRemover.autoMask(
+      final result = await (widget.autoMask ?? OfflineBgRemover.autoMask)(
         _sourcePng!, _imageWidth, _imageHeight,
       );
       if (!mounted) return;
       _mask = result;
       await _updatePreview();
+      if (!mounted) return;
       // Commit Undo only after inference AND preview composition succeed.
       // A failed Auto attempt must never erase the user's existing Redo stack.
       _undo.add(originalMask);
       if (_undo.length > 8) _undo.removeAt(0);
       _redo.clear();
-      setState(() => _status = 'Auto cutout ready • Use Manual to refine edges');
+      setState(() => _status = widget.onClose == null
+          ? 'Auto cutout ready • Use Manual to refine edges'
+          : 'Background removed • Saved');
     } catch (error) {
       _mask = originalMask;
       _hasUnsavedEdits = originalMask.any((pixel) => pixel != 255);
@@ -253,7 +292,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       _notice('Offline auto removal unavailable: $error');
       if (_sourcePng != null && mounted) {
         try {
-          await _updatePreview();
+          await _updatePreview(commit: false);
         } catch (_) {
           // Keep the last valid preview if composing the original also fails.
         }
@@ -267,11 +306,17 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
   // an older PNG after a newer mask change finishes.
   Future<void> _runMaskEdit(VoidCallback edit) async {
     if (_busy || _mask == null || _sourcePng == null) return;
+    final previous = Uint8List.fromList(_mask!);
+    final undo = List<Uint8List>.of(_undo);
+    final redo = List<Uint8List>.of(_redo);
     setState(() => _busy = true);
     try {
       edit();
       await _updatePreview();
     } catch (error) {
+      _mask = previous;
+      _undo..clear()..addAll(undo);
+      _redo..clear()..addAll(redo);
       _notice('Could not update cutout preview: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -356,6 +401,7 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
     try {
       await _updatePreview();
     } catch (error) {
+      if (_undo.isNotEmpty) _mask = _undo.removeLast();
       _notice('Brush preview failed: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -488,160 +534,124 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
         );
 
   Widget _inline(bool imageAvailable) {
+    String label(String en, String ur) => AppLanguage.current == 'ur' ? ur : en;
     void brush(bool erase) => setState(() {
       _manual = true;
       _erase = erase;
     });
-    Widget tile(
-      String label,
-      IconData icon,
-      VoidCallback? action, {
-      bool selected = false,
-    }) => Expanded(
-      child: OutlinedButton(
-        onPressed: _busy ? null : action,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-          backgroundColor: selected
-              ? const Color(0xFF3B2358)
-              : const Color(0xFF19283C),
-          foregroundColor: Colors.white,
-          side: BorderSide(
-            color: selected ? const Color(0xFFB68AFF) : const Color(0xFF35445B),
+    Widget tile(String title, IconData icon, VoidCallback? action,
+        {bool selected = false}) => Expanded(
+      child: SizedBox(
+        height: 48,
+        child: OutlinedButton(
+          onPressed: _busy ? null : action,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+            minimumSize: const Size(0, 48),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: selected ? const Color(0xFF42305F) : const Color(0xFF182A40),
+            foregroundColor: selected ? gold : Colors.white,
+            side: BorderSide(color: selected ? gold : const Color(0xFF435777)),
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 17),
+              const SizedBox(height: 2),
+              Flexible(child: FittedBox(fit: BoxFit.scaleDown,
+                child: Text(title, textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)))),
+            ],
+          ),
         ),
       ),
     );
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      margin: const EdgeInsets.fromLTRB(10, 0, 10, 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF111C2E),
-        border: Border.all(color: const Color(0xFFB68AFF)),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xFF18243A), Color(0xFF101827)],
+        ),
+        border: Border.all(color: const Color(0xFF7862A4)),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.content_cut, color: Color(0xFFB68AFF)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Remove Background — ${_sideA ? "A" : "B"} Side',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
+      child: LayoutBuilder(builder: (context, bounds) {
+        final previewHeight = (bounds.maxHeight - 48).clamp(106.0, 145.0).toDouble();
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [
+                const Icon(Icons.auto_fix_high, color: gold, size: 17),
+                const SizedBox(width: 5),
+                Expanded(child: Text(
+                  label('Remove Background — ${_sideA ? "A" : "B"} Side',
+                    'پس منظر ہٹائیں — ${_sideA ? "A" : "B"} سائیڈ'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: gold, fontSize: 13, fontWeight: FontWeight.w700),
+                )),
                 IconButton(
-                  tooltip: 'Close',
-                  onPressed: _busy ? null : widget.onClose,
-                  icon: const Icon(Icons.close),
+                  tooltip: label('Close', 'بند کریں'),
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  padding: EdgeInsets.zero,
+                  onPressed: widget.onClose,
+                  icon: const Icon(Icons.close, size: 19),
                 ),
-              ],
-            ),
-            if (_busy) const LinearProgressIndicator(color: mint),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              ]),
+              if (_busy) const LinearProgressIndicator(color: mint, minHeight: 2),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
-                  child: SizedBox(height: 155, child: _preview(imageAvailable)),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          tile(
-                            'Auto Remove',
-                            Icons.auto_awesome,
-                            imageAvailable ? _autoRemove : null,
-                            selected: !_manual,
-                          ),
-                          const SizedBox(width: 4),
-                          tile(
-                            'Erase',
-                            Icons.auto_fix_off,
-                            imageAvailable ? () => brush(true) : null,
-                            selected: _manual && _erase,
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          tile(
-                            'Restore',
-                            Icons.brush_outlined,
-                            imageAvailable ? () => brush(false) : null,
-                            selected: _manual && !_erase,
-                          ),
-                          const SizedBox(width: 4),
-                          tile(
-                            'Reset',
-                            Icons.refresh,
-                            imageAvailable ? _reset : null,
-                          ),
-                        ],
-                      ),
-                      _action(
-                        'Apply',
-                        Icons.check,
-                        imageAvailable && _hasUnsavedEdits
-                            ? _applyCutout
-                            : null,
-                        primary: true,
-                      ),
-                    ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: ColoredBox(
+                      color: const Color(0xFF0C1322),
+                      child: SizedBox(height: previewHeight, child: _preview(imageAvailable)),
+                    ),
                   ),
                 ),
-              ],
-            ),
-            if (_manual)
-              Slider(
-                label: 'Brush size',
-                value: _brushSize,
-                min: 5,
-                max: 90,
-                onChanged: _busy
-                    ? null
-                    : (value) => setState(() => _brushSize = value),
-              ),
-            if (imageAvailable)
-              Wrap(
-                spacing: 6,
-                children: [
-                  TextButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() => _compare = !_compare),
-                    icon: const Icon(Icons.compare),
-                    label: Text(_compare ? 'After' : 'Compare'),
-                  ),
-                  if (_manual || _undo.isNotEmpty || _redo.isNotEmpty) ...[
-                    _action('Undo', Icons.undo, _undo.isEmpty ? null : _undoChange),
-                    _action('Redo', Icons.redo, _redo.isEmpty ? null : _redoChange),
-                  ],
-                ],
-              ),
-            Text(_status, style: const TextStyle(color: mint, fontSize: 12)),
-          ],
-        ),
-      ),
+                const SizedBox(width: 7),
+                Expanded(flex: 2, child: Column(children: [
+                  Row(children: [
+                    tile(label('Auto Remove', 'خودکار ریموو'), Icons.auto_awesome,
+                      imageAvailable ? _autoRemove : null, selected: !_manual),
+                    const SizedBox(width: 5),
+                    tile(label('Erase', 'مٹائیں'), Icons.auto_fix_off,
+                      imageAvailable ? () => brush(true) : null, selected: _manual && _erase),
+                  ]),
+                  const SizedBox(height: 5),
+                  Row(children: [
+                    tile(label('Restore', 'بحال کریں'), Icons.brush_outlined,
+                      imageAvailable ? () => brush(false) : null, selected: _manual && !_erase),
+                    const SizedBox(width: 5),
+                    tile(label('Reset', 'ری سیٹ'), Icons.refresh, imageAvailable ? _reset : null),
+                  ]),
+                  if (_manual)
+                    SizedBox(height: 32, child: Slider(
+                      label: label('Brush size', 'برش کا سائز'),
+                      value: _brushSize, min: 5, max: 90,
+                      onChanged: _busy ? null : (value) => setState(() => _brushSize = value),
+                    )),
+                  if (imageAvailable && (_manual || _undo.isNotEmpty || _redo.isNotEmpty))
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      IconButton(tooltip: label('Undo', 'واپس'), icon: const Icon(Icons.undo, size: 17),
+                        onPressed: _busy || _undo.isEmpty ? null : _undoChange,
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40), padding: EdgeInsets.zero),
+                      IconButton(tooltip: label('Redo', 'دوبارہ'), icon: const Icon(Icons.redo, size: 17),
+                        onPressed: _busy || _redo.isEmpty ? null : _redoChange,
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40), padding: EdgeInsets.zero),
+                      IconButton(tooltip: label('Compare', 'موازنہ'), icon: Icon(_compare ? Icons.visibility : Icons.compare, size: 17),
+                        onPressed: _busy ? null : () => setState(() => _compare = !_compare),
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40), padding: EdgeInsets.zero),
+                    ]),
+                ])),
+              ]),
+            ],
+          ),
+        );
+      }),
     );
   }
 
