@@ -101,7 +101,12 @@ void main() {
     await tap(action('Remove Background'));
     expect(find.text('Remove Background — A Side'), findsOneWidget);
     await capture('photo-08-side-a-inline-remover');
-    await tap(find.descendant(of: remover, matching: find.byTooltip('Close')));
+    final close = find.byKey(const ValueKey('inline-remover-close'));
+    expect(tester.getCenter(close).dx, greaterThan(tester.getCenter(remover).dx));
+    await tap(close);
+    expect(remover, findsNothing);
+    expect(toolbar, findsOneWidget);
+    expect(tester.getRect(toolbar), bounds);
     expect(pathOf('A'), a.path);
     expect(pathOf('B'), b.path);
 
@@ -141,6 +146,11 @@ void main() {
     final cutout = img.decodePng(await File(pathOf('B')).readAsBytes())!;
     expect(cutout.any((pixel) => pixel.a == 0), isTrue);
     await capture('photo-06-side-b-cutout-applied');
+    final appliedPath = pathOf('B');
+    await tap(close);
+    expect(remover, findsNothing);
+    expect(toolbar, findsOneWidget);
+    expect(pathOf('B'), appliedPath);
 
     await tap(back);
     expect(toolbar, findsNothing);

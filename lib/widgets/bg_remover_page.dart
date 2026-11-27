@@ -579,29 +579,55 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
       ),
       child: LayoutBuilder(builder: (context, bounds) {
         final previewHeight = (bounds.maxHeight - 48).clamp(106.0, 145.0).toDouble();
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(children: [
-                const Icon(Icons.auto_fix_high, color: gold, size: 17),
-                const SizedBox(width: 5),
-                Expanded(child: Text(
-                  label('Remove Background — ${_sideA ? "A" : "B"} Side',
-                    'پس منظر ہٹائیں — ${_sideA ? "A" : "B"} سائیڈ'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: gold, fontSize: 13, fontWeight: FontWeight.w700),
-                )),
-                IconButton(
-                  tooltip: label('Close', 'بند کریں'),
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  padding: EdgeInsets.zero,
-                  onPressed: widget.onClose,
-                  icon: const Icon(Icons.close, size: 19),
+        final headerHeight = bounds.maxHeight.clamp(0.0, 44.0).toDouble();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: headerHeight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  textDirection: TextDirection.ltr,
+                  children: [
+                    const Icon(Icons.auto_fix_high, color: gold, size: 17),
+                    const SizedBox(width: 5),
+                    Expanded(child: Text(
+                      label('Remove Background — ${_sideA ? "A" : "B"} Side',
+                        'پس منظر ہٹائیں — ${_sideA ? "A" : "B"} سائیڈ'),
+                      textDirection: AppLanguage.direction,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: gold, fontSize: 13, fontWeight: FontWeight.w700),
+                    )),
+                    IconButton(
+                      key: const ValueKey('inline-remover-close'),
+                      tooltip: label('Close', 'بند کریں'),
+                      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                      padding: EdgeInsets.zero,
+                      onPressed: widget.onClose,
+                      icon: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF26334B),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF7862A4)),
+                        ),
+                        child: const Icon(Icons.close_rounded, color: gold, size: 17),
+                      ),
+                    ),
+                  ],
                 ),
-              ]),
-              if (_busy) const LinearProgressIndicator(color: mint, minHeight: 2),
+              ),
+            ),
+            if (_busy && bounds.maxHeight > headerHeight + 2)
+              const LinearProgressIndicator(color: mint, minHeight: 2),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: ClipRRect(
@@ -648,8 +674,11 @@ class _BackgroundRemoverPageState extends State<BackgroundRemoverPage> {
                     ]),
                 ])),
               ]),
-            ],
-          ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         );
       }),
     );
