@@ -16,6 +16,8 @@ on:
       - 'lib/widgets/bg_remover_page.dart'
       - 'lib/widgets/photo_scene.dart'
       - 'lib/widgets/photo_background_settings.dart'
+      - 'lib/widgets/procedural_frame_preview.dart'
+      - 'test/procedural_frame_preview_test.dart'
       - 'lib/services/offline_bg_remover.dart'
       - 'lib/services/mask_history.dart'
       - 'lib/app_language.dart'
@@ -82,8 +84,13 @@ jobs:
           emulator_pid=''
           stop_emulator() {
             if [ -n "$emulator_pid" ]; then
-              adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
+              timeout 10s adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
               kill "$emulator_pid" 2>/dev/null || true
+              for second in $(seq 1 10); do
+                kill -0 "$emulator_pid" 2>/dev/null || break
+                sleep 1
+              done
+              kill -KILL "$emulator_pid" 2>/dev/null || true
               wait "$emulator_pid" 2>/dev/null || true
               emulator_pid=''
             fi
@@ -116,7 +123,7 @@ jobs:
               if [ "$attempt" -eq 2 ] || grep -Eq 'EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK|Some tests failed|Test failed' "$log"; then
                 return "$result"
               fi
-              if kill -0 "$emulator_pid" 2>/dev/null && [ "$(adb -s emulator-5554 get-state 2>/dev/null || true)" = device ]; then
+              if kill -0 "$emulator_pid" 2>/dev/null && [ "$(timeout 10s adb -s emulator-5554 get-state 2>/dev/null || true)" = device ]; then
                 return "$result"
               fi
               echo "::warning::Android emulator disconnected; retrying the full suite on a fresh emulator"
@@ -146,11 +153,17 @@ jobs:
 
       - name: Report emulator diagnostics
         if: failure()
+        timeout-minutes: 2
         run: |
           if [ -f "$RUNNER_TEMP/voting-pro-emulator.log" ]; then
             tail -150 "$RUNNER_TEMP/voting-pro-emulator.log"
           fi
-          adb -s emulator-5554 logcat -d -s AndroidRuntime:E libc:E || true
+          # A dead emulator must not hold the failed job open indefinitely.
+          if [ "$(timeout 10s adb -s emulator-5554 get-state 2>/dev/null || true)" = device ]; then
+            timeout 20s adb -s emulator-5554 logcat -d -s AndroidRuntime:E libc:E || true
+          else
+            echo '::warning::Emulator unavailable; see the host emulator log above.'
+          fi
 
       # flutter drive leaves an integration-test entrypoint in app-debug.apk.
       # NEVER publish that test-runner APK as the installable Voting Pro app.
