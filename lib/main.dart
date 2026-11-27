@@ -449,6 +449,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   final Map<int, double> textBgBorders = {};
   final Map<int, double> textBgShadows = {};
   final Set<int> textBgGradients = {};
+  final Set<int> _disabledTextBackgrounds = {};
   final Map<int, Color> textGlowColors = {};
   final Map<int, String> textAlignments = {};
   final Map<int, double> textLetterSpacings = {};
@@ -699,6 +700,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         'textBgBorders': _doubleMapJson(textBgBorders),
         'textBgShadows': _doubleMapJson(textBgShadows),
         'textBgGradients': textBgGradients.toList(),
+        'disabledTextBackgrounds': _disabledTextBackgrounds.toList(),
         'textGlowColors': _colorMapJson(textGlowColors),
         'textShadowStrengths': _doubleMapJson(textShadowStrengths),
         'textGlowStrengths': _doubleMapJson(textGlowStrengths),
@@ -959,6 +961,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         readBgValues('textBgBorders', textBgBorders, 6);
         readBgValues('textShadowStrengths', textShadowStrengths, 1);
         readBgValues('textBgShadows', textBgShadows, 24);
+        _disabledTextBackgrounds
+          ..clear()
+          ..addAll((data['disabledTextBackgrounds'] as List? ?? const [])
+              .whereType<int>());
         textBgGradients..clear()..addAll(
           (data['textBgGradients'] as List? ?? const []).whereType<num>().map((e) => e.toInt()));
         textColors.clear();
@@ -2813,7 +2819,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         _backgroundTab == tab &&
         _editorOptions == null &&
         !isExportingPoster;
-    final enabled = index != null && textBgColors.containsKey(index);
+    final enabled = index != null &&
+        textBgColors.containsKey(index) &&
+        !_disabledTextBackgrounds.contains(index);
     void change(VoidCallback action, {bool remember = true}) {
       if (!isCurrent()) return;
       if (remember) _rememberTextEdit();
@@ -2822,8 +2830,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     void enable() {
       if (index == null) return;
+      if (!textBgColors.containsKey(index) && !textBgDesigns.containsKey(index)) {
+        textBgDesigns[index] = 'solid';
+      }
       textBgColors.putIfAbsent(index, () => const Color(0xFF0C1430));
-      textBgDesigns.putIfAbsent(index, () => 'solid');
+      _disabledTextBackgrounds.remove(index);
       textBgOpacities.putIfAbsent(index, () => .85);
     }
 
@@ -2838,9 +2849,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     return TextBackgroundDock(
       tab: _backgroundTab,
       hasSelection: index != null,
-      enabled: enabled,
+      enabled: enabled && textBgOpacities[index] != 0,
       color: textBgColors[index] ?? const Color(0xFF0C1430),
       design: textBgDesigns[index],
+      glyphMode: textBgColors.containsKey(index) &&
+          !textBgDesigns.containsKey(index),
       opacity: textBgOpacities[index] ?? .85,
       thickness: textBgPaddings[index] ?? 0,
       corners: textBgRadii[index] ?? 8,
@@ -2849,10 +2862,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       gradient: textBgGradients.contains(index),
       onClose: _closeBackgroundDock,
       onToggle: () => change(() {
-        if (enabled) {
-          textBgColors.remove(index);
+        if (enabled && textBgOpacities[index] != 0) {
+          _disabledTextBackgrounds.add(index!);
         } else {
           enable();
+          if (textBgOpacities[index] == 0) textBgOpacities[index!] = .85;
         }
       }),
       onColor: (value) => change(() {
@@ -2862,6 +2876,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if ((textBgOpacities[index] ?? 0) <= 0) {
           textBgOpacities[index] = .85;
         }
+      }),
+      onGlyphBackground: () => change(() {
+        enable();
+        textBgDesigns.remove(index);
+        if (textBgOpacities[index] == 0) textBgOpacities[index!] = .85;
       }),
       onPreset: (name) {
         if (index != null && isCurrent()) _applyTextBackgroundPreset(index, name);
@@ -2906,6 +2925,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textBgBorders.remove(index);
       textBgShadows.remove(index);
       textBgGradients.remove(index);
+      _disabledTextBackgrounds.remove(index);
       textGlowColors.remove(index);
       textGlowStrengths.remove(index);
       textShadowStrengths.remove(index);
@@ -2948,6 +2968,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       if (textBgBorders.containsKey(index)) textBgBorders[next] = textBgBorders[index]!;
       if (textBgShadows.containsKey(index)) textBgShadows[next] = textBgShadows[index]!;
       if (textBgGradients.contains(index)) textBgGradients.add(next);
+      if (_disabledTextBackgrounds.contains(index)) {
+        _disabledTextBackgrounds.add(next);
+      }
       if (textGlowColors.containsKey(index)) textGlowColors[next] = textGlowColors[index]!;
       if (textShadowStrengths.containsKey(index)) {
         textShadowStrengths[next] = textShadowStrengths[index]!;
@@ -3050,6 +3073,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     'textBgBorders': Map<int, double>.from(textBgBorders),
     'textBgShadows': Map<int, double>.from(textBgShadows),
     'textBgGradients': Set<int>.from(textBgGradients),
+    'disabledTextBackgrounds': Set<int>.from(_disabledTextBackgrounds),
     'textGlowColors': Map<int, Color>.from(textGlowColors),
     'textOutlineColors': Map<int, Color>.from(textOutlineColors),
     'boldTextOverlayIds': Set<int>.from(boldTextOverlayIds),
@@ -3087,6 +3111,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     textBgBorders..clear()..addAll(snapshot['textBgBorders'] as Map<int, double>);
     textBgShadows..clear()..addAll(snapshot['textBgShadows'] as Map<int, double>);
     textBgGradients..clear()..addAll(snapshot['textBgGradients'] as Set<int>);
+    _disabledTextBackgrounds
+      ..clear()
+      ..addAll(snapshot['disabledTextBackgrounds'] as Set<int>);
     textGlowColors..clear()..addAll(snapshot['textGlowColors'] as Map<int, Color>);
     textOutlineColors..clear()..addAll(snapshot['textOutlineColors'] as Map<int, Color>);
     boldTextOverlayIds..clear()..addAll(snapshot['boldTextOverlayIds'] as Set<int>);
@@ -3665,6 +3692,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (_selectedTextForEditing != index) return;
     _rememberTextEdit();
     setState(() {
+      _disabledTextBackgrounds.remove(index);
       if (name == null) {
         textBgDesigns.remove(index);
         textBgColors.remove(index);
@@ -3887,6 +3915,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldBgBorders = Map<int, double>.from(textBgBorders);
       final oldBgShadows = Map<int, double>.from(textBgShadows);
       final oldBgGradients = Set<int>.from(textBgGradients);
+      final oldDisabledBackgrounds = Set<int>.from(_disabledTextBackgrounds);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldShadowStrengths = Map<int, double>.from(textShadowStrengths);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
@@ -3916,6 +3945,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textBgBorders.clear();
       textBgShadows.clear();
       textBgGradients.clear();
+      _disabledTextBackgrounds.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
       textShadowStrengths.clear();
@@ -3957,6 +3987,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldBgBorders.containsKey(sourceIndex)) textBgBorders[i] = oldBgBorders[sourceIndex]!;
         if (oldBgShadows.containsKey(sourceIndex)) textBgShadows[i] = oldBgShadows[sourceIndex]!;
         if (oldBgGradients.contains(sourceIndex)) textBgGradients.add(i);
+        if (oldDisabledBackgrounds.contains(sourceIndex)) {
+          _disabledTextBackgrounds.add(i);
+        }
         if (oldGlowColors.containsKey(sourceIndex)) {
           textGlowColors[i] = oldGlowColors[sourceIndex]!;
         }
@@ -4032,6 +4065,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       final oldBgBorders = Map<int, double>.from(textBgBorders);
       final oldBgShadows = Map<int, double>.from(textBgShadows);
       final oldBgGradients = Set<int>.from(textBgGradients);
+      final oldDisabledBackgrounds = Set<int>.from(_disabledTextBackgrounds);
       final oldGlowColors = Map<int, Color>.from(textGlowColors);
       final oldShadowStrengths = Map<int, double>.from(textShadowStrengths);
       final oldGlowStrengths = Map<int, double>.from(textGlowStrengths);
@@ -4063,6 +4097,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       textBgBorders.clear();
       textBgShadows.clear();
       textBgGradients.clear();
+      _disabledTextBackgrounds.clear();
       textGlowColors.clear();
       textGlowStrengths.clear();
       textShadowStrengths.clear();
@@ -4100,6 +4135,9 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         if (oldBgBorders.containsKey(sourceIndex)) textBgBorders[i] = oldBgBorders[sourceIndex]!;
         if (oldBgShadows.containsKey(sourceIndex)) textBgShadows[i] = oldBgShadows[sourceIndex]!;
         if (oldBgGradients.contains(sourceIndex)) textBgGradients.add(i);
+        if (oldDisabledBackgrounds.contains(sourceIndex)) {
+          _disabledTextBackgrounds.add(i);
+        }
         if (oldGlowColors.containsKey(sourceIndex)) {
           textGlowColors[i] = oldGlowColors[sourceIndex]!;
         }
@@ -6421,7 +6459,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                             child:
                                 AdvancedTextOverlay(
                               text: entry.value,
-                              backgroundColor: isText
+                              backgroundColor: isText &&
+                                      !_disabledTextBackgrounds.contains(index)
                                   ? textBgColors[
                                       index]
                                   : null,

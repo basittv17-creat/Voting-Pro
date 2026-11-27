@@ -61,7 +61,7 @@ class TextBackgroundPlate extends StatelessWidget {
                 ],
               )
             : null,
-        borderRadius: BorderRadius.circular(radius.clamp(0, 32)),
+        borderRadius: BorderRadius.circular(radius.clamp(0, 36)),
         border: borderWidth > 0
             ? Border.all(
                 color: stroke.withValues(alpha: alpha),

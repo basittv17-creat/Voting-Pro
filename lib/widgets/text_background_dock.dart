@@ -14,6 +14,7 @@ class TextBackgroundDock extends StatelessWidget {
     required this.enabled,
     required this.color,
     required this.design,
+    required this.glyphMode,
     required this.opacity,
     required this.thickness,
     required this.corners,
@@ -24,6 +25,7 @@ class TextBackgroundDock extends StatelessWidget {
     required this.onToggle,
     required this.onColor,
     required this.onPreset,
+    required this.onGlyphBackground,
     required this.onSliderStart,
     required this.onOpacity,
     required this.onThickness,
@@ -38,7 +40,7 @@ class TextBackgroundDock extends StatelessWidget {
   });
 
   final TextBackgroundTab tab;
-  final bool hasSelection, enabled, gradient;
+  final bool hasSelection, enabled, gradient, glyphMode;
   final Color color;
   final String? design;
   final double opacity, thickness, corners, border, shadow;
@@ -46,6 +48,7 @@ class TextBackgroundDock extends StatelessWidget {
   final VoidCallback onChooseFont, onUndo, onRedo;
   final ValueChanged<Color> onColor;
   final ValueChanged<String?> onPreset;
+  final VoidCallback onGlyphBackground;
   final ValueChanged<double> onOpacity, onThickness, onCorners;
   final ValueChanged<double> onBorder, onShadow;
   final ValueChanged<bool> onGradient;
@@ -60,6 +63,10 @@ class TextBackgroundDock extends StatelessWidget {
     Color(0xFF4A148C), Color(0xFF880E4F), Color(0xFFB71C1C),
     Color(0xFFF57F17), Color(0xFF00ACC1), Color(0xFF2E7D32),
   ];
+
+  String get _thicknessLabel => glyphMode
+      ? 'Glyph edge thickness'
+      : 'Plate padding';
 
   String get title => switch (tab) {
     TextBackgroundTab.overview => 'Text Background',
@@ -142,6 +149,10 @@ class TextBackgroundDock extends StatelessWidget {
                             onPressed: hasSelection ? () => onPreset(null) : null,
                           ),
                           ActionChip(
+                            label: Text(AppLanguage.tr('Glyph-only background')),
+                            onPressed: hasSelection ? onGlyphBackground : null,
+                          ),
+                          ActionChip(
                             label: Text(AppLanguage.tr('Use white text')),
                             onPressed: hasSelection ? onWhiteText : null,
                           ),
@@ -159,7 +170,7 @@ class TextBackgroundDock extends StatelessWidget {
                     if (tab == TextBackgroundTab.border) ...[
                       _slider('Border width', border, 6, onBorder),
                       _slider('Corners', corners, 36, onCorners),
-                      _slider('Glyph edge thickness', thickness, 24, onThickness),
+                      _slider(_thicknessLabel, thickness, 24, onThickness),
                     ],
                     if (tab == TextBackgroundTab.shadow)
                       _slider('Shadow blur', shadow, 24, onShadow),
@@ -294,7 +305,7 @@ class TextBackgroundDock extends StatelessWidget {
           for (final item in [
             _slider('Background opacity', opacity, 1, onOpacity, percent: true),
             _slider('Border width', border, 6, onBorder),
-            _slider('Glyph edge thickness', thickness, 24, onThickness),
+            _slider(_thicknessLabel, thickness, 24, onThickness),
             _slider('Shadow blur', shadow, 24, onShadow),
             _slider('Corners', corners, 36, onCorners),
             _gradient(),

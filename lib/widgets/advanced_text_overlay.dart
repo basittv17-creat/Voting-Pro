@@ -67,7 +67,11 @@ class AdvancedTextOverlay extends StatelessWidget {
         child: artwork,
       );
     }
-    final effect = math.max(outlineWidth, backgroundShadowBlur * 2);
+    final hasBackground = color != null && backgroundOpacity > 0;
+    final effect = math.max(
+      outlineWidth,
+      hasBackground ? backgroundShadowBlur * 2 : 0.0,
+    );
     final shadows = [...?style.shadows, if (shadow != null) shadow!];
     final shadowInset = shadows.fold<double>(
         0,

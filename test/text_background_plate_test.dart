@@ -89,6 +89,64 @@ void main() {
     expect(artwork().backgroundDesign, 'solid');
     await tap(tester, find.byTooltip('Redo Text'));
     expect(artwork().backgroundDesign, 'Royal Gold');
+
+    Future<void> tab(String label) => tap(
+          tester,
+          find.descendant(of: dock, matching: find.text(label)),
+        );
+    final panel = find.byKey(const ValueKey('text-background-dock'));
+    Finder switches() =>
+        find.descendant(of: panel, matching: find.byType(Switch));
+    Future<void> changeSlider(String label, double value) async {
+      final slider = tester.widget<Slider>(
+        find.byKey(ValueKey('background-slider-$label')),
+      );
+      slider.onChangeStart!(slider.value);
+      slider.onChanged!(value);
+      await tester.pumpAndSettle();
+    }
+
+    final savedColor = artwork().backgroundColor;
+    await tap(tester, switches().first);
+    expect(artwork().backgroundColor, isNull);
+    await tap(tester, switches().first);
+    expect(artwork().backgroundColor, savedColor);
+    expect(artwork().backgroundDesign, 'Royal Gold');
+
+    await tab('Gradient');
+    await tap(tester, switches().last);
+    expect(artwork().backgroundGradient, isFalse);
+    await tab('Border');
+    await changeSlider('Corners', 36);
+    await changeSlider('Border width', 5);
+    expect(artwork().backgroundRadius, 36);
+    expect(artwork().backgroundBorderWidth, 5);
+    await tab('Shadow Blur');
+    await changeSlider('Shadow blur', 12);
+    expect(artwork().backgroundShadowBlur, 12);
+    await tab('Opacity');
+    await changeSlider('Background opacity', 0);
+    expect(plates, findsNothing);
+    await tap(tester, switches().first);
+    expect(artwork().backgroundOpacity, .85);
+    expect(artwork().backgroundColor, savedColor);
+    expect(artwork().backgroundDesign, 'Royal Gold');
+
+    await tab('Advanced Backgrounds');
+    await tap(tester, find.text('Glyph-only background'));
+    expect(artwork().backgroundDesign, isNull);
+    expect(artwork().backgroundColor, savedColor);
+    await tab('Border');
+    await changeSlider('Glyph edge thickness', 10);
+    expect(artwork().backgroundExpansion, 10);
+    expect(tester.widget<AdvancedTextOverlay>(other).backgroundColor, isNull);
+    await tab('Advanced Backgrounds');
+    await tap(tester, find.text('None / Reset'));
+    expect(artwork().backgroundColor, isNull);
+    await tab('Text Backgrounds');
+    expect(tester.getRect(dock), bounds);
+    expect(tester.takeException(), isNull);
+
   });
 
   for (final width in [320.0, 360.0, 393.0, 412.0]) {

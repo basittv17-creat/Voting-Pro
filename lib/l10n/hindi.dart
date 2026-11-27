@@ -4,6 +4,8 @@ const hindiStrings = <String, String>{
     "Advanced Backgrounds": "उन्नत पृष्ठभूमियाँ",
     "Border": "बॉर्डर",
     "Shadow Blur": "छाया धुंधलापन",
+  "Plate padding": "पृष्ठभूमि का अंदरूनी अंतर",
+  "Glyph-only background": "केवल अक्षरों की पृष्ठभूमि",
   "Glyph edge thickness": "अक्षरों के किनारे की मोटाई",
   "Corners": "कोने",
   "Border width": "बॉर्डर की चौड़ाई",

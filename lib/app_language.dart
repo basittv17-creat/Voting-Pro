@@ -21,6 +21,8 @@ class AppLanguage {
     "Border": "بارڈر",
     "Shadow Blur": "سائے کا دھندلا پن",
     "Add photo": "تصویر شامل کریں",
+    "Plate padding": "پس منظر کے اندرونی حاشیے",
+    "Glyph-only background": "صرف حروف کا پس منظر",
     "Glyph edge thickness": "حروف کے کنارے کی موٹائی",
     "Corners": "کونے",
     "Border width": "بارڈر کی چوڑائی",
