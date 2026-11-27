@@ -89,7 +89,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Background opacity'), findsOneWidget);
     expect(find.text('Glow intensity'), findsNothing);
-    expect(tester.getRect(text), toolbarBounds);
+    final backgrounds = find.byKey(const ValueKey('text-background-toolbar'));
+    expect(text, findsNothing);
+    expect(tester.getRect(backgrounds), toolbarBounds);
+    await tester.tap(find.descendant(
+      of: backgrounds,
+      matching: find.text('Back'),
+    ));
+    await tester.pumpAndSettle();
+    expect(text, findsOneWidget);
 
     await tester.ensureVisible(find.text('Back'));
     await tester.tap(find.text('Back'));
@@ -245,7 +253,10 @@ void main() {
       await tester.tap(action);
       await tester.pumpAndSettle();
       expect(tester.getRect(find.text(control)).bottom, lessThan(bounds.top));
-      expect(tester.getRect(toolbar), bounds);
+      final current = section == 'Text Background'
+          ? find.byKey(const ValueKey('text-background-toolbar'))
+          : toolbar;
+      expect(tester.getRect(current), bounds);
     }
     expect(tester.takeException(), isNull);
   });

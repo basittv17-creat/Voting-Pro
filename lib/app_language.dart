@@ -16,6 +16,10 @@ class AppLanguage {
       isUrdu ? TextDirection.rtl : TextDirection.ltr;
 
   static const Map<String, String> _urdu = {
+    "Text Backgrounds": "متن کے پس منظر",
+    "Advanced Backgrounds": "جدید پس منظر",
+    "Border": "بارڈر",
+    "Shadow Blur": "سائے کا دھندلا پن",
     "Add photo": "تصویر شامل کریں",
     "Glyph edge thickness": "حروف کے کنارے کی موٹائی",
     "Corners": "کونے",

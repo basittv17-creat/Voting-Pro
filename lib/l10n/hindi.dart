@@ -1,5 +1,9 @@
 // Hindi interface strings, keyed by canonical English UI labels.
 const hindiStrings = <String, String>{
+    "Text Backgrounds": "टेक्स्ट पृष्ठभूमियाँ",
+    "Advanced Backgrounds": "उन्नत पृष्ठभूमियाँ",
+    "Border": "बॉर्डर",
+    "Shadow Blur": "छाया धुंधलापन",
   "Glyph edge thickness": "अक्षरों के किनारे की मोटाई",
   "Corners": "कोने",
   "Border width": "बॉर्डर की चौड़ाई",

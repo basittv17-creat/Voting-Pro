@@ -41,24 +41,35 @@ void main() {
     Finder action(String name) =>
         find.descendant(of: toolbar, matching: find.text(name));
     final bounds = tester.getRect(toolbar);
+    final dock = find.byKey(const ValueKey('text-background-toolbar'));
+    final poster = find.byType(Screenshot);
+    final plates = find.descendant(
+      of: poster,
+      matching: find.byType(TextBackgroundPlate),
+    );
     await tap(tester, action('Text Background'));
+    expect(toolbar, findsNothing);
+    expect(tester.getRect(dock), bounds);
     expect(find.text('Tap text on the poster to select'), findsOneWidget);
     await tap(tester, find.text('تگڑا مقابلہ'));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     expect(find.text('Tap text on the poster to select'), findsNothing);
-    expect(find.byType(TextBackgroundPlate), findsNothing);
+    expect(plates, findsNothing);
     await tap(tester, find.byTooltip('Color #FFD84D'));
-    expect(find.byType(TextBackgroundPlate), findsOneWidget);
+    expect(plates, findsOneWidget);
     final plain = tester.widget<TextBackgroundPlate>(
-      find.byType(TextBackgroundPlate),
+      plates,
     );
     expect(plain.opacity, .85);
     expect(plain.color, const Color(0xFFFFD84D));
 
-    await tap(tester, action('Premium Text Backgrounds'));
+    await tap(tester, find.descendant(
+      of: dock,
+      matching: find.text('Advanced Backgrounds'),
+    ));
     await tap(tester, find.text('Royal Gold'));
-    expect(tester.getRect(toolbar), bounds);
+    expect(tester.getRect(dock), bounds);
     final selected = find.byWidgetPredicate(
       (widget) => widget is AdvancedTextOverlay && widget.text == 'تگڑا مقابلہ',
     );
@@ -70,9 +81,9 @@ void main() {
     expect(artwork().backgroundDesign, 'Royal Gold');
     expect(tester.widget<AdvancedTextOverlay>(other).backgroundColor, isNull);
     expect(artwork().style.fontFamily, 'NotoNastaliqUrdu');
-    await tap(tester, action('Undo Text'));
+    await tap(tester, find.byTooltip('Undo Text'));
     expect(artwork().backgroundDesign, 'solid');
-    await tap(tester, action('Redo Text'));
+    await tap(tester, find.byTooltip('Redo Text'));
     expect(artwork().backgroundDesign, 'Royal Gold');
   });
 

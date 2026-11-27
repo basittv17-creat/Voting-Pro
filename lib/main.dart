@@ -23,6 +23,7 @@ import 'widgets/tagra_arena.dart';
 import 'widgets/advanced_text_overlay.dart';
 import 'widgets/scaled_overlay.dart';
 import 'widgets/text_background_plate.dart';
+import 'widgets/text_background_dock.dart';
 import 'widgets/premium_text_editor_panel.dart';
 import 'widgets/bg_remover_page.dart';
 import 'widgets/premium_vs.dart';
@@ -253,6 +254,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   double stickerScaleStartY = 0.0;
   bool showTextTools = false;
   TextToolSection _activeTextSection = TextToolSection.none;
+  TextBackgroundTab _backgroundTab = TextBackgroundTab.overview;
   final _textSettingsKey = GlobalKey();
   _EditorOptions? _editorOptions;
 
@@ -2773,126 +2775,100 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   }
 
 
-  Future<void> editTextBackground() async {
-    final index = _activeTextIndex;
-    if (index == null) return;
-    bool enabled = textBgColors.containsKey(index);
-    Color color = textBgColors[index] ?? const Color(0xFF151A30);
-    double opacity = textBgOpacities[index] ?? 0.8;
-    double padding = textBgPaddings[index] ?? 0;
-    double radius = textBgRadii[index] ?? 8;
-    double border = textBgBorders[index] ?? 0;
-    double shadow = textBgShadows[index] ?? 0;
-    bool gradient = textBgGradients.contains(index);
-    const palette = <Color>[
-      Color(0xFF151A30), Colors.black, Colors.white,
-      Color(0xFF263238), Color(0xFF004D40), Color(0xFF0D47A1),
-      Color(0xFF4A148C), Color(0xFF880E4F), Color(0xFFB71C1C),
-      Color(0xFFF57F17), Color(0xFF00ACC1), Color(0xFF2E7D32),
-    ];
-    final apply = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, update) {
-          Widget control(String label, double value, double max,
-              ValueChanged<double> change) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('${AppLanguage.tr(label)}: ${value.toStringAsFixed(label == "Opacity" ? 2 : 0)}'),
-              Slider(
-                value: value.clamp(0.0, max).toDouble(),
-                min: 0, max: max,
-                onChanged: (v) => update(() => change(v)),
-              ),
-            ],
-          );
-          return AlertDialog(
-            title: Text(AppLanguage.tr('Text Background')),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(AppLanguage.tr('Enable tight-fit background')),
-                      value: enabled,
-                      onChanged: (v) => update(() => enabled = v),
-                    ),
-                    Text(AppLanguage.tr('Background color')),
-                    Wrap(spacing: 7, runSpacing: 7, children: [
-                      for (final swatch in palette)
-                        InkWell(
-                          onTap: () => update(() { color = swatch; enabled = true; }),
-                          child: Container(
-                            width: 31, height: 31,
-                            decoration: BoxDecoration(
-                              color: swatch,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: color == swatch ? Colors.amber : Colors.grey,
-                                width: color == swatch ? 3 : 1),
-                            ),
-                          ),
-                        ),
-                    ]),
-                    control('Opacity', opacity, 1, (v) => opacity = v),
-                    control('Glyph edge thickness', padding, 24, (v) => padding = v),
-                    control('Corners', radius, 36, (v) => radius = v),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(AppLanguage.tr('Gradient background')),
-                      value: gradient,
-                      onChanged: (v) => update(() => gradient = v),
-                    ),
-                    control('Border width', border, 6, (v) => border = v),
-                    control('Shadow blur', shadow, 24, (v) => shadow = v),
-                    Text(AppLanguage.tr('Background follows only the shapes of letters, not the line box.')),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: Text(AppLanguage.tr('Cancel'))),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: Text(AppLanguage.tr('Apply'))),
-            ],
-          );
-        },
-      ),
-    );
-    if (apply != true || !mounted || index >= overlays.length ||
-        !textOverlayIds.contains(index)) return;
-    _rememberTextEdit();
+  void editTextBackground() => _openBackgroundDock(TextBackgroundTab.advanced);
+
+  void _openBackgroundDock(TextBackgroundTab tab) {
     setState(() {
-      if (enabled) {
-        if (textBgColors[index] != color) textBgDesigns[index] = 'solid';
-        textBgDesigns.putIfAbsent(index, () => 'solid');
-        textBgColors[index] = color;
-        textBgOpacities[index] = opacity;
-        textBgPaddings[index] = padding;
-        textBgRadii[index] = radius;
-        textBgBorders[index] = border;
-        textBgShadows[index] = shadow;
-        if (gradient) { textBgGradients.add(index); }
-        else { textBgGradients.remove(index); }
-      } else {
-        textBgColors.remove(index);
-        textBgDesigns.remove(index);
-        textBgOpacities.remove(index);
-        textBgPaddings.remove(index);
-        textBgRadii.remove(index);
-        textBgBorders.remove(index);
-        textBgShadows.remove(index);
-        textBgGradients.remove(index);
-      }
+      _editorOptions = null;
+      _activeTextSection = TextToolSection.background;
+      _backgroundTab = tab;
     });
+  }
+
+  void _closeBackgroundDock() {
+    setState(() {
+      _editorOptions = null;
+      _activeTextSection = TextToolSection.none;
+      _backgroundTab = TextBackgroundTab.overview;
+    });
+  }
+
+  Widget _buildBackgroundDock() {
+    final index = _activeTextIndex;
+    final enabled = index != null && textBgColors.containsKey(index);
+    void change(VoidCallback action, {bool remember = true}) {
+      if (index == null || _activeTextIndex != index) return;
+      if (remember) _rememberTextEdit();
+      setState(action);
+    }
+
+    void enable() {
+      if (index == null) return;
+      textBgColors.putIfAbsent(index, () => const Color(0xFF0C1430));
+      textBgDesigns.putIfAbsent(index, () => 'solid');
+      textBgOpacities.putIfAbsent(index, () => .85);
+    }
+
+    void setValue(Map<int, double> values, double value) {
+      if (index == null) return;
+      change(() {
+        enable();
+        values[index] = value;
+      }, remember: false);
+    }
+
+    return TextBackgroundDock(
+      tab: _backgroundTab,
+      hasSelection: index != null,
+      enabled: enabled,
+      color: textBgColors[index] ?? const Color(0xFF0C1430),
+      design: textBgDesigns[index],
+      opacity: textBgOpacities[index] ?? .85,
+      thickness: textBgPaddings[index] ?? 0,
+      corners: textBgRadii[index] ?? 8,
+      border: textBgBorders[index] ?? 0,
+      shadow: textBgShadows[index] ?? 0,
+      gradient: textBgGradients.contains(index),
+      onClose: _closeBackgroundDock,
+      onToggle: () => change(() {
+        if (enabled) {
+          textBgColors.remove(index);
+        } else {
+          enable();
+        }
+      }),
+      onColor: (value) => change(() {
+        enable();
+        textBgColors[index!] = value;
+        // Preserve the selected premium plate and its outline when recoloring.
+        if ((textBgOpacities[index] ?? 0) <= 0) {
+          textBgOpacities[index] = .85;
+        }
+      }),
+      onPreset: (name) {
+        if (index != null) _applyTextBackgroundPreset(index, name);
+      },
+      onSliderStart: () {
+        if (index != null && _activeTextIndex == index) _rememberTextEdit();
+      },
+      onOpacity: (value) => setValue(textBgOpacities, value),
+      onThickness: (value) => setValue(textBgPaddings, value),
+      onCorners: (value) => setValue(textBgRadii, value),
+      onBorder: (value) => setValue(textBgBorders, value),
+      onShadow: (value) => setValue(textBgShadows, value),
+      onGradient: (value) => change(() {
+        enable();
+        if (value) {
+          textBgGradients.add(index!);
+        } else {
+          textBgGradients.remove(index);
+        }
+      }),
+      onWhiteText: () => change(() => textColors[index!] = Colors.white),
+      onChooseFont: chooseTextFont,
+      onUndo: undoTextEdit,
+      onRedo: redoTextEdit,
+    );
   }
 
   void resetSelectedTextStyle() {
@@ -3665,8 +3641,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   void chooseTextFont() => _openTextOption(_EditorOptions.textFont);
 
-  Widget _premiumBackgroundOptions(int index) {
-    void apply(String? name) {
+  void _applyTextBackgroundPreset(int index, String? name) {
+    if (_activeTextIndex != index) return;
       _rememberTextEdit();
       setState(() {
         if (name == null) {
@@ -3689,8 +3665,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         textBgBorders[index] = 1.5;
         textBgShadows[index] = 3;
         textBgGradients.add(index);
-      });
-    }
+      });  }
+
+  Widget _premiumBackgroundOptions(int index) {
+    void apply(String? name) => _applyTextBackgroundPreset(index, name);
 
     return _optionScroll(
       Column(
@@ -4984,6 +4962,38 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildBackgroundToolbar() => Row(
+    key: const ValueKey('text-background-toolbar'),
+    textDirection: TextDirection.ltr,
+    children: [
+      _textToolbarButton(
+        Icons.reply_rounded, 'Back', _closeBackgroundDock, isBack: true,
+      ),
+      Expanded(
+        child: SingleChildScrollView(
+          key: const ValueKey('text-background-tool-scroll'),
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final (tab, icon, label, width) in [
+                (TextBackgroundTab.overview, Icons.format_color_fill, 'Text Backgrounds', 76.0),
+                (TextBackgroundTab.advanced, Icons.auto_awesome, 'Advanced Backgrounds', 86.0),
+                (TextBackgroundTab.gradient, Icons.gradient, 'Gradient', 60.0),
+                (TextBackgroundTab.border, Icons.border_outer, 'Border', 55.0),
+                (TextBackgroundTab.shadow, Icons.blur_on, 'Shadow Blur', 62.0),
+                (TextBackgroundTab.opacity, Icons.opacity, 'Opacity', 58.0),
+              ])
+                _textToolbarButton(
+                  icon, label, () => _openBackgroundDock(tab),
+                  width: width, active: _backgroundTab == tab,
+                ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+
   Widget _buildTextToolbar() => Row(
     key: const ValueKey('text-toolbar'),
     textDirection: TextDirection.ltr,
@@ -5036,15 +5046,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 _textToolbarButton(
                   Icons.format_color_fill,
                   'Text Background',
-                  () => _selectTextSection(TextToolSection.background),
+                  () => _openBackgroundDock(TextBackgroundTab.overview),
                   section: TextToolSection.background,
                   width: 75,
                 ),
                 _textToolbarButton(
                   Icons.auto_awesome_mosaic_outlined,
                   'Premium Text Backgrounds',
-                  () => _openTextOption(_EditorOptions.premiumTextBackground),
-                  active: _editorOptions == _EditorOptions.premiumTextBackground,
+                  () => _openBackgroundDock(TextBackgroundTab.advanced),
+                  active: _activeTextSection == TextToolSection.background,
                   width: 86,
                 ),
                 _textToolbarButton(
@@ -5764,6 +5774,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         }
       } else if (_editorOptions != null) {
         _closeEditorOptions();
+      } else if (_activeTextSection == TextToolSection.background) {
+        _closeBackgroundDock();
       } else if (_activeTextSection != TextToolSection.none) {
         _selectTextSection(_activeTextSection);
       } else if (showTextTools) {
@@ -6800,7 +6812,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           _editorOptions == null &&
           !isExportingPoster &&
           selectedReadyMadeTemplate == null &&
-          _activeTextSection != TextToolSection.none)
+          _activeTextSection != TextToolSection.none &&
+          _activeTextSection != TextToolSection.background)
         KeyedSubtree(
           key: _textSettingsKey,
           child: KeyedSubtree(
@@ -6824,6 +6837,15 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 child: KeyedSubtree(
                   key: ValueKey(_editorOptions),
                   child: _buildEditorOptions(_editorOptions!),
+                ),
+              )
+            : showTextTools && !isExportingPoster &&
+                _activeTextSection == TextToolSection.background
+            ? SizedBox(
+                height: panelHeight,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                  child: _buildBackgroundDock(),
                 ),
               )
             : const SizedBox.shrink(),
@@ -6854,7 +6876,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               ]),
             )
           : showTextTools
-          ? _buildTextToolbar()
+          ? (_activeTextSection == TextToolSection.background
+              ? _buildBackgroundToolbar() : _buildTextToolbar())
           : _photoToolsSide != null
           ? _buildPhotoToolbar(_photoToolsSide!)
           : SingleChildScrollView(

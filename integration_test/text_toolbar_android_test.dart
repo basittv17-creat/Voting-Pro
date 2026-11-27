@@ -105,18 +105,21 @@ void main() {
     final overlay = find.byType(AdvancedTextOverlay);
     await capture('text-10-background-off');
     await tap(action(text, 'Text Background'));
-    await tap(
-        find.descendant(of: panel, matching: find.byTooltip('Color #00DB52')));
-    expect(find.byType(TextBackgroundPlate), findsOneWidget);
+    final bgTools = find.byKey(const ValueKey('text-background-toolbar'));
+    expect(text, findsNothing);
+    expect(tester.getRect(bgTools), bounds);
+    await tap(find.byTooltip('Color #00DB52'));
+    expect(find.descendant(of: poster, matching: find.byType(TextBackgroundPlate)), findsOneWidget);
     await capture('text-11-background-swatch');
 
-    await tap(action(text, 'Premium Text Backgrounds'));
+    await tap(action(bgTools, 'Advanced Backgrounds'));
     await tap(find.text('Royal Gold'));
     expect(tester.widget<AdvancedTextOverlay>(overlay).backgroundDesign,
         'Royal Gold');
-    expect(tester.getRect(text), bounds);
+    expect(tester.getRect(bgTools), bounds);
     await capture('text-12-premium-backgrounds');
-
+    await tap(action(bgTools, 'Back'));
+    expect(text, findsOneWidget);
     await tap(action(text, 'Font'));
     for (final family in [
       'Gulzar',
