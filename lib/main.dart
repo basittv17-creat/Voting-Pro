@@ -1446,7 +1446,12 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLanguage.tr(s), textDirection: AppLanguage.direction)));
   }
 
-  Future<void> pick(bool sideA) async {
+  Future<void> pick(
+    bool sideA, {
+    bool Function()? isCurrent,
+    bool keepRemoverOpen = false,
+  }) async {
+    bool canApply() => mounted && (isCurrent?.call() ?? true);
     try {
       final x = await picker.pickImage(
         source: ImageSource.gallery,
@@ -1454,7 +1459,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         maxWidth: 2400,
         maxHeight: 2400,
       );
-      if (x != null && mounted) {
+      if (x != null && canApply()) {
         final sourceFile = File(x.path);
         final projectDir = await _projectDirectory();
         final extension = x.path.contains('.')
@@ -1462,10 +1467,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             : 'jpg';
         final uniqueName =
             '${sideA ? 'side_a' : 'side_b'}_${DateTime.now().microsecondsSinceEpoch}.${extension.isEmpty ? 'jpg' : extension}';
-        final newImageFile = await sourceFile.copy('${projectDir.path}/$uniqueName');
-        if (!mounted) return;
+        final newImageFile =
+            await sourceFile.copy('${projectDir.path}/$uniqueName');
+        if (!canApply()) {
+          await newImageFile.delete();
+          return;
+        }
         await FileImage(newImageFile).evict();
-        if (!mounted) return;
+        if (!canApply()) {
+          await newImageFile.delete();
+          return;
+        }
         setState(() {
           if (sideA) {
             a = newImageFile;
@@ -1488,11 +1500,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           _templatePhotoStartScales[sideA] = 1.0;
           // Explicitly choosing a photo overrides the sticky text lock.
           _clearCanvasSelection();
-          _selectCanvasObject(photoSideA: sideA);
+          if (keepRemoverOpen) {
+            _setMainRemoverSide(sideA);
+          } else if (selectedReadyMadeTemplate == null) {
+            _selectCanvasObject(photoSideA: sideA);
+          } else {
+            _selectCanvasObject(templatePhotoSideA: sideA);
+          }
         });
       }
     } catch (_) {
-      msg('Could not select the photo.');
+      if (canApply()) msg('Could not select the photo.');
     }
   }
 
@@ -4211,14 +4229,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     _clearCanvasSelection();
   }
 
-  Future<void> _uploadMainRemoverPhoto(bool sideA) async {
-    final previous = (sideA ? a : b)?.path;
-    await pick(sideA);
-    if (!mounted) return;
-    final current = (sideA ? a : b)?.path;
-    if (current != null && current != previous && _selectedPhotoSideA == sideA) {
-      setState(() => _setMainRemoverSide(sideA));
-    }
+  Future<void> _uploadMainRemoverPhoto(bool sideA) {
+    final session = _mainRemoverSession;
+    final template = selectedReadyMadeTemplate;
+    return pick(
+      sideA,
+      keepRemoverOpen: true,
+      isCurrent: () =>
+          session == _mainRemoverSession &&
+          _mainRemoverSide == sideA &&
+          selectedReadyMadeTemplate == template,
+    );
   }
 
   void openTextTools() {
