@@ -36,25 +36,28 @@ void main() {
     file.writeAsBytesSync(img.encodePng(originalImage));
     File? result;
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          height: 232,
-          width: 393,
-          child: BackgroundRemoverPage(
-            initialPhotoA: null,
-            initialPhotoB: file,
-            initialSideA: false,
-            onClose: () {},
-            autoMask: (source, width, height) async => Uint8List(width * height),
-            onApply: (sideA, cutout) async {
-              expect(sideA, isFalse);
-              result = cutout;
-            },
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 232,
+            width: 393,
+            child: BackgroundRemoverPage(
+              initialPhotoA: null,
+              initialPhotoB: file,
+              initialSideA: false,
+              onClose: () {},
+              autoMask: (source, width, height) async =>
+                  Uint8List(width * height),
+              onApply: (sideA, cutout) async {
+                expect(sideA, isFalse);
+                result = cutout;
+              },
+            ),
           ),
         ),
       ),
-    ));
+    );
 
     Future<void> waitFor(bool Function() done) async {
       for (var attempt = 0; attempt < 100 && !done(); attempt++) {
@@ -86,12 +89,20 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, 'Reset'));
     await tester.pump();
     await waitFor(() => result != null);
-    expect(img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 255), isTrue);
+    expect(
+      img
+          .decodePng(result!.readAsBytesSync())!
+          .every((pixel) => pixel.a == 255),
+      isTrue,
+    );
     result = null;
     await tester.tap(find.widgetWithText(OutlinedButton, 'Auto Remove'));
     await tester.pump();
     await waitFor(() => result != null);
-    expect(img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 0), isTrue);
+    expect(
+      img.decodePng(result!.readAsBytesSync())!.every((pixel) => pixel.a == 0),
+      isTrue,
+    );
     expect(tester.takeException(), isNull);
   });
 }
