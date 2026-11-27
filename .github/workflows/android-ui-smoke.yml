@@ -55,6 +55,8 @@ jobs:
 
       - name: Prepare Android emulator
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpulse0
           image='system-images;android-29;google_apis;x86_64'
           manager="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f -print | sort -V | tail -1)"
           if [ -z "$manager" ]; then
@@ -64,6 +66,11 @@ jobs:
             manager="$RUNNER_TEMP/android-command-line-tools/cmdline-tools/bin/sdkmanager"
           fi
           "$manager" --sdk_root="$ANDROID_HOME" 'emulator' 'platform-tools' "$image"
+          emulator_libraries="$(ldd "$ANDROID_HOME/emulator/qemu/linux-x86_64/qemu-system-x86_64")"
+          printf '%s\n' "$emulator_libraries"
+          if grep -Fq 'libpulse.so.0 => not found' <<< "$emulator_libraries"; then
+            exit 1
+          fi
           export ANDROID_AVD_HOME="$RUNNER_TEMP/voting-pro-avd"
           mkdir -p "$ANDROID_AVD_HOME"
           echo no | "$(dirname "$manager")/avdmanager" create avd --force \
