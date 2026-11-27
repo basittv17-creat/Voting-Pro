@@ -159,7 +159,8 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify "$APK"
-          jarsigner -verify "$AAB" >/dev/null
+          LC_ALL=C jarsigner -J-Duser.language=en -verify "$AAB" > "$RUNNER_TEMP/aab-signature.txt"
+          grep -Fx "jar verified." "$RUNNER_TEMP/aab-signature.txt"
           echo "SIGNED_APK_AND_AAB_VERIFIED"
 
       - name: Verify Android 16 KB APK alignment for Google Play
@@ -170,6 +171,36 @@ jobs:
           test -n "$ZIPALIGN"
           "$ZIPALIGN" -c -P 16 -v 4 "$APK"
           echo "ANDROID_16KB_ALIGNMENT_VERIFIED"
+
+      - name: Measure signed Android packages
+        run: |
+          python3 - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          paths = (
+              Path("build/app/outputs/flutter-apk/app-release.apk"),
+              Path("build/app/outputs/bundle/release/app-release.aab"),
+          )
+          for path in paths:
+              print(f"{path.name}: {path.stat().st_size} bytes")
+              totals = Counter()
+              with ZipFile(path) as archive:
+                  for entry in archive.infolist():
+                      parts = Path(entry.filename).parts
+                      if entry.filename.endswith(".so") and "lib" in parts:
+                          category = "Native " + parts[parts.index("lib") + 1]
+                      elif "flutter_assets" in parts and entry.filename.endswith(".png"):
+                          category = "Flutter PNG"
+                      elif entry.filename.lower().endswith((".ttf", ".otf")):
+                          category = "Fonts"
+                      else:
+                          category = "Other entries"
+                      totals[category] += entry.compress_size
+              for category, size in sorted(totals.items()):
+                  print(f"  {category}: {size} compressed entry bytes")
+          PY
 
       - name: Build Web
         run: flutter build web --release
