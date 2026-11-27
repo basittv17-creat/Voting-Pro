@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 
@@ -35,12 +36,21 @@ class OfflineBgRemover {
     int width,
     int height,
   ) async {
+    final model = await rootBundle.load(modelAsset);
+    return compute(_inferMask, (model.buffer.asUint8List(model.offsetInBytes, model.lengthInBytes), sourcePng, width, height));
+  }
+
+  static Uint8List _inferMask((Uint8List, Uint8List, int, int) inputData) {
+    final (model, sourcePng, width, height) = inputData;
     final image = img.decodeImage(sourcePng);
     if (image == null) throw const FormatException('Cannot read image');
-    final interpreter = await Interpreter.fromAsset(
-      modelAsset,
-      options: InterpreterOptions()..addMediaPipeCustomOps(),
-    );
+    final options = InterpreterOptions()..addMediaPipeCustomOps();
+    late final Interpreter interpreter;
+    try {
+      interpreter = Interpreter.fromBuffer(model, options: options);
+    } finally {
+      options.delete();
+    }
     try {
       final inputShape = interpreter.getInputTensor(0).shape;
       if (inputShape.length != 4 ||
@@ -97,9 +107,39 @@ class OfflineBgRemover {
               .clamp(0.0, 1.0).toDouble();
         }
       }
-      return resizeSoftMask(result, mw, mh, width, height);
+      final alpha = resizeSoftMask(result, mw, mh, width, height);
+      if (image.width == width && image.height == height) {
+        refineSoftEdges(alpha, image);
+      }
+      return alpha;
     } finally {
       interpreter.close();
+    }
+  }
+
+  /// Smooth only uncertain model edges. Neighbours across a strong RGB
+  /// boundary have little influence on the hair or clothing pixel being refined.
+  static void refineSoftEdges(Uint8List mask, img.Image source) {
+    final width = source.width;
+    final height = source.height;
+    if (mask.length != width * height) throw const FormatException('Mask size mismatch');
+    final original = Uint8List.fromList(mask);
+    for (var y = 1; y < height - 1; y++) {
+      for (var x = 1; x < width - 1; x++) {
+        final i = y * width + x;
+        final value = original[i];
+        if (value < 8 || value > 247) continue;
+        final center = source.getPixel(x, y);
+        double sum = value * 4.0, weights = 4;
+        for (final (dx,dy) in const [(-1,0),(1,0),(0,-1),(0,1)]) {
+          final neighbor = source.getPixel(x+dx,y+dy);
+          final distance = (center.r-neighbor.r).abs() + (center.g-neighbor.g).abs() + (center.b-neighbor.b).abs();
+          final weight = 1 / (1 + distance / 24);
+          sum += original[i+dy*width+dx]*weight;
+          weights += weight;
+        }
+        mask[i] = (sum/weights).round();
+      }
     }
   }
 

@@ -1484,11 +1484,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     final previousADelete = showASideLabelDelete;
     final previousBDelete = showBSideLabelDelete;
     setState(() {
-      _clearCanvasSelection(preserveRemover: true);
+      isExportingPoster = true;
+      _clearCanvasSelection();
       _selectedPhotoSideA = previousPhoto;
       _photoPanel = previousPhotoPanel;
       _mainRemoverSide = previousMainRemover;
-      isExportingPoster = true;
     });
     try {
       await WidgetsBinding.instance.endOfFrame;
@@ -1528,8 +1528,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   // Clear selection state only; keep poster objects and their content intact.
   // This prevents selection borders and edit/delete/resize handles from being
   // included in the saved image.
-  void _clearCanvasSelection({bool preserveRemover = false}) {
-    if (!preserveRemover && _mainRemoverSide != null) _mainRemoverSession++;
+  void _clearCanvasSelection() {
+    if (!isExportingPoster && _mainRemoverSide != null) _mainRemoverSession++;
     _mainRemoverSide = null;
     _photoPanel = null;
     selectedTextIndex = null;
