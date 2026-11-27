@@ -31,11 +31,15 @@ def addCentralMirror = { repos ->
     }
 }
 gradle.beforeSettings { settings ->
-    addCentralMirror(settings.pluginManagement.repositories)
-    settings.pluginManagement.repositories.gradlePluginPortal()
+    if (settings.settingsDir.path.endsWith("/packages/flutter_tools/gradle")) {
+        addCentralMirror(settings.pluginManagement.repositories)
+        settings.pluginManagement.repositories.gradlePluginPortal()
+    }
 }
 gradle.beforeProject { project ->
-    addCentralMirror(project.buildscript.repositories)
+    if (project.rootDir.path.endsWith("/packages/flutter_tools/gradle")) {
+        addCentralMirror(project.buildscript.repositories)
+    }
 }
 GRADLE
   fi
