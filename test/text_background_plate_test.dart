@@ -64,10 +64,12 @@ void main() {
     expect(plain.opacity, .85);
     expect(plain.color, const Color(0xFFFFD84D));
 
-    await tap(tester, find.descendant(
-      of: dock,
-      matching: find.text('Advanced Backgrounds'),
-    ));
+    await tap(
+        tester,
+        find.descendant(
+          of: dock,
+          matching: find.text('Advanced Backgrounds'),
+        ));
     await tap(tester, find.text('Royal Gold'));
     expect(tester.getRect(dock), bounds);
     final selected = find.byWidgetPredicate(
