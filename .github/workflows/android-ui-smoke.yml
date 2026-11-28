@@ -15,6 +15,7 @@ on:
       - 'test/text_input_direction_test.dart'
       - 'test/text_font_persistence_test.dart'
       - 'test/text_editor_controls_test.dart'
+      - 'test_driver/android_screenshot_driver.dart'
       - 'test/advanced_text_overlay_bilingual_test.dart'
       - 'test/text_effect_history_test.dart'
       - 'integration_test/vs_styles_android_test.dart'
@@ -198,15 +199,30 @@ jobs:
           if [ -r /sys/fs/cgroup/memory.events ]; then
             cat /sys/fs/cgroup/memory.events
           fi
-          if [ -f "$RUNNER_TEMP/voting-pro-emulator.log" ]; then
-            tail -150 "$RUNNER_TEMP/voting-pro-emulator.log"
-          fi
+          for emulator_log in "$RUNNER_TEMP"/voting-pro-emulator-session-*.log; do
+            [ -f "$emulator_log" ] || continue
+            echo "===== $emulator_log ====="
+            tail -150 "$emulator_log"
+          done
+          for suite_log in "$RUNNER_TEMP"/voting-pro-*-attempt-*.log "$RUNNER_TEMP"/voting-pro-*-logcat.txt; do
+            [ -f "$suite_log" ] || continue
+            echo "===== $suite_log ====="
+            tail -120 "$suite_log"
+          done
           # A dead emulator must not hold the failed job open indefinitely.
           if [ "$(timeout 10s adb -s emulator-5554 get-state 2>/dev/null || true)" = device ]; then
             timeout 20s adb -s emulator-5554 logcat -d -s AndroidRuntime:E libc:E || true
           else
             echo '::warning::Emulator unavailable; see the host emulator log above.'
           fi
+
+      - name: Upload per-suite Android and emulator diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: voting-pro-android-smoke-diagnostics
+          path: ${{ runner.temp }}/voting-pro-*
+          if-no-files-found: ignore
 
       - name: Retain screenshots from completed Android suites on failure
         if: failure()
