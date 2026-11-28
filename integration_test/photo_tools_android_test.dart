@@ -127,7 +127,6 @@ void main() {
     expect(tester.getSize(imageFor('B')), bSize);
     await tap(action('Zoom Out'));
     await tap(action('Backgrounds'));
-    mark('photo-b-backgrounds-opened');
     mark('photo-a-backgrounds-opened');
     await tap(find.text('Ocean'));
     mark('photo-a-ocean-selected');
@@ -135,14 +134,12 @@ void main() {
     expect(tester.getRect(back), backBounds);
     await capture('photo-03-side-a-backgrounds');
     await tap(action('Remove Background'));
-    mark('photo-b-inline-remover-opened');
     mark('photo-a-inline-remover-opened');
     expect(find.text('Remove Background — A Side'), findsOneWidget);
     await capture('photo-08-side-a-inline-remover');
     final close = find.byKey(const ValueKey('inline-remover-close'));
     expect(tester.getCenter(close).dx, greaterThan(tester.getCenter(remover).dx));
     await tap(close);
-    mark('photo-b-inline-remover-closed');
     mark('photo-a-inline-remover-closed');
     expect(remover, findsNothing);
     expect(toolbar, findsOneWidget);
@@ -157,11 +154,13 @@ void main() {
     expect(find.byKey(const ValueKey('photo-selection-A')), findsNothing);
     await capture('photo-04-side-b');
     await tap(action('Backgrounds'));
+    mark('photo-b-backgrounds-opened');
     expect(
       find.text('Use Remove Background first to reveal a photo background.'),
       findsOneWidget,
     );
     await tap(action('Remove Background'));
+    mark('photo-b-inline-remover-opened');
     expect(find.text('Remove Background — B Side'), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
     expect(tester.getRect(toolbar), bounds);
@@ -193,6 +192,7 @@ void main() {
     await capture('photo-06-side-b-cutout-applied');
     final appliedPath = pathOf('B');
     await tap(close);
+    mark('photo-b-inline-remover-closed');
     expect(remover, findsNothing);
     expect(toolbar, findsOneWidget);
     expect(pathOf('B'), appliedPath);
