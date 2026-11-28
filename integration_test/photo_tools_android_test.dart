@@ -302,4 +302,88 @@ void main() {
       mark(side ? 'scene-contact-sheet-a-complete' : 'scene-contact-sheet-b-complete');
     }
   });
+  testWidgets('Ready-made template photo backgrounds stay independent on Android', (
+    tester,
+  ) async {
+    final directory = await getTemporaryDirectory();
+    Future<File> fixture(String side, int red) async {
+      final photo = img.Image(width: 160, height: 200, numChannels: 4);
+      for (final pixel in photo) {
+        pixel
+          ..r = red
+          ..g = 125
+          ..b = 190
+          ..a = pixel.x < 55 ? 0 : 255;
+      }
+      return File('${directory.path}/template-background-$side.png')
+          .writeAsBytes(img.encodePng(photo));
+    }
+
+    final a = await fixture('A', 218);
+    final b = await fixture('B', 44);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'voting_pro_project_v1',
+      jsonEncode({
+        'imageA': a.path,
+        'imageB': b.path,
+        'selectedReadyMadeTemplate': 'royal_a_vs_b_battle',
+      }),
+    );
+    await voting_pro.main();
+    await tester.pumpAndSettle();
+    await binding.convertFlutterSurfaceToImage();
+    await tester.pumpAndSettle();
+
+    Future<void> tap(Finder target) async {
+      await tester.ensureVisible(target);
+      await tester.pumpAndSettle();
+      await tester.tap(target);
+      await tester.pumpAndSettle();
+    }
+
+    await tap(find.text('A BG'));
+    expect(find.text('Backgrounds — A Side'), findsOneWidget);
+    expect(find.byType(PhotoSceneCard), findsWidgets);
+    await tap(find.byKey(const ValueKey('scene-arena')));
+    final aBackground = find.byKey(
+      const ValueKey('template-photo-background-A'),
+    );
+    expect(aBackground, findsOneWidget);
+    expect(
+      find.descendant(of: aBackground, matching: find.byType(PhotoSceneArt)),
+      findsOneWidget,
+    );
+
+    await tap(find.text('B BG'));
+    expect(find.text('Backgrounds — B Side'), findsOneWidget);
+    await tap(find.byKey(const ValueKey('scene-cage')));
+    final bBackground = find.byKey(
+      const ValueKey('template-photo-background-B'),
+    );
+    expect(bBackground, findsOneWidget);
+    expect(
+      find.descendant(of: bBackground, matching: find.byType(PhotoSceneArt)),
+      findsOneWidget,
+    );
+
+    await tap(find.text('A BG'));
+    expect(
+      tester
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-arena')))
+          .selected,
+      isTrue,
+    );
+    await tap(find.text('B BG'));
+    expect(
+      tester
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-cage')))
+          .selected,
+      isTrue,
+    );
+    await binding.takeScreenshot('template-photo-backgrounds-ab');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
 }
