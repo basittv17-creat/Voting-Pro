@@ -3466,11 +3466,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () {
+                FocusScope.of(dialogContext).unfocus();
+                Navigator.pop(dialogContext);
+              },
               child: Text(AppLanguage.tr('Cancel')),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, input.trim()),
+              onPressed: () {
+                FocusScope.of(dialogContext).unfocus();
+                Navigator.pop(dialogContext, input.trim());
+              },
               child: Text(AppLanguage.tr('Add')),
             ),
           ],
