@@ -12,6 +12,14 @@ import 'package:voting_pro/widgets/photo_scene.dart';
 
 const _projectKey = 'voting_pro_project_v1';
 
+Future<void> _pumpBackgroundPanel(WidgetTester tester) async {
+  await tester.pump();
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 250)),
+  );
+  await tester.pump(const Duration(milliseconds: 250));
+}
+
 File _transparentPhoto(Directory directory, String name, int red) {
   final image = img.Image(width: 48, height: 64, numChannels: 4);
   for (final pixel in image) {
@@ -57,10 +65,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('A BG'));
-    await tester.pumpAndSettle();
+    await _pumpBackgroundPanel(tester);
     expect(find.text('Backgrounds — A Side'), findsOneWidget);
     expect(find.byType(PhotoSceneCard), findsWidgets);
-    await tester.tap(find.byKey(const ValueKey('arena')));
+    await tester.tap(find.byKey(const ValueKey('scene-arena')));
     await tester.pumpAndSettle();
     final aBackground =
         find.byKey(const ValueKey('template-photo-background-A'));
@@ -71,9 +79,9 @@ void main() {
     );
 
     await tester.tap(find.text('B BG'));
-    await tester.pumpAndSettle();
+    await _pumpBackgroundPanel(tester);
     expect(find.text('Backgrounds — B Side'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('cage')));
+    await tester.tap(find.byKey(const ValueKey('scene-cage')));
     await tester.pumpAndSettle();
     final bBackground =
         find.byKey(const ValueKey('template-photo-background-B'));
@@ -84,30 +92,30 @@ void main() {
     );
 
     await tester.tap(find.text('A BG'));
-    await tester.pumpAndSettle();
+    await _pumpBackgroundPanel(tester);
     expect(
       tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('arena')))
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-arena')))
           .selected,
       isTrue,
     );
     expect(
       tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('cage')))
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-cage')))
           .selected,
       isFalse,
     );
     await tester.tap(find.text('B BG'));
-    await tester.pumpAndSettle();
+    await _pumpBackgroundPanel(tester);
     expect(
       tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('cage')))
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-cage')))
           .selected,
       isTrue,
     );
     expect(
       tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('arena')))
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-arena')))
           .selected,
       isFalse,
     );
@@ -155,7 +163,7 @@ void main() {
           'imageA': photoA.path,
           'imageB': photoB.path,
           'selectedReadyMadeTemplate': template,
-          'photoBackgrounds': {'a': 'arena', 'b': 'cage'},
+          'photoBackgrounds': {'a': 'scene-arena', 'b': 'scene-cage'},
         }),
       });
       await tester.pumpWidget(const SizedBox.shrink());
