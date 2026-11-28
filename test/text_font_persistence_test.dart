@@ -40,7 +40,9 @@ void main() {
     await tester.tap(font);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Elegant'));
+    final elegant = find.text('Elegant');
+    await tester.ensureVisible(elegant);
+    await tester.tap(elegant);
     await tester.pumpAndSettle();
     expect(
       tester.widget<AdvancedTextOverlay>(overlay).style.fontFamily,
