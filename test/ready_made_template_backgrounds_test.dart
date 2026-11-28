@@ -111,6 +111,12 @@ void main() {
           .selected,
       isFalse,
     );
+
+    await tester.tap(find.text('Templates'));
+    await tester.pumpAndSettle();
+    expect(find.text('Backgrounds — B Side'), findsNothing);
+    expect(find.byType(PhotoSceneCard), findsNothing);
+    expect(find.byType(GridView), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
