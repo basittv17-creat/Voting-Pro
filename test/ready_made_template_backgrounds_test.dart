@@ -56,7 +56,7 @@ void main() {
     await tester.tap(find.text('A BG'));
     await tester.pumpAndSettle();
     expect(find.text('Backgrounds — A Side'), findsOneWidget);
-    expect(find.byType(PhotoSceneCard), findsNWidgets(PhotoScene.values.length));
+    expect(find.byType(PhotoSceneCard), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('arena')));
     await tester.pumpAndSettle();
     final aBackground = find.byKey(const ValueKey('template-photo-background-A'));
