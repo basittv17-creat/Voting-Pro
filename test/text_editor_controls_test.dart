@@ -29,7 +29,10 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: Editor()));
     await tester.pumpAndSettle();
     final overlay = find.byType(AdvancedTextOverlay);
-    await tester.tap(find.text('Voting Pro'));
+    final selectedOverlay = find.byKey(const ValueKey('text-overlay-0'));
+    expect(selectedOverlay, findsOneWidget);
+    await tester.ensureVisible(selectedOverlay);
+    await tester.tap(selectedOverlay);
     await tester.pumpAndSettle();
 
     final mainToolbar = find.byKey(const PageStorageKey('main-toolbar'));
