@@ -10,9 +10,7 @@ import 'package:voting_pro/widgets/advanced_text_overlay.dart';
 void main() {
   tearDown(() => AppLanguage.current = 'en');
 
-  testWidgets('Built-in font persists after reopen', (
-    tester,
-  ) async {
+  testWidgets('Built-in font persists after reopen', (tester) async {
     SharedPreferences.setMockInitialValues({
       'voting_pro_project_v1': jsonEncode({
         'overlays': ['Voting Pro'],
