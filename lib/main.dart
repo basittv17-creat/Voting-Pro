@@ -2694,6 +2694,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   bool _hasArabicScript(String value) => RegExp(r'[\u0600-\u06FF]').hasMatch(value);
 
+  TextDirection _textInputDirection(String value) {
+    if (_hasArabicScript(value)) return TextDirection.rtl;
+    if (value.trim().isNotEmpty) return TextDirection.ltr;
+    return AppLanguage.direction;
+  }
+
+  TextAlign _textInputAlignment(String value) =>
+      _textInputDirection(value) == TextDirection.rtl
+          ? TextAlign.right
+          : TextAlign.left;
+
   TextAlign _overlayTextAlign(int index) {
     switch (textAlignments[index]) {
       case 'left':
@@ -3375,23 +3386,41 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   Future<void> addText() async {
     var input = '';
-    final value = await showDialog<String>(context: context, builder: (c) => AlertDialog(
-      title: Text(AppLanguage.tr('متن شامل کریں')),
-      content: TextField(
-        onChanged: (text) => input = text,
-        autofocus: true,
-        keyboardType: TextInputType.multiline,
-        textCapitalization: TextCapitalization.sentences,
-        minLines: 2,
-        maxLines: 6,
-        textDirection: AppLanguage.direction,
-        decoration: InputDecoration(
-          hintText: AppLanguage.tr('اردو یا English میں ٹیکسٹ لکھیں'),
-          border: const OutlineInputBorder(),
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, dialogSetState) => AlertDialog(
+          title: Text(AppLanguage.tr('متن شامل کریں')),
+          content: TextField(
+            onChanged: (text) {
+              input = text;
+              dialogSetState(() {});
+            },
+            autofocus: true,
+            keyboardType: TextInputType.multiline,
+            textCapitalization: TextCapitalization.sentences,
+            minLines: 2,
+            maxLines: 6,
+            textDirection: _textInputDirection(input),
+            textAlign: _textInputAlignment(input),
+            decoration: InputDecoration(
+              hintText: AppLanguage.tr('اردو یا English میں ٹیکسٹ لکھیں'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppLanguage.tr('Cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, input.trim()),
+              child: Text(AppLanguage.tr('Add')),
+            ),
+          ],
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(c), child: Text(AppLanguage.tr('Cancel'))), FilledButton(onPressed: () => Navigator.pop(c, input.trim()), child: Text(AppLanguage.tr('Add')))],
-    ));
+    );
     if (value != null && value.isNotEmpty && mounted) {
       _rememberTextEdit();
       setState(() {
@@ -3426,37 +3455,42 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
     final value = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(AppLanguage.tr('Edit Text')),
-        content: TextFormField(
-          initialValue: initialText,
-          onChanged: (text) => input = text,
-          autofocus: true,
-          keyboardType: TextInputType.multiline,
-          textCapitalization: TextCapitalization.sentences,
-          minLines: 2,
-          maxLines: 6,
-          textDirection: _hasArabicScript(initialText)
-              ? TextDirection.rtl : AppLanguage.direction,
-          decoration: InputDecoration(
-            hintText: AppLanguage.tr('اپنا ٹیکسٹ یہاں تبدیل کریں'),
-            border: const OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(AppLanguage.tr('Cancel')),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(
-              dialogContext,
-              input.trim(),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, dialogSetState) => AlertDialog(
+          title: Text(AppLanguage.tr('Edit Text')),
+          content: TextFormField(
+            initialValue: initialText,
+            onChanged: (text) {
+              input = text;
+              dialogSetState(() {});
+            },
+            autofocus: true,
+            keyboardType: TextInputType.multiline,
+            textCapitalization: TextCapitalization.sentences,
+            minLines: 2,
+            maxLines: 6,
+            textDirection: _textInputDirection(input),
+            textAlign: _textInputAlignment(input),
+            decoration: InputDecoration(
+              hintText: AppLanguage.tr('اپنا ٹیکسٹ یہاں تبدیل کریں'),
+              border: const OutlineInputBorder(),
             ),
-            icon: const Icon(Icons.check),
-            label: Text(AppLanguage.tr('Save')),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppLanguage.tr('Cancel')),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                input.trim(),
+              ),
+              icon: const Icon(Icons.check),
+              label: Text(AppLanguage.tr('Save')),
+            ),
+          ],
+        ),
       ),
     );
 
