@@ -332,8 +332,6 @@ void main() {
     );
     await voting_pro.main();
     await tester.pumpAndSettle();
-    await binding.convertFlutterSurfaceToImage();
-    await tester.pumpAndSettle();
 
     Future<void> tap(Finder target) async {
       await tester.ensureVisible(target);
@@ -381,7 +379,6 @@ void main() {
           .selected,
       isTrue,
     );
-    await binding.takeScreenshot('template-photo-backgrounds-ab');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
