@@ -19,6 +19,7 @@ class MetallicVsBattleTemplate extends StatefulWidget {
     this.initialOffsetB = Offset.zero,
     this.onPhotoTransform,
     this.onPhotoSelected,
+    this.photoBackgroundBuilder,
   });
 
   final File? photoA;
@@ -35,6 +36,7 @@ class MetallicVsBattleTemplate extends StatefulWidget {
   final Offset initialOffsetB;
   final void Function(bool sideA, double scale, Offset offset)? onPhotoTransform;
   final ValueChanged<bool>? onPhotoSelected;
+  final Widget Function(bool sideA)? photoBackgroundBuilder;
 
   @override
   State<MetallicVsBattleTemplate> createState() => _MetallicVsBattleTemplateState();
@@ -98,7 +100,8 @@ class _MetallicVsBattleTemplateState extends State<MetallicVsBattleTemplate> {
           _notify(sideA);
         },
         child: Stack(fit: StackFit.expand, children: [
-          const ColoredBox(color: Color(0x00000000)),
+          widget.photoBackgroundBuilder?.call(sideA) ??
+              const ColoredBox(color: Color(0x00000000)),
           if (file != null)
             Transform.translate(
               offset: offset,
