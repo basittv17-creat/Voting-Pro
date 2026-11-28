@@ -92,7 +92,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = find.byType(TextFormField);
-    TextFormField input() => tester.widget<TextFormField>(field);
+    final innerField = find.descendant(
+      of: field,
+      matching: find.byType(TextField),
+    );
+    TextField input() => tester.widget<TextField>(innerField);
 
     expect(input().textDirection, TextDirection.ltr);
     expect(input().textAlign, TextAlign.left);
