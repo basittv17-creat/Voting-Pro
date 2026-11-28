@@ -30,10 +30,13 @@ void main() {
   setUp(() => AppLanguage.current = 'en');
   tearDown(() => AppLanguage.current = 'en');
 
-  testWidgets('Ready-made templates expose independent A/B background pickers after cutout', (
+  testWidgets(
+      'Ready-made templates expose independent A/B background pickers after cutout',
+      (
     tester,
   ) async {
-    final directory = Directory.systemTemp.createTempSync('voting-template-bg-');
+    final directory =
+        Directory.systemTemp.createTempSync('voting-template-bg-');
     addTearDown(() => directory.deleteSync(recursive: true));
     final photoA = _transparentPhoto(directory, 'photo-a', 220);
     final photoB = _transparentPhoto(directory, 'photo-b', 40);
@@ -59,7 +62,8 @@ void main() {
     expect(find.byType(PhotoSceneCard), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('arena')));
     await tester.pumpAndSettle();
-    final aBackground = find.byKey(const ValueKey('template-photo-background-A'));
+    final aBackground =
+        find.byKey(const ValueKey('template-photo-background-A'));
     expect(aBackground, findsOneWidget);
     expect(
       find.descendant(of: aBackground, matching: find.byType(PhotoSceneArt)),
@@ -71,7 +75,8 @@ void main() {
     expect(find.text('Backgrounds — B Side'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('cage')));
     await tester.pumpAndSettle();
-    final bBackground = find.byKey(const ValueKey('template-photo-background-B'));
+    final bBackground =
+        find.byKey(const ValueKey('template-photo-background-B'));
     expect(bBackground, findsOneWidget);
     expect(
       find.descendant(of: bBackground, matching: find.byType(PhotoSceneArt)),
@@ -81,31 +86,42 @@ void main() {
     await tester.tap(find.text('A BG'));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<PhotoSceneCard>(find.byKey(const ValueKey('arena'))).selected,
+      tester
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('arena')))
+          .selected,
       isTrue,
     );
     expect(
-      tester.widget<PhotoSceneCard>(find.byKey(const ValueKey('cage'))).selected,
+      tester
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('cage')))
+          .selected,
       isFalse,
     );
     await tester.tap(find.text('B BG'));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<PhotoSceneCard>(find.byKey(const ValueKey('cage'))).selected,
+      tester
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('cage')))
+          .selected,
       isTrue,
     );
     expect(
-      tester.widget<PhotoSceneCard>(find.byKey(const ValueKey('arena'))).selected,
+      tester
+          .widget<PhotoSceneCard>(find.byKey(const ValueKey('arena')))
+          .selected,
       isFalse,
     );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Every ready-made template renders selected photo backgrounds under both photos', (
+  testWidgets(
+      'Every ready-made template renders selected photo backgrounds under both photos',
+      (
     tester,
   ) async {
-    final directory = Directory.systemTemp.createTempSync('voting-template-art-');
+    final directory =
+        Directory.systemTemp.createTempSync('voting-template-art-');
     addTearDown(() => directory.deleteSync(recursive: true));
     final photoA = _transparentPhoto(directory, 'photo-a', 220);
     final photoB = _transparentPhoto(directory, 'photo-b', 40);
@@ -141,7 +157,8 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final side in ['A', 'B']) {
-        final background = find.byKey(ValueKey('template-photo-background-$side'));
+        final background =
+            find.byKey(ValueKey('template-photo-background-$side'));
         expect(background, findsOneWidget, reason: template);
         expect(
           find.descendant(
