@@ -36,6 +36,7 @@ class TagraArenaPoster extends StatelessWidget {
     this.onSelect,
     this.onName,
     this.onTransform,
+    this.photoBackgroundBuilder,
     this.exporting = false,
   });
 
@@ -47,6 +48,7 @@ class TagraArenaPoster extends StatelessWidget {
   final Map<bool, Offset> offsets;
   final ValueChanged<bool>? onPick, onSelect, onName;
   final void Function(bool, double, Offset)? onTransform;
+  final Widget Function(bool sideA)? photoBackgroundBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +70,7 @@ class TagraArenaPoster extends StatelessWidget {
                 child: _Portrait(
                   key: ValueKey('arena-photo-${side ? "A" : "B"}'),
                   file: side ? photoA : photoB,
+                  background: photoBackgroundBuilder?.call(side),
                   scale: scales[side] ?? 1,
                   offset: offsets[side] ?? Offset.zero,
                   label: urdu
@@ -144,6 +147,7 @@ class _Portrait extends StatefulWidget {
   const _Portrait({
     super.key,
     required this.file,
+    this.background,
     required this.scale,
     required this.offset,
     required this.label,
@@ -152,6 +156,7 @@ class _Portrait extends StatefulWidget {
     required this.onTransform,
   });
   final File? file;
+  final Widget? background;
   final double scale;
   final Offset offset;
   final String label;
@@ -204,17 +209,23 @@ class _PortraitState extends State<_Portrait> {
                       );
                     },
               child: ClipRect(
-                child: widget.file == null
-                    ? (widget.onTap == null
-                        ? const SizedBox.expand()
-                        : const Center(
-                            child: Icon(
-                              Icons.add_photo_alternate_outlined,
-                              color: Colors.white70,
-                              size: 68,
-                            ),
-                          ))
-                    : Transform.translate(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (widget.background != null)
+                      Positioned.fill(child: widget.background!),
+                    if (widget.file == null)
+                      widget.onTap == null
+                          ? const SizedBox.expand()
+                          : const Center(
+                              child: Icon(
+                                Icons.add_photo_alternate_outlined,
+                                color: Colors.white70,
+                                size: 68,
+                              ),
+                            )
+                    else
+                      Transform.translate(
                         offset: widget.offset,
                         child: Transform.scale(
                           scale: widget.scale,
@@ -227,6 +238,8 @@ class _PortraitState extends State<_Portrait> {
                           ),
                         ),
                       ),
+                  ],
+                ),
               ),
             ),
           );
