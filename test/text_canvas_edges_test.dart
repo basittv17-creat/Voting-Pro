@@ -43,7 +43,13 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const MaterialApp(home: Editor()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Text'));
+    final mainToolbar = find.byKey(const PageStorageKey('main-toolbar'));
+    final textTool = find.descendant(
+      of: mainToolbar,
+      matching: find.text('Text'),
+    );
+    await tester.ensureVisible(textTool);
+    await tester.tap(textTool);
     await tester.pumpAndSettle();
     final artwork = find.byType(AdvancedTextOverlay);
     await tester.tap(artwork);
