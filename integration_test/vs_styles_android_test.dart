@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voting_pro/main.dart' as voting_pro;
 import 'package:voting_pro/widgets/premium_vs.dart';
 import 'package:voting_pro/widgets/vs_styles_panel.dart';
@@ -10,19 +11,28 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('VS previews and poster agree on Android', (tester) async {
-    tester.view.physicalSize = const Size(590, 1278);
-    tester.view.devicePixelRatio = 2.5;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove('voting_pro_project_v1');
 
+    void mark(String step) => debugPrint('VS_STYLES_STEP: $step');
+
+    Future<void> settle() => tester.pumpAndSettle(
+          const Duration(milliseconds: 100),
+          EnginePhase.sendSemanticsUpdate,
+          const Duration(seconds: 30),
+        );
+
+    mark('test-start');
     await voting_pro.main();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    mark('app-first-frame');
     // Android starts with a surface-backed Flutter view whose test geometry
     // is zero until it is converted for integration screenshots. Convert
     // before reading bounds or tapping the toolbar, as the other Android
     // integration suites already do.
     await binding.convertFlutterSurfaceToImage();
-    await tester.pumpAndSettle();
+    await settle();
+    mark('editor-ready');
 
     final toolbar = find.byKey(const PageStorageKey('main-toolbar'));
     final poster = find.byType(Screenshot);
@@ -39,9 +49,10 @@ void main() {
     final posterBounds = tester.getRect(poster);
 
     await tester.ensureVisible(tool);
-    await tester.pumpAndSettle();
+    await settle();
     await tester.tap(tool);
-    await tester.pumpAndSettle();
+    await settle();
+    mark('vs-styles-panel-opened');
 
     final panel = find.byType(VsStylesPanel);
     expect(panel, findsOneWidget);
@@ -66,17 +77,19 @@ void main() {
         alignment: 0.5,
         duration: const Duration(milliseconds: 200),
       );
-      await tester.pumpAndSettle();
+      await settle();
       expect(tester.getRect(grid).contains(tester.getCenter(card)), isTrue);
       await tester.tap(card);
-      await tester.pumpAndSettle();
+      await settle();
       expect(tester.widget<PremiumVsRenderer>(canvasVs).style.name, style);
       expect(tester.getRect(canvasVs), vsBounds);
       await binding.takeScreenshot(screen);
+      mark('captured-$screen');
     }
 
     await tester.tap(find.byTooltip('Close'));
-    await tester.pumpAndSettle();
+    await settle();
+    mark('vs-styles-panel-closed');
     expect(panel, findsNothing);
     expect(tester.getRect(toolbar), toolbarBounds);
   });
