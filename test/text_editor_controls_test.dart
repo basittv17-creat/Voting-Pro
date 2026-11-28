@@ -31,8 +31,13 @@ void main() {
     final overlay = find.byType(AdvancedTextOverlay);
     final selectedOverlay = find.byKey(const ValueKey('text-overlay-0'));
     expect(selectedOverlay, findsOneWidget);
-    await tester.ensureVisible(selectedOverlay);
-    await tester.tap(selectedOverlay);
+    final renderedText = find.descendant(
+      of: selectedOverlay,
+      matching: find.byType(AdvancedTextOverlay),
+    );
+    expect(renderedText, findsOneWidget);
+    await tester.ensureVisible(renderedText);
+    await tester.tap(renderedText);
     await tester.pumpAndSettle();
 
     final mainToolbar = find.byKey(const PageStorageKey('main-toolbar'));
