@@ -50,7 +50,7 @@ class PhotoBackgroundSettingsState extends State<PhotoBackgroundSettings> {
       future: _transparent,
       builder: (context, snapshot) => CustomScrollView(
         key: const PageStorageKey('photo-background-scroll'),
-        cacheExtent: 150,
+        scrollCacheExtent: 150,
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
@@ -65,69 +65,72 @@ class PhotoBackgroundSettingsState extends State<PhotoBackgroundSettings> {
                   else if (snapshot.data == false)
                     Text(AppLanguage.tr(
                       'Use Remove Background first to reveal a photo background.',
-                    )),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 3,
-                    children: [
-                      ChoiceChip(
-                        label: Text(AppLanguage.tr('None')),
-                        selected: widget.selected == null,
-                        onSelected: (_) => widget.onSelected(null),
-                      ),
-                      for (final MapEntry(:key, :value) in widget.palettes.entries)
+                    ))
+                  else ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 3,
+                      children: [
                         ChoiceChip(
-                          avatar: DecoratedBox(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(colors: value),
-                            ),
-                            child: const SizedBox.square(dimension: 20),
-                          ),
-                          label: Text(AppLanguage.tr(key)),
-                          selected: widget.selected == key,
-                          onSelected: (_) => widget.onSelected(key),
+                          label: Text(AppLanguage.tr('None')),
+                          selected: widget.selected == null,
+                          onSelected: (_) => widget.onSelected(null),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    AppLanguage.tr('Premium photo backgrounds'),
-                    textDirection: AppLanguage.direction,
-                    style: const TextStyle(
-                      color: Color(0xffffd84d),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                        for (final MapEntry(:key, :value) in widget.palettes.entries)
+                          ChoiceChip(
+                            avatar: DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(colors: value),
+                              ),
+                              child: const SizedBox.square(dimension: 20),
+                            ),
+                            label: Text(AppLanguage.tr(key)),
+                            selected: widget.selected == key,
+                            onSelected: (_) => widget.onSelected(key),
+                          ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      AppLanguage.tr('Premium photo backgrounds'),
+                      textDirection: AppLanguage.direction,
+                      style: const TextStyle(
+                        color: Color(0xffffd84d),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 132,
-                mainAxisExtent: 124,
-                crossAxisSpacing: 7,
-                mainAxisSpacing: 7,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final scene = PhotoScene.values[index];
-                  return PhotoSceneCard(
-                    key: ValueKey(scene.id),
-                    scene: scene,
-                    sideA: widget.sideA,
-                    selected: widget.selected == scene.id,
-                    onTap: () => widget.onSelected(scene.id),
-                  );
-                },
-                childCount: PhotoScene.values.length,
+          if (snapshot.data == true)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 132,
+                  mainAxisExtent: 124,
+                  crossAxisSpacing: 7,
+                  mainAxisSpacing: 7,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final scene = PhotoScene.values[index];
+                    return PhotoSceneCard(
+                      key: ValueKey(scene.id),
+                      scene: scene,
+                      sideA: widget.sideA,
+                      selected: widget.selected == scene.id,
+                      onTap: () => widget.onSelected(scene.id),
+                    );
+                  },
+                  childCount: PhotoScene.values.length,
+                ),
               ),
             ),
-          ),
         ],
       ),
     ),
