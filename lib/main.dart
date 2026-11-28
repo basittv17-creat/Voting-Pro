@@ -1953,10 +1953,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   height: h * 0.530,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      _selectCanvasObject(templatePhotoSideA: true);
-                      pick(true);
-                    },
+                    onTap: () => pick(true),
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: true);
                       _templatePhotoStartScales[true] =
@@ -1986,10 +1983,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   height: h * 0.530,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      _selectCanvasObject(templatePhotoSideA: false);
-                      pick(false);
-                    },
+                    onTap: () => pick(false),
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: false);
                       _templatePhotoStartScales[false] =
@@ -2142,10 +2136,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   width: w * (548 / 1448), height: h * (774 / 1086),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      _selectCanvasObject(templatePhotoSideA: true);
-                      pick(true);
-                    },
+                    onTap: () => pick(true),
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: true);
                       _templatePhotoStartScales[true] = _templatePhotoScales[true] ?? 1.0;
@@ -2169,10 +2160,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   width: w * (545 / 1448), height: h * (772 / 1086),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      _selectCanvasObject(templatePhotoSideA: false);
-                      pick(false);
-                    },
+                    onTap: () => pick(false),
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: false);
                       _templatePhotoStartScales[false] = _templatePhotoScales[false] ?? 1.0;
