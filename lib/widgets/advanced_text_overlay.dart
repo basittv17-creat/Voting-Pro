@@ -2,6 +2,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'text_background_plate.dart';
 
+List<String> _curveRuns(String text) {
+  // Shape Arabic and Devanagari words together, including joining marks.
+  if (RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0900-\u097F]').hasMatch(text)) {
+    return RegExp(r'\S+|\s').allMatches(text).map((m) => m[0]!).toList();
+  }
+  return text.characters.toList();
+}
+
 /// Renderer shared by classic text overlays, canvas preview and poster export.
 /// Curved text supports Latin characters and shaped Urdu/Arabic word runs.
 /// Keeping RTL words intact preserves joining, ligatures and diacritics.
@@ -97,12 +105,7 @@ class AdvancedTextOverlay extends StatelessWidget {
   Widget _buildArtwork(Color? backgroundColor) {
     final canCurve = curve.abs() > 0.01 && !text.contains('\n');
     if (canCurve) {
-      final chars = RegExp(r'[\u0600-\u06FF]').hasMatch(text)
-          ? text
-              .split(RegExp(r'(?<=\s)|(?=\s)'))
-              .where((part) => part.isNotEmpty)
-              .toList()
-          : text.runes.map(String.fromCharCode).toList();
+      final chars = _curveRuns(text);
       double width = 0;
       double lineHeight = 0;
       for (final char in chars) {
@@ -261,12 +264,7 @@ class _CurvedTextPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final logicalRuns = RegExp(r'[\u0600-\u06FF]').hasMatch(text)
-        ? text
-            .split(RegExp(r'(?<=\s)|(?=\s)'))
-            .where((part) => part.isNotEmpty)
-            .toList()
-        : text.runes.map(String.fromCharCode).toList();
+    final logicalRuns = _curveRuns(text);
     // RTL is painted right-to-left while each word stays joined.
     final characters = direction == TextDirection.rtl
         ? logicalRuns.reversed.toList()
