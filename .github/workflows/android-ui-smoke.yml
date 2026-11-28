@@ -4,40 +4,16 @@ on:
   push:
     branches: [main]
     paths:
-      - 'lib/main.dart'
-      - 'lib/widgets/premium_text_editor_panel.dart'
-      - 'lib/widgets/advanced_text_overlay.dart'
-      - 'lib/widgets/scaled_overlay.dart'
-      - 'lib/widgets/text_background_dock.dart'
-      - 'lib/widgets/text_background_plate.dart'
-      - 'test/text_background_plate_test.dart'
-      - 'test/text_canvas_edges_test.dart'
-      - 'test/text_input_direction_test.dart'
-      - 'test/text_font_persistence_test.dart'
-      - 'test/text_editor_controls_test.dart'
-      - 'test_driver/android_screenshot_driver.dart'
-      - 'test/advanced_text_overlay_bilingual_test.dart'
-      - 'test/text_effect_history_test.dart'
-      - 'integration_test/vs_styles_android_test.dart'
-      - 'test/text_toolbar_test.dart'
-      - 'test/premium_text_editor_panel_test.dart'
-      - 'integration_test/text_toolbar_android_test.dart'
-      - 'integration_test/photo_tools_android_test.dart'
-      - 'integration_test/tagra_arena_android_test.dart'
-      - 'lib/widgets/tagra_arena.dart'
-      - 'assets/templates/tagra_*.png'
-      - 'lib/widgets/bg_remover_page.dart'
-      - 'lib/widgets/photo_scene.dart'
-      - 'lib/widgets/photo_background_settings.dart'
-      - 'lib/widgets/procedural_frame_preview.dart'
-      - 'test/procedural_frame_preview_test.dart'
-      - 'lib/services/offline_bg_remover.dart'
-      - 'lib/services/mask_history.dart'
-      - 'lib/app_language.dart'
-      - 'test/android_apk_workflow_test.dart'
-      - 'scripts/retry_dependency_download.sh'
-      - '.github/workflows/flutter-build.yml'
-      - '.github/workflows/android-ui-smoke.yml'
+      - 'lib/**'
+      - 'test/**'
+      - 'integration_test/**'
+      - 'test_driver/**'
+      - 'assets/**'
+      - 'scripts/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/**'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -71,7 +47,7 @@ jobs:
       - name: Prepare Android emulator
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libpulse0
+          sudo apt-get install -y --no-install-recommends libpulse0 xvfb libgl1-mesa-dri mesa-utils
           image='system-images;android-29;google_apis;x86_64'
           manager="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f -print | sort -V | tail -1)"
           if [ -z "$manager" ]; then
@@ -100,11 +76,30 @@ jobs:
       - name: Verify VS Styles and the Text toolbar on Android
         run: |
           set -euo pipefail
+          export DISPLAY=:99
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export GALLIUM_DRIVER=llvmpipe
+          export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+          Xvfb "$DISPLAY" -screen 0 1600x2400x24 -ac +extension GLX +render -noreset > "$RUNNER_TEMP/voting-pro-xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          for second in $(seq 1 20); do
+            if glxinfo -B > "$RUNNER_TEMP/voting-pro-glxinfo.log" 2>&1; then break; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/voting-pro-glxinfo.log"
+          grep -qi 'llvmpipe' "$RUNNER_TEMP/voting-pro-glxinfo.log"
           adb start-server
           emulator -list-avds | grep -Fx voting_pro_ci
           emulator -version
           emulator_pid=''
           emulator_session=0
+          stop_xvfb() {
+            if [ -n "$xvfb_pid" ]; then
+              kill "$xvfb_pid" 2>/dev/null || true
+              wait "$xvfb_pid" 2>/dev/null || true
+              xvfb_pid=''
+            fi
+          }
           stop_emulator() {
             if [ -n "$emulator_pid" ]; then
               timeout 10s adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
@@ -126,19 +121,23 @@ jobs:
             echo "Starting emulator session $emulator_session; host log: $emulator_log"
             adb kill-server
             adb start-server
-            # Force the host Vulkan ICD to Google's SwiftShader. The prior
-            # run selected Mesa Lavapipe/LLVM despite -gpu swiftshader and
-            # QEMU then segfaulted (exit 139), taking ADB offline.
-            ANDROID_EMU_VK_ICD=swiftshader emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 >> "$emulator_log" 2>&1 &
+            # SwiftShader's headless GLES path repeatedly segfaults QEMU during
+            # Photo Tools UI tests. Use Mesa llvmpipe through Xvfb/GLX instead;
+            # Vulkan remains disabled so the runner never selects Lavapipe.
+            emulator -avd voting_pro_ci -no-audio -no-snapshot -no-boot-anim -gpu host -feature -Vulkan -port 5554 >> "$emulator_log" 2>&1 &
             emulator_pid=$!
             sleep 2
             kill -0 "$emulator_pid"
             timeout 90 adb -s emulator-5554 wait-for-device
             timeout 180 bash -c 'until [ "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d "\r")" = "1" ]; do sleep 2; done'
             echo "===== Selected emulator graphics backend ====="
-            grep -Ei "initIcdPaths: ICD set to|Selecting Vulkan device|Graphics Adapter" "$emulator_log" || true
+            grep -Ei "initIcdPaths: ICD set to|Selecting Vulkan device|Graphics Adapter|Graphics API Version|emuglConfig_init" "$emulator_log" || true
             if grep -Eiq "initIcdPaths: ICD set to .lavapipe." "$emulator_log"; then
-              echo "::error::Emulator unexpectedly selected Lavapipe instead of SwiftShader"
+              echo "::error::Emulator unexpectedly selected the Lavapipe Vulkan ICD"
+              return 1
+            fi
+            if grep -Eiq "Graphics Adapter.*Google SwiftShader" "$emulator_log"; then
+              echo "::error::Emulator fell back to SwiftShader instead of host Mesa/llvmpipe"
               return 1
             fi
             # Same 393x852 dp viewport with fewer framebuffer pixels.
@@ -147,10 +146,10 @@ jobs:
             adb -s emulator-5554 shell input keyevent KEYCODE_WAKEUP
             adb -s emulator-5554 shell wm dismiss-keyguard
           }
-          trap stop_emulator EXIT
-          # Use SwiftShader GLES and disable host Vulkan/Lavapipe: the previous
-          # Lavapipe/LLVM backend terminated QEMU with SIGILL on the hosted runner.
-          # Keep the same Android image, app tests, assertions and screenshot capture.
+          trap 'stop_emulator; stop_xvfb' EXIT
+          # Keep Xvfb taller than the AVD's native display so the emulator
+          # window cannot shrink the guest viewport. Mesa llvmpipe supplies host
+          # OpenGL; Vulkan remains disabled.
           # Isolate graphics state between suites. Retry only on emulator/ADB loss.
           run_ui_suite() {
             local target suite
@@ -266,13 +265,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          export DISPLAY=:99
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export GALLIUM_DRIVER=llvmpipe
+          export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+          Xvfb "$DISPLAY" -screen 0 1600x2400x24 -ac +extension GLX +render -noreset > "$RUNNER_TEMP/voting-pro-normal-xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          for second in $(seq 1 20); do
+            if glxinfo -B > "$RUNNER_TEMP/voting-pro-normal-glxinfo.log" 2>&1; then break; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/voting-pro-normal-glxinfo.log"
+          grep -qi 'llvmpipe' "$RUNNER_TEMP/voting-pro-normal-glxinfo.log"
           # The integration-test step deliberately kills its emulator on exit.
           # Start a fresh emulator for the actual installable app cold-launch test.
           adb start-server
           emulator -list-avds | grep -Fx voting_pro_ci
-          emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 > "$RUNNER_TEMP/voting-pro-normal-launch-emulator.log" 2>&1 &
+          emulator -avd voting_pro_ci -no-audio -no-snapshot -no-boot-anim -gpu host -feature -Vulkan -port 5554 > "$RUNNER_TEMP/voting-pro-normal-launch-emulator.log" 2>&1 &
           emulator_pid=$!
-          trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
+          trap 'kill "$emulator_pid" 2>/dev/null || true; kill "$xvfb_pid" 2>/dev/null || true' EXIT
           timeout 90 adb -s emulator-5554 wait-for-device
           timeout 180 bash -c 'until [ "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d "\r")" = "1" ]; do sleep 2; done'
           adb -s emulator-5554 shell input keyevent KEYCODE_WAKEUP

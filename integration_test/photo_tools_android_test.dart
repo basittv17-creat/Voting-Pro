@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voting_pro/main.dart' as voting_pro;
 import 'package:voting_pro/widgets/bg_remover_page.dart';
 import 'package:voting_pro/widgets/photo_scene.dart';
+import 'package:voting_pro/widgets/photo_background_settings.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -152,6 +153,7 @@ void main() {
     expect(tester.getSize(imageFor('B')), bSize);
     await tap(action('Zoom Out'));
     await tap(action('Backgrounds'));
+    expect(find.byType(PhotoSceneCard), findsWidgets);
     mark('photo-a-backgrounds-opened');
     await tap(find.text('Ocean'));
     mark('photo-a-ocean-selected');
@@ -184,6 +186,7 @@ void main() {
       find.text('Use Remove Background first to reveal a photo background.'),
       findsOneWidget,
     );
+    expect(find.byType(PhotoSceneCard), findsNothing);
     await tap(action('Remove Background'));
     mark('photo-b-inline-remover-opened');
     expect(find.text('Remove Background — B Side'), findsOneWidget);
