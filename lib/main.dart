@@ -1252,8 +1252,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     if (_editorOptions != null) setState(() => _editorOptions = null);
   }
 
-  void _toggleEditorOptions(_EditorOptions options) => setState(
-      () => _editorOptions = _editorOptions == options ? null : options);
+  void _toggleEditorOptions(_EditorOptions options) => setState(() {
+    _photoPanel = null;
+    _editorOptions = _editorOptions == options ? null : options;
+  });
 
   void vsStylesTool() => _toggleEditorOptions(_EditorOptions.vs);
 
@@ -4325,6 +4327,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       showTextTools = false;
       _activeTextSection = TextToolSection.none;
       _editorOptions = null;
+      _photoPanel = null;
       _setMainRemoverSide(side);
     });
   }
@@ -5420,6 +5423,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       return;
     }
     setState(() {
+      _editorOptions = null;
       _selectCanvasObject(templatePhotoSideA: sideA);
       _photoPanel = _PhotoPanel.backgrounds;
     });
@@ -7089,6 +7093,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                 tool('✂', 'BG Remover', openBackgroundRemover),
                 tool('↩', 'Classic Editor', () => setState(() {
                   _clearCanvasSelection();
+                  _photoPanel = null;
                   selectedReadyMadeTemplate = null;
                   _templateANameEdited = false;
                   _templateBNameEdited = false;
