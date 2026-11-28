@@ -10,6 +10,11 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('VS previews and poster agree on Android', (tester) async {
+    tester.view.physicalSize = const Size(590, 1278);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await voting_pro.main();
     await tester.pumpAndSettle();
     // Android starts with a surface-backed Flutter view whose test geometry
@@ -21,11 +26,20 @@ void main() {
 
     final toolbar = find.byKey(const PageStorageKey('main-toolbar'));
     final poster = find.byType(Screenshot);
-    final tool = find.descendant(of: toolbar, matching: find.text('VS Styles'));
+    final toolLabel = find.descendant(
+      of: toolbar,
+      matching: find.text('VS Styles'),
+    );
+    final tool = find.ancestor(
+      of: toolLabel,
+      matching: find.byType(InkWell),
+    );
+    expect(tool, findsOneWidget);
     final toolbarBounds = tester.getRect(toolbar);
     final posterBounds = tester.getRect(poster);
 
     await tester.ensureVisible(tool);
+    await tester.pumpAndSettle();
     await tester.tap(tool);
     await tester.pumpAndSettle();
 
