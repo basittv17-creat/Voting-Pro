@@ -126,12 +126,21 @@ jobs:
             echo "Starting emulator session $emulator_session; host log: $emulator_log"
             adb kill-server
             adb start-server
-            emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 >> "$emulator_log" 2>&1 &
+            # Force the host Vulkan ICD to Google's SwiftShader. The prior
+            # run selected Mesa Lavapipe/LLVM despite -gpu swiftshader and
+            # QEMU then segfaulted (exit 139), taking ADB offline.
+            ANDROID_EMU_VK_ICD=swiftshader emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 >> "$emulator_log" 2>&1 &
             emulator_pid=$!
             sleep 2
             kill -0 "$emulator_pid"
             timeout 90 adb -s emulator-5554 wait-for-device
             timeout 180 bash -c 'until [ "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d "\r")" = "1" ]; do sleep 2; done'
+            echo "===== Selected emulator graphics backend ====="
+            grep -Ei "initIcdPaths: ICD set to|Selecting Vulkan device|Graphics Adapter" "$emulator_log" || true
+            if grep -Eiq "initIcdPaths: ICD set to .lavapipe." "$emulator_log"; then
+              echo "::error::Emulator unexpectedly selected Lavapipe instead of SwiftShader"
+              return 1
+            fi
             # Same 393x852 dp viewport with fewer framebuffer pixels.
             adb -s emulator-5554 shell wm size 590x1278
             adb -s emulator-5554 shell wm density 240
