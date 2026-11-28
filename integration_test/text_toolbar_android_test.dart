@@ -7,6 +7,7 @@ import 'package:voting_pro/main.dart' as voting_pro;
 import 'package:voting_pro/widgets/premium_text_editor_panel.dart';
 import 'package:voting_pro/widgets/advanced_text_overlay.dart';
 import 'package:voting_pro/widgets/text_background_plate.dart';
+import 'package:voting_pro/widgets/scaled_overlay.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -171,6 +172,24 @@ void main() {
     expect(tester.getRect(overlay).bottom, lessThanOrEqualTo(floor + .01));
     expect(tester.getRect(overlay).center.dy, greaterThan(floor - 120));
     await capture('text-19-bottom-edge');
+
+    // The same placement constraints must work horizontally, not only at the
+    // top and bottom edges that were reported originally.
+    final layer = find.byKey(const ValueKey('text-overlay-0'));
+    final canvas = tester.getRect(layer);
+    final scaled = find.descendant(
+      of: layer,
+      matching: find.byType(ScaledOverlay),
+    );
+    await tester.drag(overlay, Offset(-canvas.width * 2, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(scaled).left, closeTo(canvas.left, 1));
+    await capture('text-20-left-edge');
+
+    await tester.drag(overlay, Offset(canvas.width * 2, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(scaled).right, closeTo(canvas.right, 1));
+    await capture('text-21-right-edge');
 
     final delete = action(text, 'Delete Text');
     await tester.ensureVisible(delete);
