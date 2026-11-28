@@ -148,7 +148,15 @@ void main() {
       'Noto Naskh Arabic',
       'اردو نستعلیق'
     ]) {
-      await tap(find.text(family));
+      final label = find.text(family);
+      final choice = find.ancestor(
+        of: label,
+        matching: find.byType(ChoiceChip),
+      );
+      expect(choice, findsOneWidget);
+      await tester.ensureVisible(choice);
+      await tester.pumpAndSettle();
+      await tap(choice);
       expect(
           tester.widget<AdvancedTextOverlay>(overlay).style.fontFamily,
           switch (family) {
