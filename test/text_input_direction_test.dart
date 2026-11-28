@@ -80,8 +80,13 @@ void main() {
 
     final selectedOverlay = find.byKey(const ValueKey('text-overlay-0'));
     expect(selectedOverlay, findsOneWidget);
-    await tester.ensureVisible(selectedOverlay);
-    await tester.tap(selectedOverlay);
+    final renderedText = find.descendant(
+      of: selectedOverlay,
+      matching: find.byType(AdvancedTextOverlay),
+    );
+    expect(renderedText, findsOneWidget);
+    await tester.ensureVisible(renderedText);
+    await tester.tap(renderedText);
     await tester.pumpAndSettle();
 
     final textMode = find.text(AppLanguage.tr('Text'));
@@ -95,11 +100,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = find.byType(TextFormField);
-    final innerField = find.descendant(
-      of: field,
-      matching: find.byType(TextField),
-    );
-    TextField input() => tester.widget<TextField>(innerField);
+    TextFormField input() => tester.widget<TextFormField>(field);
 
     expect(input().textDirection, TextDirection.ltr);
     expect(input().textAlign, TextAlign.left);
