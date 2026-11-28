@@ -1758,7 +1758,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           sideA,
           fallback: const ColoredBox(color: Color(0xff080808)),
         ),
-        onPickPhoto: (sideA) => pick(sideA),
+        onPickPhoto: (sideA) {
+          _selectCanvasObject(templatePhotoSideA: sideA);
+          pick(sideA);
+        },
         onEditName: (sideA) => editSideLabelText(sideA),
         onPhotoSelected: (sideA) =>
             _selectCanvasObject(templatePhotoSideA: sideA),
@@ -1786,7 +1789,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           sideA,
           fallback: const ColoredBox(color: Color(0xff171923)),
         ),
-        onPickPhoto: (sideA) => pick(sideA),
+        onPickPhoto: (sideA) {
+          _selectCanvasObject(templatePhotoSideA: sideA);
+          pick(sideA);
+        },
         onEditName: (sideA) => editSideLabelText(sideA),
         onPhotoSelected: (sideA) =>
             _selectCanvasObject(templatePhotoSideA: sideA),
@@ -1947,7 +1953,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   height: h * 0.530,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () { pick(true); },
+                    onTap: () {
+                      _selectCanvasObject(templatePhotoSideA: true);
+                      pick(true);
+                    },
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: true);
                       _templatePhotoStartScales[true] =
@@ -1977,7 +1986,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   height: h * 0.530,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () { pick(false); },
+                    onTap: () {
+                      _selectCanvasObject(templatePhotoSideA: false);
+                      pick(false);
+                    },
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: false);
                       _templatePhotoStartScales[false] =
@@ -2130,7 +2142,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   width: w * (548 / 1448), height: h * (774 / 1086),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => pick(true),
+                    onTap: () {
+                      _selectCanvasObject(templatePhotoSideA: true);
+                      pick(true);
+                    },
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: true);
                       _templatePhotoStartScales[true] = _templatePhotoScales[true] ?? 1.0;
@@ -2154,7 +2169,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   width: w * (545 / 1448), height: h * (772 / 1086),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => pick(false),
+                    onTap: () {
+                      _selectCanvasObject(templatePhotoSideA: false);
+                      pick(false);
+                    },
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: false);
                       _templatePhotoStartScales[false] = _templatePhotoScales[false] ?? 1.0;
