@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:image/image.dart' as img;
 import '../app_language.dart';
 import 'editor_options_panel.dart';
@@ -50,7 +51,7 @@ class PhotoBackgroundSettingsState extends State<PhotoBackgroundSettings> {
       future: _transparent,
       builder: (context, snapshot) => CustomScrollView(
         key: const PageStorageKey('photo-background-scroll'),
-        scrollCacheExtent: 150,
+        scrollCacheExtent: const ScrollCacheExtent.pixels(150),
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
