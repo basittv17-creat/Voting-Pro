@@ -107,7 +107,7 @@ jobs:
             fi
           }
           start_emulator() {
-            emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu lavapipe -port 5554 >> "$RUNNER_TEMP/voting-pro-emulator.log" 2>&1 &
+            emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 >> "$RUNNER_TEMP/voting-pro-emulator.log" 2>&1 &
             emulator_pid=$!
             sleep 2
             kill -0 "$emulator_pid"
@@ -120,8 +120,10 @@ jobs:
             adb -s emulator-5554 shell wm dismiss-keyguard
           }
           trap stop_emulator EXIT
-          # Isolate graphics state between suites. Retry once only when the
-          # emulator process or ADB connection is lost, never a test assertion.
+          # Use SwiftShader GLES and disable host Vulkan/Lavapipe: the previous
+          # Lavapipe/LLVM backend terminated QEMU with SIGILL on the hosted runner.
+          # Keep the same Android image, app tests, assertions and screenshot capture.
+          # Isolate graphics state between suites. Retry only on emulator/ADB loss.
           run_ui_suite() {
             local log="$RUNNER_TEMP/voting-pro-drive.log"
             stop_emulator
@@ -218,7 +220,7 @@ jobs:
           # Start a fresh emulator for the actual installable app cold-launch test.
           adb start-server
           emulator -list-avds | grep -Fx voting_pro_ci
-          emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu lavapipe -port 5554 > "$RUNNER_TEMP/voting-pro-normal-launch-emulator.log" 2>&1 &
+          emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 > "$RUNNER_TEMP/voting-pro-normal-launch-emulator.log" 2>&1 &
           emulator_pid=$!
           trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
           timeout 90 adb -s emulator-5554 wait-for-device
