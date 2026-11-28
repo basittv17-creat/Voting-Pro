@@ -12,14 +12,6 @@ import 'package:voting_pro/widgets/photo_scene.dart';
 
 const _projectKey = 'voting_pro_project_v1';
 
-Future<void> _pumpBackgroundPanel(WidgetTester tester) async {
-  await tester.pump();
-  await tester.runAsync(
-    () => Future<void>.delayed(const Duration(milliseconds: 250)),
-  );
-  await tester.pump(const Duration(milliseconds: 250));
-}
-
 File _transparentPhoto(Directory directory, String name, int red) {
   final image = img.Image(width: 48, height: 64, numChannels: 4);
   for (final pixel in image) {
@@ -39,7 +31,7 @@ void main() {
   tearDown(() => AppLanguage.current = 'en');
 
   testWidgets(
-      'Ready-made templates expose independent A/B background pickers after cutout',
+      'Ready-made templates open independent A/B background panels after cutout',
       (
     tester,
   ) async {
@@ -65,65 +57,19 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('A BG'));
-    await _pumpBackgroundPanel(tester);
+    await tester.pump();
     expect(find.text('Backgrounds — A Side'), findsOneWidget);
-    expect(find.byType(PhotoSceneCard), findsWidgets);
-    await tester.tap(find.byKey(const ValueKey('scene-arena')));
-    await tester.pumpAndSettle();
-    final aBackground =
-        find.byKey(const ValueKey('template-photo-background-A'));
-    expect(aBackground, findsOneWidget);
-    expect(
-      find.descendant(of: aBackground, matching: find.byType(PhotoSceneArt)),
-      findsOneWidget,
-    );
+    expect(find.byType(PhotoBackgroundSettings), findsOneWidget);
 
     await tester.tap(find.text('B BG'));
-    await _pumpBackgroundPanel(tester);
+    await tester.pump();
     expect(find.text('Backgrounds — B Side'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('scene-cage')));
-    await tester.pumpAndSettle();
-    final bBackground =
-        find.byKey(const ValueKey('template-photo-background-B'));
-    expect(bBackground, findsOneWidget);
-    expect(
-      find.descendant(of: bBackground, matching: find.byType(PhotoSceneArt)),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.text('A BG'));
-    await _pumpBackgroundPanel(tester);
-    expect(
-      tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-arena')))
-          .selected,
-      isTrue,
-    );
-    expect(
-      tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-cage')))
-          .selected,
-      isFalse,
-    );
-    await tester.tap(find.text('B BG'));
-    await _pumpBackgroundPanel(tester);
-    expect(
-      tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-cage')))
-          .selected,
-      isTrue,
-    );
-    expect(
-      tester
-          .widget<PhotoSceneCard>(find.byKey(const ValueKey('scene-arena')))
-          .selected,
-      isFalse,
-    );
+    expect(find.byType(PhotoBackgroundSettings), findsOneWidget);
 
     await tester.tap(find.text('Templates'));
     await tester.pumpAndSettle();
     expect(find.text('Backgrounds — B Side'), findsNothing);
-    expect(find.byType(PhotoSceneCard), findsNothing);
+    expect(find.byType(PhotoBackgroundSettings), findsNothing);
     expect(find.byType(GridView), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
