@@ -80,7 +80,7 @@ jobs:
           export LIBGL_ALWAYS_SOFTWARE=1
           export GALLIUM_DRIVER=llvmpipe
           export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
-          Xvfb "$DISPLAY" -screen 0 1280x1024x24 -ac +extension GLX +render -noreset > "$RUNNER_TEMP/voting-pro-xvfb.log" 2>&1 &
+          Xvfb "$DISPLAY" -screen 0 1600x2400x24 -ac +extension GLX +render -noreset > "$RUNNER_TEMP/voting-pro-xvfb.log" 2>&1 &
           xvfb_pid=$!
           for second in $(seq 1 20); do
             if glxinfo -B > "$RUNNER_TEMP/voting-pro-glxinfo.log" 2>&1; then break; fi
@@ -147,9 +147,9 @@ jobs:
             adb -s emulator-5554 shell wm dismiss-keyguard
           }
           trap 'stop_emulator; stop_xvfb' EXIT
-          # Use the compatibility SwiftShader GLES path with Vulkan disabled.
-          # This changes only the host renderer; keep the Android image, tests,
-          # assertions, screenshots and app behavior unchanged.
+          # Keep Xvfb taller than the AVD's native display so the emulator
+          # window cannot shrink the guest viewport. Mesa llvmpipe supplies host
+          # OpenGL; Vulkan remains disabled.
           # Isolate graphics state between suites. Retry only on emulator/ADB loss.
           run_ui_suite() {
             local target suite
@@ -269,7 +269,7 @@ jobs:
           export LIBGL_ALWAYS_SOFTWARE=1
           export GALLIUM_DRIVER=llvmpipe
           export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
-          Xvfb "$DISPLAY" -screen 0 1280x1024x24 -ac +extension GLX +render -noreset > "$RUNNER_TEMP/voting-pro-normal-xvfb.log" 2>&1 &
+          Xvfb "$DISPLAY" -screen 0 1600x2400x24 -ac +extension GLX +render -noreset > "$RUNNER_TEMP/voting-pro-normal-xvfb.log" 2>&1 &
           xvfb_pid=$!
           for second in $(seq 1 20); do
             if glxinfo -B > "$RUNNER_TEMP/voting-pro-normal-glxinfo.log" 2>&1; then break; fi
