@@ -56,17 +56,26 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: Editor()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('A BG'));
-    await tester.pump();
+    Future<void> tapTool(String title) async {
+      final target = find.text(title);
+      await tester.ensureVisible(target);
+      await tester.pump();
+      await tester.tap(target);
+      await tester.pump();
+    }
+
+    await tapTool('A BG');
     expect(find.text('Backgrounds — A Side'), findsOneWidget);
     expect(find.byType(PhotoBackgroundSettings), findsOneWidget);
 
-    await tester.tap(find.text('B BG'));
-    await tester.pump();
+    await tapTool('B BG');
     expect(find.text('Backgrounds — B Side'), findsOneWidget);
     expect(find.byType(PhotoBackgroundSettings), findsOneWidget);
 
-    await tester.tap(find.text('Templates'));
+    final templates = find.text('Templates');
+    await tester.ensureVisible(templates);
+    await tester.pump();
+    await tester.tap(templates);
     await tester.pumpAndSettle();
     expect(find.text('Backgrounds — B Side'), findsNothing);
     expect(find.byType(PhotoBackgroundSettings), findsNothing);
