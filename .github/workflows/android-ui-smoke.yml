@@ -4,40 +4,16 @@ on:
   push:
     branches: [main]
     paths:
-      - 'lib/main.dart'
-      - 'lib/widgets/premium_text_editor_panel.dart'
-      - 'lib/widgets/advanced_text_overlay.dart'
-      - 'lib/widgets/scaled_overlay.dart'
-      - 'lib/widgets/text_background_dock.dart'
-      - 'lib/widgets/text_background_plate.dart'
-      - 'test/text_background_plate_test.dart'
-      - 'test/text_canvas_edges_test.dart'
-      - 'test/text_input_direction_test.dart'
-      - 'test/text_font_persistence_test.dart'
-      - 'test/text_editor_controls_test.dart'
-      - 'test_driver/android_screenshot_driver.dart'
-      - 'test/advanced_text_overlay_bilingual_test.dart'
-      - 'test/text_effect_history_test.dart'
-      - 'integration_test/vs_styles_android_test.dart'
-      - 'test/text_toolbar_test.dart'
-      - 'test/premium_text_editor_panel_test.dart'
-      - 'integration_test/text_toolbar_android_test.dart'
-      - 'integration_test/photo_tools_android_test.dart'
-      - 'integration_test/tagra_arena_android_test.dart'
-      - 'lib/widgets/tagra_arena.dart'
-      - 'assets/templates/tagra_*.png'
-      - 'lib/widgets/bg_remover_page.dart'
-      - 'lib/widgets/photo_scene.dart'
-      - 'lib/widgets/photo_background_settings.dart'
-      - 'lib/widgets/procedural_frame_preview.dart'
-      - 'test/procedural_frame_preview_test.dart'
-      - 'lib/services/offline_bg_remover.dart'
-      - 'lib/services/mask_history.dart'
-      - 'lib/app_language.dart'
-      - 'test/android_apk_workflow_test.dart'
-      - 'scripts/retry_dependency_download.sh'
-      - '.github/workflows/flutter-build.yml'
-      - '.github/workflows/android-ui-smoke.yml'
+      - 'lib/**'
+      - 'test/**'
+      - 'integration_test/**'
+      - 'test_driver/**'
+      - 'assets/**'
+      - 'scripts/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/**'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -126,10 +102,11 @@ jobs:
             echo "Starting emulator session $emulator_session; host log: $emulator_log"
             adb kill-server
             adb start-server
-            # Force the host Vulkan ICD to Google's SwiftShader. The prior
-            # run selected Mesa Lavapipe/LLVM despite -gpu swiftshader and
-            # QEMU then segfaulted (exit 139), taking ADB offline.
-            ANDROID_EMU_VK_ICD=swiftshader emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 >> "$emulator_log" 2>&1 &
+            # Use the compatibility SwiftShader GLES renderer. The newer
+            # swiftshader backend repeatedly segfaulted QEMU (exit 139) during
+            # Photo Tools interactions on GitHub-hosted Linux runners.
+            # Vulkan stays disabled to avoid the runner's Lavapipe/LLVM SIGILL.
+            emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect -feature -Vulkan -port 5554 >> "$emulator_log" 2>&1 &
             emulator_pid=$!
             sleep 2
             kill -0 "$emulator_pid"
@@ -148,9 +125,9 @@ jobs:
             adb -s emulator-5554 shell wm dismiss-keyguard
           }
           trap stop_emulator EXIT
-          # Use SwiftShader GLES and disable host Vulkan/Lavapipe: the previous
-          # Lavapipe/LLVM backend terminated QEMU with SIGILL on the hosted runner.
-          # Keep the same Android image, app tests, assertions and screenshot capture.
+          # Use the compatibility SwiftShader GLES path with Vulkan disabled.
+          # This changes only the host renderer; keep the Android image, tests,
+          # assertions, screenshots and app behavior unchanged.
           # Isolate graphics state between suites. Retry only on emulator/ADB loss.
           run_ui_suite() {
             local target suite
@@ -270,7 +247,7 @@ jobs:
           # Start a fresh emulator for the actual installable app cold-launch test.
           adb start-server
           emulator -list-avds | grep -Fx voting_pro_ci
-          emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 > "$RUNNER_TEMP/voting-pro-normal-launch-emulator.log" 2>&1 &
+          emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect -feature -Vulkan -port 5554 > "$RUNNER_TEMP/voting-pro-normal-launch-emulator.log" 2>&1 &
           emulator_pid=$!
           trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
           timeout 90 adb -s emulator-5554 wait-for-device
