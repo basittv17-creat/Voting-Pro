@@ -54,10 +54,10 @@ void main() {
       matching: find.byType(ScaledOverlay),
     );
     final canvas = tester.getRect(layer);
-    Future<void> move(double dy) async {
+    Future<void> move(Offset delta) async {
       final gesture = await tester.startGesture(tester.getCenter(artwork));
       for (var step = 0; step < 15; step++) {
-        await gesture.moveBy(Offset(0, dy / 15));
+        await gesture.moveBy(delta / 15);
         await tester.pump();
       }
       await gesture.up();
@@ -74,11 +74,19 @@ void main() {
       }
     }
 
-    await move(-canvas.height * 2);
+    await move(Offset(0, -canvas.height * 2));
     expect(tester.getRect(scaled).top, closeTo(canvas.top, 0.5));
     handlesInside();
-    await move(canvas.height * 2);
+    await move(Offset(0, canvas.height * 2));
     expect(tester.getRect(scaled).bottom, closeTo(canvas.bottom, 0.5));
+    handlesInside();
+
+    await move(Offset(-canvas.width * 2, 0));
+    expect(tester.getRect(scaled).left, closeTo(canvas.left, 0.5));
+    handlesInside();
+
+    await move(Offset(canvas.width * 2, 0));
+    expect(tester.getRect(scaled).right, closeTo(canvas.right, 0.5));
     handlesInside();
     expect(tester.takeException(), isNull);
   });
