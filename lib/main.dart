@@ -2695,7 +2695,14 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
   bool _hasArabicScript(String value) => RegExp(r'[\u0600-\u06FF]').hasMatch(value);
 
   TextDirection _textInputDirection(String value) {
-    if (_hasArabicScript(value)) return TextDirection.rtl;
+    // Use the first letter to establish direction in bilingual paragraphs.
+    final firstLetter = RegExp(r'\p{L}', unicode: true).firstMatch(value);
+    if (firstLetter != null) {
+      final rtl = RegExp(r'^[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC]');
+      return rtl.hasMatch(firstLetter[0]!)
+          ? TextDirection.rtl
+          : TextDirection.ltr;
+    }
     if (value.trim().isNotEmpty) return TextDirection.ltr;
     return AppLanguage.direction;
   }
@@ -6570,12 +6577,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                                   _overlayTextAlign(
                                       index),
                               direction:
-                                  _hasArabicScript(
-                                          entry.value)
-                                      ? TextDirection
-                                          .rtl
-                                      : TextDirection
-                                          .ltr,
+                                  _textInputDirection(entry.value),
                               gradient:
                                   gradientTextOverlayIds
                                       .contains(
