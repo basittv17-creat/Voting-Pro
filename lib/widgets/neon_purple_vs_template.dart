@@ -20,6 +20,7 @@ class NeonPurpleVsTemplate extends StatefulWidget {
     this.initialOffsetB = Offset.zero,
     this.onPhotoTransform,
     this.onPhotoSelected,
+    this.photoBackgroundBuilder,
   });
 
   final File? photoA;
@@ -36,6 +37,7 @@ class NeonPurpleVsTemplate extends StatefulWidget {
   final Offset initialOffsetB;
   final void Function(bool sideA, double scale, Offset offset)? onPhotoTransform;
   final ValueChanged<bool>? onPhotoSelected;
+  final Widget Function(bool sideA)? photoBackgroundBuilder;
 
   @override
   State<NeonPurpleVsTemplate> createState() => _NeonPurpleVsTemplateState();
@@ -99,7 +101,8 @@ class _NeonPurpleVsTemplateState extends State<NeonPurpleVsTemplate> {
           _notify(sideA);
         },
         child: Stack(fit: StackFit.expand, children: [
-          const ColoredBox(color: Color(0xFF171923)),
+          widget.photoBackgroundBuilder?.call(sideA) ??
+              const ColoredBox(color: Color(0xFF171923)),
           if (photo != null)
             Transform.translate(
               offset: offset,
