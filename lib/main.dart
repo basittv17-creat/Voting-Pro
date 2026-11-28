@@ -1688,6 +1688,28 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
     );
   }
 
+  Widget _templatePhotoBackground(
+    bool sideA, {
+    required Widget fallback,
+  }) {
+    final preset = _photoBackgrounds[sideA];
+    final scene = preset == null ? null : PhotoScene.byId[preset];
+    final palette = preset == null ? null : _photoPalettes[preset];
+    final artwork = scene != null
+        ? PhotoSceneArt(scene, sideA: sideA)
+        : palette != null
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: palette),
+                ),
+              )
+            : fallback;
+    return KeyedSubtree(
+      key: ValueKey('template-photo-background-${sideA ? "A" : "B"}'),
+      child: artwork,
+    );
+  }
+
   Widget _buildReadyMadeTemplateArtwork({bool preview = false}) {
     final arena = TagraArena.fromId(selectedReadyMadeTemplate);
     if (arena != null) {
@@ -1702,6 +1724,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         exporting: isExportingPoster || preview,
         scales: _templatePhotoScales,
         offsets: _templatePhotoOffsets,
+        photoBackgroundBuilder: (sideA) => _templatePhotoBackground(
+          sideA,
+          fallback: const ColoredBox(color: Color(0xff172735)),
+        ),
         onPick: pick,
         onName: editSideLabelText,
         onSelect: (side) => _selectCanvasObject(templatePhotoSideA: side),
@@ -1726,6 +1752,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         initialScaleB: _templatePhotoScales[false] ?? 1.0,
         initialOffsetA: _templatePhotoOffsets[true] ?? Offset.zero,
         initialOffsetB: _templatePhotoOffsets[false] ?? Offset.zero,
+        photoBackgroundBuilder: (sideA) => _templatePhotoBackground(
+          sideA,
+          fallback: const ColoredBox(color: Color(0xff080808)),
+        ),
         onPickPhoto: (sideA) => pick(sideA),
         onEditName: (sideA) => editSideLabelText(sideA),
         onPhotoSelected: (sideA) =>
@@ -1750,6 +1780,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         initialScaleB: _templatePhotoScales[false] ?? 1.0,
         initialOffsetA: _templatePhotoOffsets[true] ?? Offset.zero,
         initialOffsetB: _templatePhotoOffsets[false] ?? Offset.zero,
+        photoBackgroundBuilder: (sideA) => _templatePhotoBackground(
+          sideA,
+          fallback: const ColoredBox(color: Color(0xff171923)),
+        ),
         onPickPhoto: (sideA) => pick(sideA),
         onEditName: (sideA) => editSideLabelText(sideA),
         onPhotoSelected: (sideA) =>
@@ -1772,14 +1806,17 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           return Stack(
             fit: StackFit.expand,
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: sideA
-                        ? const [Color(0xFF0B3A7A), Color(0xFF09162C)]
-                        : const [Color(0xFF7E123D), Color(0xFF170C19)],
+              _templatePhotoBackground(
+                sideA,
+                fallback: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: sideA
+                          ? const [Color(0xFF0B3A7A), Color(0xFF09162C)]
+                          : const [Color(0xFF7E123D), Color(0xFF170C19)],
+                    ),
                   ),
                 ),
               ),
@@ -2005,7 +2042,10 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
           return Stack(
             fit: StackFit.expand,
             children: [
-              const ColoredBox(color: Color(0xFF050505)),
+              _templatePhotoBackground(
+                sideA,
+                fallback: const ColoredBox(color: Color(0xFF050505)),
+              ),
               if (photo != null)
                 ClipRect(
                   child: Transform.translate(
@@ -2153,6 +2193,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         (selectedReadyMadeTemplate == null && bSideLabelText != 'B SIDE'));
     setState(() {
       _editorOptions = null;
+      _photoPanel = null;
       _templateANameEdited = keepA;
       _templateBNameEdited = keepB;
       _templatePhotoScales[true] = 1.0;
@@ -5365,6 +5406,25 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
       ? _selectedPhotoSideA
       : null;
 
+  bool? get _templatePhotoBackgroundSide =>
+      _mainRemoverSide == null &&
+      selectedReadyMadeTemplate != null &&
+      _photoPanel == _PhotoPanel.backgrounds
+          ? _selectedTemplatePhotoSideA
+          : null;
+
+  void _openTemplatePhotoBackgrounds(bool sideA) {
+    if (busy || selectedReadyMadeTemplate == null) return;
+    if ((sideA ? a : b) == null) {
+      msg('Upload Your Picture first');
+      return;
+    }
+    setState(() {
+      _selectCanvasObject(templatePhotoSideA: sideA);
+      _photoPanel = _PhotoPanel.backgrounds;
+    });
+  }
+
   void _closePhotoTools() => setState(() {
     _photoPanel = null;
     _clearCanvasSelection();
@@ -5909,7 +5969,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: _mainRemoverSide == null && _editorOptions == null && !showTextTools && _photoToolsSide == null,
+    canPop: _mainRemoverSide == null &&
+        _editorOptions == null &&
+        !showTextTools &&
+        _photoToolsSide == null &&
+        _templatePhotoBackgroundSide == null,
     onPopInvokedWithResult: (didPop, _) {
       if (didPop) return;
       if (_mainRemoverSide != null) {
@@ -5920,6 +5984,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
         } else {
           _closePhotoTools();
         }
+      } else if (_templatePhotoBackgroundSide != null) {
+        setState(() => _photoPanel = null);
       } else if (_editorOptions != null) {
         _closeEditorOptions();
       } else if (_activeTextSection == TextToolSection.background) {
@@ -6978,6 +7044,11 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
             ? SizedBox(height: panelHeight, child: _buildPhotoPanel(_mainRemoverSide!, mainRemover: true))
             : _photoToolsSide != null && _photoPanel != null
             ? SizedBox(height: panelHeight, child: _buildPhotoPanel(_photoToolsSide!))
+            : _templatePhotoBackgroundSide != null
+            ? SizedBox(
+                height: panelHeight,
+                child: _buildPhotoPanel(_templatePhotoBackgroundSide!),
+              )
             : _editorOptions != null
             ? SizedBox(
                 height: panelHeight,
@@ -7012,6 +7083,8 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
               child: Row(children: [
                 tool('A', 'Change Photo A', () => pick(true)),
                 tool('B', 'Change Photo B', () => pick(false)),
+                tool('A BG', 'Backgrounds', () => _openTemplatePhotoBackgrounds(true)),
+                tool('B BG', 'Backgrounds', () => _openTemplatePhotoBackgrounds(false)),
                 tool('🎨', 'Templates', readyMadeTemplatesTool),
                 tool('✂', 'BG Remover', openBackgroundRemover),
                 tool('↩', 'Classic Editor', () => setState(() {
