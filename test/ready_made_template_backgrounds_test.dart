@@ -76,7 +76,7 @@ void main() {
     await tester.ensureVisible(templates);
     await tester.pump();
     await tester.tap(templates);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 250));
     expect(find.text('Backgrounds — B Side'), findsNothing);
     expect(find.byType(PhotoBackgroundSettings), findsNothing);
     expect(find.byType(GridView), findsOneWidget);
