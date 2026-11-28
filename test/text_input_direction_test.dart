@@ -100,7 +100,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = find.byType(TextFormField);
-    TextFormField input() => tester.widget<TextFormField>(field);
+    final editable = find.byType(EditableText);
+    EditableText input() => tester.widget<EditableText>(editable);
 
     expect(input().textDirection, TextDirection.ltr);
     expect(input().textAlign, TextAlign.left);
