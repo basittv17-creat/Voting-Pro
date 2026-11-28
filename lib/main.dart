@@ -1953,7 +1953,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   height: h * 0.530,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => pick(true),
+                    onTap: () { pick(true); },
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: true);
                       _templatePhotoStartScales[true] =
@@ -1983,7 +1983,7 @@ class _EditorState extends State<Editor> with WidgetsBindingObserver {
                   height: h * 0.530,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => pick(false),
+                    onTap: () { pick(false); },
                     onScaleStart: (_) {
                       _selectCanvasObject(templatePhotoSideA: false);
                       _templatePhotoStartScales[false] =
