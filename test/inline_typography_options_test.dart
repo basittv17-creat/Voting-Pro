@@ -67,15 +67,25 @@ void main() {
       of: _panel,
       matching: find.text('Handwriting'),
     );
-    await tester.ensureVisible(handwriting);
-    await tester.tap(handwriting);
+    final handwritingChip = find.ancestor(
+      of: handwriting,
+      matching: find.byType(ChoiceChip),
+    );
+    await tester.ensureVisible(handwritingChip);
+    await tester.tap(handwritingChip);
     await tester.pumpAndSettle();
     expect(artwork().style.fontFamily, 'PacificoLocal');
     expect(tester.getRect(_toolbar), toolbarBounds);
 
     await _tapToolbar(tester, 'Text Presets');
     expect(_panel, findsOneWidget);
-    await tester.tap(find.text('Headline'));
+    final headline = find.text('Headline');
+    final headlineChip = find.ancestor(
+      of: headline,
+      matching: find.byType(ChoiceChip),
+    );
+    await tester.ensureVisible(headlineChip);
+    await tester.tap(headlineChip);
     await tester.pumpAndSettle();
     expect(artwork().style.fontWeight, FontWeight.w900);
 
@@ -111,7 +121,12 @@ void main() {
       matching: find.text('اردو نستعلیق'),
     );
     expect(urdu, findsOneWidget);
-    await tester.tap(urdu);
+    final urduChip = find.ancestor(
+      of: urdu,
+      matching: find.byType(ChoiceChip),
+    );
+    await tester.ensureVisible(urduChip);
+    await tester.tap(urduChip);
     await tester.pumpAndSettle();
     final artwork = tester.widget<AdvancedTextOverlay>(_overlay);
     expect(artwork.style.fontFamily, 'NotoNastaliqUrdu');
