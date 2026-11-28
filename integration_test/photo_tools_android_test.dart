@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +18,31 @@ void main() {
   testWidgets('Photo Tools share one dock and keep A and B independent', (
     tester,
   ) async {
-    void mark(String step) => debugPrint('PHOTO_TOOLS_STEP: $step');
+    final frameTimings = <ui.FrameTiming>[];
+    void collectFrameTimings(List<ui.FrameTiming> timings) {
+      frameTimings.addAll(timings);
+    }
+
+    binding.addTimingsCallback(collectFrameTimings);
+    addTearDown(() => binding.removeTimingsCallback(collectFrameTimings));
+
+    void mark(String step) {
+      var worstBuildMs = 0;
+      var worstRasterMs = 0;
+      for (final timing in frameTimings) {
+        if (timing.buildDuration.inMilliseconds > worstBuildMs) {
+          worstBuildMs = timing.buildDuration.inMilliseconds;
+        }
+        if (timing.rasterDuration.inMilliseconds > worstRasterMs) {
+          worstRasterMs = timing.rasterDuration.inMilliseconds;
+        }
+      }
+      debugPrint(
+        'PHOTO_TOOLS_STEP: $step | frames=${frameTimings.length} '
+        'maxBuild=${worstBuildMs}ms maxRaster=${worstRasterMs}ms',
+      );
+    }
+
     mark('test-start');
     final directory = await getTemporaryDirectory();
     Future<File> fixture(String side, bool transparent) async {
