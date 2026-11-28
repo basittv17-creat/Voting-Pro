@@ -82,7 +82,7 @@ void main() {
     final headline = find.text('Headline');
     final headlineChip = find.ancestor(
       of: headline,
-      matching: find.byType(ChoiceChip),
+      matching: find.byType(ActionChip),
     );
     await tester.ensureVisible(headlineChip);
     await tester.tap(headlineChip);
