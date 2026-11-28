@@ -24,8 +24,8 @@ void main() {
 
     mark('test-start');
     await voting_pro.main();
-    await tester.pump();
-    mark('app-first-frame');
+    await settle();
+    mark('app-ready-before-surface-conversion');
     // Android starts with a surface-backed Flutter view whose test geometry
     // is zero until it is converted for integration screenshots. Convert
     // before reading bounds or tapping the toolbar, as the other Android
