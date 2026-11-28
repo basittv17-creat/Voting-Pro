@@ -10,9 +10,9 @@ import 'package:voting_pro/widgets/advanced_text_overlay.dart';
 void main() {
   tearDown(() => AppLanguage.current = 'en');
 
-  testWidgets('Built-in text font selection survives project save and reopen', (
-    tester,
-  ) async {
+  testWidgets(
+    'Built-in text font selection survives project save and reopen',
+    (tester) async {
     SharedPreferences.setMockInitialValues({
       'voting_pro_project_v1': jsonEncode({
         'overlays': ['Voting Pro'],
@@ -27,7 +27,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final overlay = find.byWidgetPredicate(
-      (widget) => widget is AdvancedTextOverlay && widget.text == 'Voting Pro',
+      (widget) =>
+          widget is AdvancedTextOverlay && widget.text == 'Voting Pro',
     );
     await tester.tap(overlay);
     await tester.pumpAndSettle();
@@ -66,7 +67,8 @@ void main() {
 
     final restored = tester.widget<AdvancedTextOverlay>(
       find.byWidgetPredicate(
-        (widget) => widget is AdvancedTextOverlay && widget.text == 'Voting Pro',
+        (widget) =>
+            widget is AdvancedTextOverlay && widget.text == 'Voting Pro',
       ),
     );
     expect(restored.style.fontFamily, 'PlayfairDisplayLocal');
