@@ -17,6 +17,8 @@ void main() {
   testWidgets('Photo Tools share one dock and keep A and B independent', (
     tester,
   ) async {
+    void mark(String step) => debugPrint('PHOTO_TOOLS_STEP: $step');
+    mark('test-start');
     final directory = await getTemporaryDirectory();
     Future<File> fixture(String side, bool transparent) async {
       final photo = img.Image(width: 160, height: 200, numChannels: 4);
@@ -33,13 +35,16 @@ void main() {
 
     final a = await fixture('A', true);
     final b = await fixture('B', false);
+    mark('fixtures-ready');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'voting_pro_project_v1',
       jsonEncode({'imageA': a.path, 'imageB': b.path}),
     );
     await voting_pro.main();
+    mark('app-main-returned');
     await tester.pumpAndSettle();
+    mark('initial-layout-settled');
     await binding.convertFlutterSurfaceToImage();
     await tester.pumpAndSettle();
 
@@ -64,7 +69,9 @@ void main() {
       for (var frame = 0; frame < 6; frame++) {
         await tester.pump(const Duration(milliseconds: 20));
       }
+      mark('screenshot-start:$filename');
       await binding.takeScreenshot(filename);
+      mark('screenshot-complete:$filename');
     }
 
     Finder imageFor(String side) => find.byWidgetPredicate(
@@ -79,9 +86,12 @@ void main() {
         (tester.widget<Image>(imageFor(side)).image as FileImage).file.path;
 
     await capture('photo-01-default');
+    mark('default-screen-captured');
     final mainRemoverButton = find.descendant(of: normal, matching: find.text('BG Remover'));
     await tester.scrollUntilVisible(mainRemoverButton, 180, scrollable: find.descendant(of: normal, matching: find.byType(Scrollable)));
+    mark('main-remover-open-start');
     await tap(mainRemoverButton);
+    mark('main-remover-open-complete');
     final mainDock = find.byKey(const ValueKey('main-remover-dock'));
     expect(mainDock, findsOneWidget);
     expect(normal, findsOneWidget);
@@ -89,14 +99,18 @@ void main() {
     expect(find.text('Auto Remove Background'), findsOneWidget);
     expect(find.text('Custom Remove'), findsOneWidget);
     await tap(find.text('Photo B'));
+    mark('remover-target-b-selected');
     await tap(find.text('Custom Remove'));
+    mark('custom-remover-opened');
     expect(find.byKey(const ValueKey('inline-cutout-brush')), findsOneWidget);
     await tap(find.byKey(const ValueKey('main-remover-back')));
+    mark('main-remover-closed');
     expect(mainDock, findsNothing);
     expect(normal, findsOneWidget);
     expect(pathOf('A'), a.path);
     expect(pathOf('B'), b.path);
     await tap(imageFor('A'));
+    mark('photo-a-selected');
     expect(normal, findsNothing);
     expect(tester.getRect(toolbar), bounds);
     expect(find.byKey(const ValueKey('photo-selection-A')), findsOneWidget);
@@ -104,6 +118,7 @@ void main() {
     final backBounds = tester.getRect(back);
     expect(backBounds.right, lessThan(tester.getRect(scroll).left));
     await capture('photo-02-side-a');
+    mark('photo-a-captured');
 
     final bSize = tester.getSize(imageFor('B'));
     final aSize = tester.getRect(imageFor('A')).width;
@@ -112,16 +127,23 @@ void main() {
     expect(tester.getSize(imageFor('B')), bSize);
     await tap(action('Zoom Out'));
     await tap(action('Backgrounds'));
+    mark('photo-b-backgrounds-opened');
+    mark('photo-a-backgrounds-opened');
     await tap(find.text('Ocean'));
+    mark('photo-a-ocean-selected');
     expect(tester.getRect(toolbar), bounds);
     expect(tester.getRect(back), backBounds);
     await capture('photo-03-side-a-backgrounds');
     await tap(action('Remove Background'));
+    mark('photo-b-inline-remover-opened');
+    mark('photo-a-inline-remover-opened');
     expect(find.text('Remove Background — A Side'), findsOneWidget);
     await capture('photo-08-side-a-inline-remover');
     final close = find.byKey(const ValueKey('inline-remover-close'));
     expect(tester.getCenter(close).dx, greaterThan(tester.getCenter(remover).dx));
     await tap(close);
+    mark('photo-b-inline-remover-closed');
+    mark('photo-a-inline-remover-closed');
     expect(remover, findsNothing);
     expect(toolbar, findsOneWidget);
     expect(tester.getRect(toolbar), bounds);
@@ -129,6 +151,7 @@ void main() {
     expect(pathOf('B'), b.path);
 
     await tap(imageFor('B'));
+    mark('photo-b-selected');
     expect(find.text('Backgrounds — A Side'), findsNothing);
     expect(find.byKey(const ValueKey('photo-selection-B')), findsOneWidget);
     expect(find.byKey(const ValueKey('photo-selection-A')), findsNothing);
@@ -146,6 +169,7 @@ void main() {
     await capture('photo-05-side-b-inline-remover');
 
     await tap(find.descendant(of: remover, matching: find.text('Erase')));
+    mark('photo-b-erase-mode-selected');
     final preview = find.byKey(const ValueKey('inline-cutout-brush'));
     await tester.ensureVisible(preview);
     await tester.pumpAndSettle();
@@ -156,12 +180,15 @@ void main() {
     await stroke.moveTo(touch + const Offset(32, 0));
     await stroke.up();
     await tester.pumpAndSettle();
+    mark('photo-b-erase-stroke-complete');
 
     expect(find.descendant(of: remover, matching: find.text('Apply')), findsNothing);
     expect(remover, findsOneWidget);
     expect(pathOf('A'), a.path);
     expect(pathOf('B'), isNot(b.path));
+    mark('photo-b-cutout-written');
     final cutout = img.decodePng(await File(pathOf('B')).readAsBytes())!;
+    mark('photo-b-cutout-decoded');
     expect(cutout.any((pixel) => pixel.a == 0), isTrue);
     await capture('photo-06-side-b-cutout-applied');
     final appliedPath = pathOf('B');
@@ -171,6 +198,7 @@ void main() {
     expect(pathOf('B'), appliedPath);
 
     await tap(back);
+    mark('photo-toolbar-closed');
     expect(toolbar, findsNothing);
     expect(tester.getRect(normal), bounds);
     expect(find.byKey(const ValueKey('photo-selection-B')), findsNothing);
@@ -178,7 +206,9 @@ void main() {
 
     // Capture the real procedural painter on Android, not a generated
     // reference image. The two sheets expose every A/B scene for review.
+    mark('scene-contact-sheets-start');
     for (final side in [true, false]) {
+      mark(side ? 'scene-contact-sheet-a-start' : 'scene-contact-sheet-b-start');
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -241,6 +271,7 @@ void main() {
       expect(find.byType(PhotoSceneArt), findsNWidgets(20));
       expect(tester.takeException(), isNull);
       await capture(side ? 'photo-09-all-scenes-a' : 'photo-10-all-scenes-b');
+      mark(side ? 'scene-contact-sheet-a-complete' : 'scene-contact-sheet-b-complete');
     }
   });
 }
