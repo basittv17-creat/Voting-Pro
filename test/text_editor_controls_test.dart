@@ -9,9 +9,9 @@ import 'package:voting_pro/widgets/premium_text_editor_panel.dart';
 import 'package:voting_pro/widgets/scaled_overlay.dart';
 
 void main() {
-  testWidgets('Style and Layout actions update only the selected text', (
-    tester,
-  ) async {
+  testWidgets(
+    'Style and Layout actions update only the selected text',
+    (tester) async {
     SharedPreferences.setMockInitialValues({
       'voting_pro_project_v1': jsonEncode({
         'overlays': ['Voting Pro'],
@@ -32,6 +32,15 @@ void main() {
     await tester.tap(find.text('Voting Pro'));
     await tester.pumpAndSettle();
 
+    final mainToolbar = find.byKey(const PageStorageKey('main-toolbar'));
+    final textMode = find.descendant(
+      of: mainToolbar,
+      matching: find.text('Text'),
+    );
+    await tester.ensureVisible(textMode);
+    await tester.tap(textMode);
+    await tester.pumpAndSettle();
+
     final toolbar = find.byKey(const ValueKey('text-toolbar'));
     Future<void> toolbarAction(String label) async {
       final target = find.descendant(
@@ -43,7 +52,6 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    await toolbarAction('Text');
     await toolbarAction('Style');
     final panel = find.byType(PremiumTextEditorPanel);
     expect(
@@ -132,7 +140,10 @@ void main() {
       closeTo(0.5, 0.001),
     );
     await layoutAction('Curve Up');
-    expect(tester.widget<AdvancedTextOverlay>(overlay).curve, closeTo(0.2, 0.001));
+    expect(
+      tester.widget<AdvancedTextOverlay>(overlay).curve,
+      closeTo(0.2, 0.001),
+    );
 
     await layoutAction('Duplicate');
     expect(find.byType(AdvancedTextOverlay), findsNWidgets(2));
