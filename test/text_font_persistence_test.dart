@@ -25,8 +25,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final overlay = find.byWidgetPredicate(
-      (widget) =>
-          widget is AdvancedTextOverlay && widget.text == 'Voting Pro',
+      (widget) => widget is AdvancedTextOverlay && widget.text == 'Voting Pro',
     );
     await tester.tap(overlay);
     await tester.pumpAndSettle();
