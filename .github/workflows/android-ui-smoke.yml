@@ -103,6 +103,7 @@ jobs:
           emulator -list-avds | grep -Fx voting_pro_ci
           emulator -version
           emulator_pid=''
+          emulator_session=0
           stop_emulator() {
             if [ -n "$emulator_pid" ]; then
               timeout 10s adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
@@ -112,12 +113,19 @@ jobs:
                 sleep 1
               done
               kill -KILL "$emulator_pid" 2>/dev/null || true
-              wait "$emulator_pid" 2>/dev/null || true
+              local emulator_status=0
+              wait "$emulator_pid" 2>/dev/null || emulator_status=$?
+              echo "EMULATOR_EXIT_STATUS=$emulator_status"
               emulator_pid=''
             fi
           }
           start_emulator() {
-            emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 >> "$RUNNER_TEMP/voting-pro-emulator.log" 2>&1 &
+            emulator_session=$((emulator_session + 1))
+            local emulator_log="$RUNNER_TEMP/voting-pro-emulator-session-${emulator_session}.log"
+            echo "Starting emulator session $emulator_session; host log: $emulator_log"
+            adb kill-server
+            adb start-server
+            emulator -avd voting_pro_ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan -port 5554 >> "$emulator_log" 2>&1 &
             emulator_pid=$!
             sleep 2
             kill -0 "$emulator_pid"
@@ -135,14 +143,21 @@ jobs:
           # Keep the same Android image, app tests, assertions and screenshot capture.
           # Isolate graphics state between suites. Retry only on emulator/ADB loss.
           run_ui_suite() {
-            local log="$RUNNER_TEMP/voting-pro-drive.log"
+            local target suite
+            target="${!#}"
+            suite="$(basename "${target#*=}" .dart)"
             stop_emulator
             start_emulator
-            local attempt result
+            local attempt result log
             for attempt in 1 2; do
+              log="$RUNNER_TEMP/voting-pro-${suite}-attempt-${attempt}.log"
               result=0
+              echo "Running Android suite $suite (attempt $attempt); log: $log"
               bash scripts/retry_dependency_download.sh flutter drive --no-pub -d emulator-5554 --driver=test_driver/android_screenshot_driver.dart "$@" 2>&1 | tee "$log" || result=$?
               if [ "$result" -eq 0 ]; then return 0; fi
+              if [ "$(timeout 10s adb -s emulator-5554 get-state 2>/dev/null || true)" = device ]; then
+                timeout 20s adb -s emulator-5554 logcat -d -b all > "$RUNNER_TEMP/voting-pro-${suite}-attempt-${attempt}-logcat.txt" 2>&1 || true
+              fi
               if [ "$attempt" -eq 2 ] || grep -Eq 'EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK|Some tests failed|Test failed' "$log"; then
                 return "$result"
               fi
