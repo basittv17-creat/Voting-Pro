@@ -12,6 +12,13 @@ void main() {
   testWidgets('VS previews and poster agree on Android', (tester) async {
     await voting_pro.main();
     await tester.pumpAndSettle();
+    // Android starts with a surface-backed Flutter view whose test geometry
+    // is zero until it is converted for integration screenshots. Convert
+    // before reading bounds or tapping the toolbar, as the other Android
+    // integration suites already do.
+    await binding.convertFlutterSurfaceToImage();
+    await tester.pumpAndSettle();
+
     final toolbar = find.byKey(const PageStorageKey('main-toolbar'));
     final poster = find.byType(Screenshot);
     final tool = find.descendant(of: toolbar, matching: find.text('VS Styles'));
@@ -23,15 +30,15 @@ void main() {
     await tester.pumpAndSettle();
 
     final panel = find.byType(VsStylesPanel);
+    expect(panel, findsOneWidget);
     final grid = find.descendant(of: panel, matching: find.byType(Scrollable));
+    expect(grid, findsOneWidget);
     final canvasVs = find.byKey(const ValueKey('poster-vs'));
     final vsBounds = tester.getRect(canvasVs);
     expect(find.byType(BottomSheet), findsNothing);
     expect(tester.getRect(toolbar), toolbarBounds);
     expect(tester.getRect(poster), posterBounds);
 
-    await binding.convertFlutterSurfaceToImage();
-    await tester.pumpAndSettle();
     for (final (style, screen) in const [
       ('Fire', 'vs-styles-fire'),
       ('Black & Gold', 'vs-styles-black-and-gold'),
